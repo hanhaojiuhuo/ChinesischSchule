@@ -8,7 +8,7 @@ export default function HeroSection() {
   return (
     <section className="relative bg-gradient-to-br from-red-700 via-red-800 to-red-900 text-white overflow-hidden">
       {/* Decorative Chinese pattern */}
-      <div className="absolute inset-0 opacity-10">
+      <div className="absolute inset-0 opacity-10 font-chinese">
         <div className="absolute top-4 right-4 text-9xl select-none">福</div>
         <div className="absolute bottom-4 left-4 text-9xl select-none">学</div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[200px] select-none opacity-5">
@@ -20,7 +20,7 @@ export default function HeroSection() {
         {/* Vertical Chinese accent text */}
         <div className="flex justify-center mb-6">
           <div
-            className="text-red-200 text-xl font-light tracking-[0.5em] hidden sm:flex flex-col items-center"
+            className="text-red-200 text-xl font-light tracking-[0.5em] hidden sm:flex flex-col items-center font-chinese"
             style={{ writingMode: "vertical-rl" } as React.CSSProperties}
           >
             <span>益新中文学校</span>
@@ -51,7 +51,7 @@ export default function HeroSection() {
             </div>
           </div>
           <div
-            className="text-red-200 text-xl font-light tracking-[0.5em] hidden sm:flex flex-col items-center"
+            className="text-red-200 text-xl font-light tracking-[0.5em] hidden sm:flex flex-col items-center font-chinese"
             style={{ writingMode: "vertical-rl" } as React.CSSProperties}
           >
             <span>学中文·爱文化</span>

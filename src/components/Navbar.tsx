@@ -27,7 +27,7 @@ export default function Navbar({ locale }: NavbarProps) {
           <Link href={`/${locale}`} className="flex items-center gap-2">
             <span className="text-2xl">🏮</span>
             <div>
-              <span className="font-bold text-lg hidden sm:block">益新中文学校</span>
+              <span className="font-bold text-lg hidden sm:block font-chinese">益新中文学校</span>
               <span className="font-bold text-sm sm:hidden">益新</span>
             </div>
           </Link>

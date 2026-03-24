@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Self-hosted Noto Sans CJK SC subset — loaded locally, no external requests needed */
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/NotoSansCJKsc-subset.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+00B7, U+4E00-9FFF, U+F900-FAFF, U+20000-2A6DF;
+}
+
 @layer base {
   :root {
     --color-primary: #b91c1c;
@@ -12,10 +22,16 @@
   }
   
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   
+  /* Apply Noto Sans SC for all Chinese (zh) pages — covers CJK characters everywhere */
+  :lang(zh) body,
   :lang(zh) {
-    font-family: 'Noto Sans SC', 'Microsoft YaHei', '微软雅黑', sans-serif;
+    font-family: 'Noto Sans SC', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', '微软雅黑', sans-serif;
   }
+}
+
+@utility font-chinese {
+  font-family: 'Noto Sans SC', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
