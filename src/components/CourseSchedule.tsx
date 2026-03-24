@@ -23,8 +23,8 @@ export default function CourseSchedule({ locale }: CourseScheduleProps) {
         setCourses(data);
         setLoading(false);
       })
-      .catch((err) => {
-        setError(err.message);
+      .catch(() => {
+        setError(t("no_courses"));
         setLoading(false);
       });
   }, []);

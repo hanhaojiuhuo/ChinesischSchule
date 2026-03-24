@@ -33,13 +33,13 @@ export default function AdminDashboard({ locale }: AdminDashboardProps) {
   }, []);
 
   const handleDeleteNews = async (id: string) => {
-    if (!confirm("Delete this news item?")) return;
+    if (!confirm(t("confirm_delete_news"))) return;
     await fetch(`/api/news/${id}`, { method: "DELETE" });
     setNews((prev) => prev.filter((n) => n.id !== id));
   };
 
   const handleDeleteCourse = async (id: string) => {
-    if (!confirm("Delete this course?")) return;
+    if (!confirm(t("confirm_delete_course"))) return;
     await fetch(`/api/courses/${id}`, { method: "DELETE" });
     setCourses((prev) => prev.filter((c) => c.id !== id));
   };
@@ -216,7 +216,7 @@ export default function AdminDashboard({ locale }: AdminDashboardProps) {
                   <th className="border border-gray-200 px-4 py-2 text-sm font-semibold">{t("day")}</th>
                   <th className="border border-gray-200 px-4 py-2 text-sm font-semibold">{t("time")}</th>
                   <th className="border border-gray-200 px-4 py-2 text-sm font-semibold">{t("teacher")}</th>
-                  <th className="border border-gray-200 px-4 py-2 text-sm font-semibold">Actions</th>
+                  <th className="border border-gray-200 px-4 py-2 text-sm font-semibold">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>

@@ -27,7 +27,7 @@ export default function AdminLoginPage() {
     });
 
     if (result?.error) {
-      setError("Invalid credentials. Please try again.");
+      setError(t("invalid_credentials"));
     } else {
       router.push(`/${locale}/admin`);
       router.refresh();

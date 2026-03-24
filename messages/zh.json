@@ -60,7 +60,11 @@
     "level": "级别",
     "day": "星期",
     "time": "时间",
-    "teacher": "老师"
+    "teacher": "老师",
+    "actions": "操作",
+    "confirm_delete_news": "删除此新闻条目？",
+    "confirm_delete_course": "删除此课程？",
+    "invalid_credentials": "凭据无效，请重试。"
   },
   "footer": {
     "rights": "版权所有",

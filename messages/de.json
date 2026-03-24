@@ -60,7 +60,11 @@
     "level": "Niveau",
     "day": "Tag",
     "time": "Uhrzeit",
-    "teacher": "Lehrer"
+    "teacher": "Lehrer",
+    "actions": "Aktionen",
+    "confirm_delete_news": "Diesen Nachrichteneintrag löschen?",
+    "confirm_delete_course": "Diesen Kurs löschen?",
+    "invalid_credentials": "Ungültige Anmeldedaten. Bitte versuchen Sie es erneut."
   },
   "footer": {
     "rights": "Alle Rechte vorbehalten",

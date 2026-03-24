@@ -60,7 +60,11 @@
     "level": "Level",
     "day": "Day",
     "time": "Time",
-    "teacher": "Teacher"
+    "teacher": "Teacher",
+    "actions": "Actions",
+    "confirm_delete_news": "Delete this news item?",
+    "confirm_delete_course": "Delete this course?",
+    "invalid_credentials": "Invalid credentials. Please try again."
   },
   "footer": {
     "rights": "All rights reserved",
