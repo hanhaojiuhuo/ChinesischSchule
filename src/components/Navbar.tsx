@@ -2,17 +2,23 @@
 
 import { useState } from "react";
 import SchoolLogo from "./SchoolLogo";
-
-const navLinks = [
-  { label: "首页 Home", href: "#home" },
-  { label: "关于 Über uns", href: "#about" },
-  { label: "课程 Kurse", href: "#courses" },
-  { label: "新闻 Aktuelles", href: "#news" },
-  { label: "联系 Kontakt", href: "#contact" },
-];
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useContent } from "@/contexts/ContentContext";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const { language } = useLanguage();
+  const { getContent } = useContent();
+  const t = getContent(language);
+
+  const navLinks = [
+    { label: t.nav.home, href: "#home" },
+    { label: t.nav.about, href: "#about" },
+    { label: t.nav.courses, href: "#courses" },
+    { label: t.nav.news, href: "#news" },
+    { label: t.nav.contact, href: "#contact" },
+  ];
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b-2 border-[var(--school-red)] shadow-sm">
@@ -25,7 +31,7 @@ export default function Navbar() {
               一心中文学校
             </p>
             <p className="text-[10px] sm:text-xs text-gray-500 tracking-tight">
-              Yi Xin Sprachschule Heilbronn
+              {t.schoolNameShort}
             </p>
           </div>
         </a>
@@ -43,28 +49,33 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Mobile hamburger */}
-        <button
-          className="md:hidden p-2 rounded text-[var(--school-dark)] hover:bg-[var(--school-red-light)] transition-colors"
-          onClick={() => setOpen((o) => !o)}
-          aria-label="Menü öffnen"
-          aria-expanded={open}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+        {/* Right side: language switcher + mobile hamburger */}
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden p-2 rounded text-[var(--school-dark)] hover:bg-[var(--school-red-light)] transition-colors"
+            onClick={() => setOpen((o) => !o)}
+            aria-label="Menü öffnen"
+            aria-expanded={open}
           >
-            {open ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
+            <svg
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              {open ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
