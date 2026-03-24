@@ -15,7 +15,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!adminEmail || !adminPassword) {
           return null;
         }
-        
+
+        // TODO: In production, store a bcrypt hash in ADMIN_PASSWORD_HASH
+        // and compare with bcrypt.compare(credentials.password, hash)
         if (credentials?.email === adminEmail && credentials?.password === adminPassword) {
           return {
             id: "1",

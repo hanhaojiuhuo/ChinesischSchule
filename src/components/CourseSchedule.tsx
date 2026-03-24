@@ -27,7 +27,7 @@ export default function CourseSchedule({ locale }: CourseScheduleProps) {
         setError(t("no_courses"));
         setLoading(false);
       });
-  }, []);
+  }, [t]);
 
   const getDayLabel = (day: string) => {
     const dayMap: Record<string, Record<string, string>> = {

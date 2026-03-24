@@ -427,7 +427,7 @@ function CourseForm({
             type="number"
             value={form.max_students}
             onChange={(e) =>
-              setForm({ ...form, max_students: parseInt(e.target.value, 10) || 0 })
+              setForm({ ...form, max_students: parseInt(e.target.value, 10) || form.max_students })
             }
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none"
           />
