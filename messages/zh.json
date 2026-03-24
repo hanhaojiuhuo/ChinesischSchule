@@ -1,0 +1,69 @@
+{
+  "nav": {
+    "home": "首页",
+    "courses": "课程",
+    "news": "新闻",
+    "about": "关于我们",
+    "contact": "联系我们",
+    "admin": "管理"
+  },
+  "home": {
+    "hero_title": "益新中文学校",
+    "hero_subtitle": "在海尔布隆学习普通话",
+    "hero_description": "为各年龄段和各级别学生提供优质中文教育。加入我们在海尔布隆充满活力的学习社区。",
+    "courses_title": "我们的课程",
+    "news_title": "学校新闻",
+    "about_title": "关于我们",
+    "about_text": "益新中文学校自2010年起在海尔布隆提供高质量的普通话教学。我们经验丰富的教师为各年龄段的学生带来authentic的中国文化和语言。",
+    "contact_title": "联系我们",
+    "address": "德国巴登-符腾堡州海尔布隆",
+    "email": "info@yixin-chinese.de",
+    "phone": "+49 7131 000000"
+  },
+  "courses": {
+    "title": "课程表",
+    "subtitle": "找到适合您水平的课程",
+    "level": "级别",
+    "day": "星期",
+    "time": "时间",
+    "teacher": "老师",
+    "room": "教室",
+    "age_group": "年龄组",
+    "no_courses": "目前没有可用的课程。"
+  },
+  "news": {
+    "title": "学校新闻",
+    "read_more": "阅读更多",
+    "published": "发布日期",
+    "no_news": "暂无新闻。"
+  },
+  "admin": {
+    "title": "管理仪表板",
+    "news_management": "新闻管理",
+    "course_management": "课程管理",
+    "add_news": "添加新闻",
+    "edit_news": "编辑新闻",
+    "delete_news": "删除新闻",
+    "add_course": "添加课程",
+    "edit_course": "编辑课程",
+    "delete_course": "删除课程",
+    "save": "保存",
+    "cancel": "取消",
+    "title_field": "标题",
+    "content_field": "内容",
+    "language": "语言",
+    "logout": "退出",
+    "login": "登录",
+    "email": "电子邮件",
+    "password": "密码",
+    "login_title": "管理员登录",
+    "level": "级别",
+    "day": "星期",
+    "time": "时间",
+    "teacher": "老师"
+  },
+  "footer": {
+    "rights": "版权所有",
+    "school_name": "益新中文学校"
+  }
+}

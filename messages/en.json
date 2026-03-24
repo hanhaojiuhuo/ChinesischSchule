@@ -1,0 +1,69 @@
+{
+  "nav": {
+    "home": "Home",
+    "courses": "Courses",
+    "news": "News",
+    "about": "About",
+    "contact": "Contact",
+    "admin": "Admin"
+  },
+  "home": {
+    "hero_title": "Yixin Chinese Language School",
+    "hero_subtitle": "Learn Mandarin Chinese in Heilbronn",
+    "hero_description": "Quality Chinese language education for all ages and levels. Join our vibrant learning community in Heilbronn.",
+    "courses_title": "Our Courses",
+    "news_title": "School News",
+    "about_title": "About Us",
+    "about_text": "Yixin Chinese Language School has been offering high-quality Mandarin instruction in Heilbronn since 2010. Our experienced teachers bring authentic Chinese culture and language to students of all ages.",
+    "contact_title": "Contact Us",
+    "address": "Heilbronn, Baden-Württemberg, Germany",
+    "email": "info@yixin-chinese.de",
+    "phone": "+49 7131 000000"
+  },
+  "courses": {
+    "title": "Course Schedule",
+    "subtitle": "Find the right course for your level",
+    "level": "Level",
+    "day": "Day",
+    "time": "Time",
+    "teacher": "Teacher",
+    "room": "Room",
+    "age_group": "Age Group",
+    "no_courses": "No courses available at this time."
+  },
+  "news": {
+    "title": "School News",
+    "read_more": "Read more",
+    "published": "Published",
+    "no_news": "No news available."
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "news_management": "News Management",
+    "course_management": "Course Management",
+    "add_news": "Add News",
+    "edit_news": "Edit News",
+    "delete_news": "Delete News",
+    "add_course": "Add Course",
+    "edit_course": "Edit Course",
+    "delete_course": "Delete Course",
+    "save": "Save",
+    "cancel": "Cancel",
+    "title_field": "Title",
+    "content_field": "Content",
+    "language": "Language",
+    "logout": "Logout",
+    "login": "Login",
+    "email": "Email",
+    "password": "Password",
+    "login_title": "Admin Login",
+    "level": "Level",
+    "day": "Day",
+    "time": "Time",
+    "teacher": "Teacher"
+  },
+  "footer": {
+    "rights": "All rights reserved",
+    "school_name": "Yixin Chinese Language School"
+  }
+}
