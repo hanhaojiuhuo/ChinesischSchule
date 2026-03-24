@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 export default function AdminLoginPage() {
   const t = useTranslations("admin");
   const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || "de";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,7 +29,7 @@ export default function AdminLoginPage() {
     if (result?.error) {
       setError("Invalid credentials. Please try again.");
     } else {
-      router.push("/admin");
+      router.push(`/${locale}/admin`);
       router.refresh();
     }
     setLoading(false);
