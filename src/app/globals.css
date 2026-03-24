@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --school-red: #c41230;
+  --school-red-dark: #9b0e25;
+  --school-red-light: #f5e6e9;
+  --school-dark: #1a1a1a;
+  --school-gray: #f7f5f5;
+  --school-border: #d0c8c8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-school-red: var(--school-red);
+  --color-school-red-dark: var(--school-red-dark);
+  --color-school-red-light: var(--school-red-light);
+  --color-school-dark: var(--school-dark);
+  --color-school-gray: var(--school-gray);
+  --color-school-border: var(--school-border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  /* Chinese-compatible system font stack */
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei",
+    "Noto Sans SC", Arial, sans-serif;
+  line-height: 1.7;
+}
+
+/* Chinese serif for headings / logo text */
+.font-cn {
+  font-family: "Noto Serif SC", "STSong", "SimSun", "AR PL UMing CN", serif;
+}
+
+/* Decorative circular badge border inspired by the school logo */
+.logo-circle {
+  border-radius: 50%;
+  border: 3px solid var(--school-dark);
+  position: relative;
+}
+
+.logo-circle::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px solid var(--school-dark);
+  pointer-events: none;
+}
+
+/* Fade-in animation for page sections */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
