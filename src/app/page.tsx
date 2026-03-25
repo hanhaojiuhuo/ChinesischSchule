@@ -644,13 +644,15 @@ export default function Home() {
                         {zhCourse.levelLabel}
                       </div>
                     )}
-                    <div className="text-xs text-gray-500 mb-3 flex items-center gap-1">
-                      <span>🕐</span> {c.ages}{zhCourse ? ` · ${zhCourse.ages}` : ""}
+                    <div className="border-t border-gray-200 pt-3 mt-1">
+                      <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                        <span>🕐</span> {c.ages}{zhCourse ? ` · ${zhCourse.ages}` : ""}
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed">{c.desc}</p>
+                      {zhCourse && (
+                        <p className="font-cn text-xs text-gray-400 leading-relaxed mt-2">{zhCourse.desc}</p>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">{c.desc}</p>
-                    {zhCourse && (
-                      <p className="font-cn text-xs text-gray-400 leading-relaxed mt-2">{zhCourse.desc}</p>
-                    )}
                   </div>
                 );
               })}
