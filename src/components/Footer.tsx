@@ -1,20 +1,19 @@
 "use client";
 
 import SchoolLogo from "./SchoolLogo";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useContent } from "@/contexts/ContentContext";
 
 export default function Footer() {
-  const { language } = useLanguage();
   const { getContent } = useContent();
-  const t = getContent(language);
+  const de = getContent("de");
+  const zh = getContent("zh");
 
-  const navLinks: [string, string][] = [
-    [t.nav.home, "#home"],
-    [t.nav.about, "#about"],
-    [t.nav.courses, "#courses"],
-    [t.nav.news, "#news"],
-    [t.nav.contact, "#contact"],
+  const navLinks: [string, string, string][] = [
+    [de.nav.home, zh.nav.home, "#home"],
+    [de.nav.about, zh.nav.about, "#about"],
+    [de.nav.courses, zh.nav.courses, "#courses"],
+    [de.nav.news, zh.nav.news, "#news"],
+    [de.nav.contact, zh.nav.contact, "#contact"],
   ];
 
   return (
@@ -24,19 +23,19 @@ export default function Footer() {
         <div className="flex flex-col items-start gap-3">
           <SchoolLogo size={80} className="[filter:invert(1)_brightness(0.85)]" />
           <p className="font-cn font-bold text-lg leading-tight">海尔布隆一心中文学校</p>
-          <p className="text-xs text-gray-400">{t.schoolName}</p>
+          <p className="text-xs text-gray-400">Yi Xin Chinesische Sprachschule Heilbronn</p>
         </div>
 
         {/* Quick links */}
         <div>
           <h3 className="font-bold text-[var(--school-red)] mb-3 tracking-wide uppercase text-sm">
-            {t.footer.navigationTitle}
+            {de.footer.navigationTitle} · <span className="font-cn">{zh.footer.navigationTitle}</span>
           </h3>
           <ul className="space-y-2 text-sm text-gray-300">
-            {navLinks.map(([label, href]) => (
+            {navLinks.map(([deLabel, zhLabel, href]) => (
               <li key={href}>
                 <a href={href} className="hover:text-[var(--school-red)] transition-colors">
-                  {label}
+                  {deLabel} · <span className="font-cn">{zhLabel}</span>
                 </a>
               </li>
             ))}
@@ -46,18 +45,18 @@ export default function Footer() {
         {/* Contact */}
         <div>
           <h3 className="font-bold text-[var(--school-red)] mb-3 tracking-wide uppercase text-sm">
-            {t.footer.contactTitle}
+            {de.footer.contactTitle} · <span className="font-cn">{zh.footer.contactTitle}</span>
           </h3>
           <address className="not-italic text-sm text-gray-300 space-y-1">
-            {t.contact.addressLines.map((line) => (
+            {de.contact.addressLines.map((line) => (
               <p key={line}>{line}</p>
             ))}
             <p className="mt-2">
               <a
-                href={`mailto:${t.contact.email}`}
+                href={`mailto:${de.contact.email}`}
                 className="hover:text-[var(--school-red)] transition-colors"
               >
-                {t.contact.email}
+                {de.contact.email}
               </a>
             </p>
           </address>

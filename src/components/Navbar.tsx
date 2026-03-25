@@ -2,23 +2,17 @@
 
 import { useState } from "react";
 import SchoolLogo from "./SchoolLogo";
-import LanguageSwitcher from "./LanguageSwitcher";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useContent } from "@/contexts/ContentContext";
+
+const navLinks = [
+  { de: "Home", zh: "首页", href: "#home" },
+  { de: "Über uns", zh: "关于我们", href: "#about" },
+  { de: "Kurse", zh: "课程", href: "#courses" },
+  { de: "Aktuelles", zh: "新闻", href: "#news" },
+  { de: "Kontakt", zh: "联系", href: "#contact" },
+];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const { language } = useLanguage();
-  const { getContent } = useContent();
-  const t = getContent(language);
-
-  const navLinks = [
-    { label: t.nav.home, href: "#home" },
-    { label: t.nav.about, href: "#about" },
-    { label: t.nav.courses, href: "#courses" },
-    { label: t.nav.news, href: "#news" },
-    { label: t.nav.contact, href: "#contact" },
-  ];
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b-2 border-[var(--school-red)] shadow-sm">
@@ -31,7 +25,7 @@ export default function Navbar() {
               一心中文学校
             </p>
             <p className="text-[10px] sm:text-xs text-gray-500 tracking-tight">
-              {t.schoolNameShort}
+              Yi Xin Sprachschule Heilbronn
             </p>
           </div>
         </a>
@@ -44,12 +38,13 @@ export default function Navbar() {
               href={link.href}
               className="px-3 py-2 text-sm font-medium text-[var(--school-dark)] rounded hover:bg-[var(--school-red-light)] hover:text-[var(--school-red)] transition-colors"
             >
-              {link.label}
+              {link.de}
+              <span className="text-xs text-gray-400 ml-1">· {link.zh}</span>
             </a>
           ))}
         </nav>
 
-        {/* Right side: admin button + language switcher + mobile hamburger */}
+        {/* Right side: admin button + mobile hamburger */}
         <div className="flex items-center gap-3">
           <a
             href="/admin"
@@ -62,7 +57,6 @@ export default function Navbar() {
             </svg>
             Admin
           </a>
-          <LanguageSwitcher />
 
           {/* Mobile hamburger */}
           <button
@@ -102,7 +96,7 @@ export default function Navbar() {
               onClick={() => setOpen(false)}
               className="block px-6 py-3 text-sm font-medium text-[var(--school-dark)] hover:bg-[var(--school-red-light)] hover:text-[var(--school-red)] border-b border-[var(--school-border)] transition-colors"
             >
-              {link.label}
+              {link.de} · <span className="font-cn">{link.zh}</span>
             </a>
           ))}
           <a
