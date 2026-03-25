@@ -14,12 +14,14 @@ function Field({
   onChange,
   multiline = false,
   type = "text",
+  autoComplete,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   multiline?: boolean;
   type?: string;
+  autoComplete?: string;
 }) {
   return (
     <div className="mb-3">
@@ -33,6 +35,7 @@ function Field({
       ) : (
         <input
           type={type}
+          autoComplete={autoComplete}
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -129,8 +132,8 @@ export default function AdminPage() {
 
   function handleChangePw(e: React.FormEvent) {
     e.preventDefault();
-    if (!newPw || newPw.length < 4) {
-      setPwChangeMsg("Mindestens 4 Zeichen / Min 4 characters / 至少4个字符");
+    if (!newPw || newPw.length < 6) {
+      setPwChangeMsg("Mindestens 6 Zeichen / Min 6 characters / 至少6个字符");
       return;
     }
     if (newPw !== newPwConfirm) {
@@ -141,7 +144,7 @@ export default function AdminPage() {
     }
     const result = auth.changePassword(auth.currentUser!, oldPw, newPw);
     if (result.success) {
-      setPwChangeMsg("Passwort geändert! / Password changed! / 密码已修改！");
+      setPwChangeMsg("✓ Passwort geändert! / Password changed! / 密码已修改！");
       setOldPw("");
       setNewPw("");
       setNewPwConfirm("");
@@ -537,11 +540,11 @@ export default function AdminPage() {
             </button>
           ) : (
             <form onSubmit={handleChangePw} className="max-w-sm space-y-3">
-              <Field label="Current password / Aktuelles Passwort / 当前密码" value={oldPw} onChange={setOldPw} type="password" />
-              <Field label="New password (min 6 chars)" value={newPw} onChange={setNewPw} type="password" />
-              <Field label="Confirm new password" value={newPwConfirm} onChange={setNewPwConfirm} type="password" />
+              <Field label="Current password / Aktuelles Passwort / 当前密码" value={oldPw} onChange={setOldPw} type="password" autoComplete="current-password" />
+              <Field label="New password (min 6 chars)" value={newPw} onChange={setNewPw} type="password" autoComplete="new-password" />
+              <Field label="Confirm new password" value={newPwConfirm} onChange={setNewPwConfirm} type="password" autoComplete="new-password" />
               {pwChangeMsg && (
-                <p className={`text-xs ${pwChangeMsg.startsWith("✓") || pwChangeMsg.startsWith("Password changed") ? "text-green-600" : "text-red-600"}`}>
+                <p className={`text-xs ${pwChangeMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>
                   {pwChangeMsg}
                 </p>
               )}
@@ -596,7 +599,7 @@ export default function AdminPage() {
               ))}
             </div>
             {removeAdminMsg && (
-              <p className="mt-2 text-xs text-green-600">{removeAdminMsg}</p>
+              <p className={`mt-2 text-xs ${removeAdminMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>{removeAdminMsg}</p>
             )}
           </div>
 
