@@ -2,6 +2,7 @@
 
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ContentProvider } from "@/contexts/ContentContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function ClientProviders({
   children,
@@ -10,7 +11,9 @@ export default function ClientProviders({
 }) {
   return (
     <LanguageProvider>
-      <ContentProvider>{children}</ContentProvider>
+      <ContentProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </ContentProvider>
     </LanguageProvider>
   );
 }

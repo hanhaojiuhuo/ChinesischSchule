@@ -11,6 +11,7 @@ export interface NewsItem {
   date: string;
   title: string;
   body: string;
+  imageUrl?: string;
 }
 
 export interface SiteContent {

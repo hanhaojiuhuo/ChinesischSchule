@@ -1,21 +1,280 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
+import { useAuth } from "@/contexts/AuthContext";
+import type { SiteContent, CourseItem, NewsItem } from "@/i18n/translations";
+import { defaultTranslations } from "@/i18n/translations";
+
+/* ─── Inline editable helpers ──────────────────────────────── */
+function EditField({
+  value,
+  onChange,
+  className = "",
+  placeholder = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`${className} bg-amber-50/30 border-b-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 focus:bg-amber-50/60 transition-colors`}
+      placeholder={placeholder}
+    />
+  );
+}
+
+function EditArea({
+  value,
+  onChange,
+  className = "",
+  placeholder = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  placeholder?: string;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`${className} w-full bg-amber-50/30 border-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 focus:bg-amber-50/60 transition-colors resize-y min-h-[3em] rounded-sm`}
+      placeholder={placeholder}
+    />
+  );
+}
+
+/* Block wrapper — amber outline in edit mode */
+function EditBlock({
+  label,
+  children,
+  onDelete,
+  className = "",
+}: {
+  label?: string;
+  children: React.ReactNode;
+  onDelete?: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={`relative ring-2 ring-amber-400 ring-offset-2 rounded-lg ${className}`}>
+      {label && (
+        <span className="absolute -top-3 left-3 z-10 text-xs bg-amber-400 text-amber-900 font-bold px-2 py-0.5 rounded select-none">
+          ✏ {label}
+        </span>
+      )}
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          className="absolute -top-3 right-3 z-10 text-xs bg-red-500 hover:bg-red-600 text-white font-bold px-2 py-0.5 rounded transition-colors"
+          title="Delete this block"
+        >
+          ✕ Delete
+        </button>
+      )}
+      {children}
+    </div>
+  );
+}
 
 /* ─── Page ─────────────────────────────────────────────────── */
 export default function Home() {
-  const { getContent } = useContent();
-  const de = getContent("de");
-  const zh = getContent("zh");
+  const { getContent, saveContent } = useContent();
+  const { isAdmin, currentUser, logout } = useAuth();
 
+  const [draftDe, setDraftDe] = useState<SiteContent>(() => defaultTranslations["de"]);
+  const [draftZh, setDraftZh] = useState<SiteContent>(() => defaultTranslations["zh"]);
+  const [isDirty, setIsDirty] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Sync drafts when ContentContext loads saved data from localStorage
+  useEffect(() => {
+    if (!isDirty) {
+      setDraftDe(getContent("de"));
+      setDraftZh(getContent("zh"));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getContent]);
+
+  // When admin logs out, reset drafts to saved content
+  useEffect(() => {
+    if (!isAdmin) {
+      setDraftDe(getContent("de"));
+      setDraftZh(getContent("zh"));
+      setIsDirty(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  const de = draftDe;
+  const zh = draftZh;
+
+  /* ── Draft updaters ──────────────────────────────────────── */
+  function updDe<K extends keyof SiteContent>(
+    section: K,
+    patch: Partial<SiteContent[K]> & object
+  ) {
+    setDraftDe((d) => ({ ...d, [section]: { ...(d[section] as object), ...(patch as object) } }));
+    setIsDirty(true);
+  }
+
+  function updZh<K extends keyof SiteContent>(
+    section: K,
+    patch: Partial<SiteContent[K]> & object
+  ) {
+    setDraftZh((d) => ({ ...d, [section]: { ...(d[section] as object), ...(patch as object) } }));
+    setIsDirty(true);
+  }
+
+  /* ── Course management ───────────────────────────────────── */
+  function addCourse() {
+    const blank: CourseItem = { level: "", levelLabel: "", ages: "", desc: "" };
+    setDraftDe((d) => ({ ...d, courses: { ...d.courses, items: [...d.courses.items, blank] } }));
+    setDraftZh((d) => ({ ...d, courses: { ...d.courses, items: [...d.courses.items, blank] } }));
+    setIsDirty(true);
+  }
+
+  function removeCourse(idx: number) {
+    setDraftDe((d) => ({
+      ...d,
+      courses: { ...d.courses, items: d.courses.items.filter((_, i) => i !== idx) },
+    }));
+    setDraftZh((d) => ({
+      ...d,
+      courses: { ...d.courses, items: d.courses.items.filter((_, i) => i !== idx) },
+    }));
+    setIsDirty(true);
+  }
+
+  function updDeCourse(idx: number, key: keyof CourseItem, val: string) {
+    setDraftDe((d) => ({
+      ...d,
+      courses: {
+        ...d.courses,
+        items: d.courses.items.map((c, i) => (i === idx ? { ...c, [key]: val } : c)),
+      },
+    }));
+    setIsDirty(true);
+  }
+
+  function updZhCourse(idx: number, key: keyof CourseItem, val: string) {
+    setDraftZh((d) => ({
+      ...d,
+      courses: {
+        ...d.courses,
+        items: d.courses.items.map((c, i) => (i === idx ? { ...c, [key]: val } : c)),
+      },
+    }));
+    setIsDirty(true);
+  }
+
+  /* ── News management ─────────────────────────────────────── */
+  function addNews() {
+    const blank: NewsItem = { date: "", title: "", body: "", imageUrl: "" };
+    setDraftDe((d) => ({ ...d, news: { ...d.news, items: [blank, ...d.news.items] } }));
+    setDraftZh((d) => ({ ...d, news: { ...d.news, items: [blank, ...d.news.items] } }));
+    setIsDirty(true);
+  }
+
+  function removeNews(idx: number) {
+    setDraftDe((d) => ({
+      ...d,
+      news: { ...d.news, items: d.news.items.filter((_, i) => i !== idx) },
+    }));
+    setDraftZh((d) => ({
+      ...d,
+      news: { ...d.news, items: d.news.items.filter((_, i) => i !== idx) },
+    }));
+    setIsDirty(true);
+  }
+
+  function updDeNews(idx: number, key: keyof NewsItem, val: string) {
+    setDraftDe((d) => ({
+      ...d,
+      news: {
+        ...d.news,
+        items: d.news.items.map((n, i) => (i === idx ? { ...n, [key]: val } : n)),
+      },
+    }));
+    setIsDirty(true);
+  }
+
+  function updZhNews(idx: number, key: keyof NewsItem, val: string) {
+    setDraftZh((d) => ({
+      ...d,
+      news: {
+        ...d.news,
+        items: d.news.items.map((n, i) => (i === idx ? { ...n, [key]: val } : n)),
+      },
+    }));
+    setIsDirty(true);
+  }
+
+  /* ── Save / Discard ──────────────────────────────────────── */
+  function handleSave() {
+    saveContent("de", draftDe);
+    saveContent("zh", draftZh);
+    setIsDirty(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  function handleDiscard() {
+    if (confirm("Discard all unsaved changes?\nAlle Änderungen verwerfen?\n放弃所有未保存的更改？")) {
+      setDraftDe(getContent("de"));
+      setDraftZh(getContent("zh"));
+      setIsDirty(false);
+    }
+  }
+
+  /* ── Contact line helpers ────────────────────────────────── */
+  function updDeAddrLine(idx: number, val: string) {
+    setDraftDe((d) => ({
+      ...d,
+      contact: { ...d.contact, addressLines: d.contact.addressLines.map((l, i) => (i === idx ? val : l)) },
+    }));
+    setIsDirty(true);
+  }
+
+  function updZhAddrLine(idx: number, val: string) {
+    setDraftZh((d) => ({
+      ...d,
+      contact: { ...d.contact, addressLines: d.contact.addressLines.map((l, i) => (i === idx ? val : l)) },
+    }));
+    setIsDirty(true);
+  }
+
+  function updDeHoursLine(idx: number, val: string) {
+    setDraftDe((d) => ({
+      ...d,
+      contact: { ...d.contact, hoursLines: d.contact.hoursLines.map((l, i) => (i === idx ? val : l)) },
+    }));
+    setIsDirty(true);
+  }
+
+  function updZhHoursLine(idx: number, val: string) {
+    setDraftZh((d) => ({
+      ...d,
+      contact: { ...d.contact, hoursLines: d.contact.hoursLines.map((l, i) => (i === idx ? val : l)) },
+    }));
+    setIsDirty(true);
+  }
+
+  /* ── Render ──────────────────────────────────────────────── */
   return (
     <>
       <Navbar />
 
-      <main className="flex-1">
+      <main className={`flex-1${isAdmin ? " pb-20" : ""}`}>
         {/* ── Hero ───────────────────────────────────────────── */}
         <section
           id="home"
@@ -39,26 +298,90 @@ export default function Home() {
                 海尔布隆<br />
                 <span className="text-[var(--school-red)]">一心</span>中文学校
               </h1>
-              <p className="text-gray-300 text-lg mb-2 max-w-md">
-                {de.hero.tagline}
-              </p>
-              <p className="font-cn text-gray-400 text-base mb-6 max-w-md">
-                {zh.hero.tagline}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href="#courses"
-                  className="px-6 py-3 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold rounded transition-colors"
-                >
-                  {de.hero.discoverCourses} · {zh.hero.discoverCourses}
-                </a>
-                <a
-                  href="#contact"
-                  className="px-6 py-3 border border-white/30 hover:border-white text-white font-semibold rounded transition-colors"
-                >
-                  {de.hero.contactUs} · {zh.hero.contactUs}
-                </a>
-              </div>
+
+              {isAdmin ? (
+                <EditBlock label="Hero Text" className="p-4 space-y-3 bg-[var(--school-dark)]">
+                  <div>
+                    <label className="text-xs text-amber-300 font-semibold block mb-1">DE Tagline</label>
+                    <EditArea
+                      value={de.hero.tagline}
+                      onChange={(v) => updDe("hero", { tagline: v })}
+                      className="text-gray-300 text-lg"
+                      placeholder="German tagline…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-amber-300 font-semibold block mb-1">ZH Tagline</label>
+                    <EditArea
+                      value={zh.hero.tagline}
+                      onChange={(v) => updZh("hero", { tagline: v })}
+                      className="font-cn text-gray-400 text-base"
+                      placeholder="Chinese tagline…"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-amber-300 font-semibold block mb-1">DE Button: Discover Courses</label>
+                      <EditField
+                        value={de.hero.discoverCourses}
+                        onChange={(v) => updDe("hero", { discoverCourses: v })}
+                        className="text-white text-sm font-semibold w-full"
+                        placeholder="Button text…"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-amber-300 font-semibold block mb-1">ZH Button: 查看课程</label>
+                      <EditField
+                        value={zh.hero.discoverCourses}
+                        onChange={(v) => updZh("hero", { discoverCourses: v })}
+                        className="font-cn text-white text-sm font-semibold w-full"
+                        placeholder="按钮文字…"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-amber-300 font-semibold block mb-1">DE Button: Contact Us</label>
+                      <EditField
+                        value={de.hero.contactUs}
+                        onChange={(v) => updDe("hero", { contactUs: v })}
+                        className="text-white text-sm font-semibold w-full"
+                        placeholder="Button text…"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-amber-300 font-semibold block mb-1">ZH Button: 联系我们</label>
+                      <EditField
+                        value={zh.hero.contactUs}
+                        onChange={(v) => updZh("hero", { contactUs: v })}
+                        className="font-cn text-white text-sm font-semibold w-full"
+                        placeholder="按钮文字…"
+                      />
+                    </div>
+                  </div>
+                </EditBlock>
+              ) : (
+                <>
+                  <p className="text-gray-300 text-lg mb-2 max-w-md">
+                    {de.hero.tagline}
+                  </p>
+                  <p className="font-cn text-gray-400 text-base mb-6 max-w-md">
+                    {zh.hero.tagline}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <a
+                      href="#courses"
+                      className="px-6 py-3 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold rounded transition-colors"
+                    >
+                      {de.hero.discoverCourses} · {zh.hero.discoverCourses}
+                    </a>
+                    <a
+                      href="#contact"
+                      className="px-6 py-3 border border-white/30 hover:border-white text-white font-semibold rounded transition-colors"
+                    >
+                      {de.hero.contactUs} · {zh.hero.contactUs}
+                    </a>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex-shrink-0">
@@ -74,32 +397,113 @@ export default function Home() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-8">
               <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
-              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)]">
-                {de.about.sectionTitle}
-                <span className="text-lg font-normal text-gray-400 ml-2">· {zh.about.sectionTitle}</span>
+              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] flex items-center gap-2 flex-wrap">
+                {isAdmin ? (
+                  <>
+                    <EditField
+                      value={de.about.sectionTitle}
+                      onChange={(v) => updDe("about", { sectionTitle: v })}
+                      className="text-2xl font-bold text-[var(--school-dark)]"
+                      placeholder="DE title…"
+                    />
+                    <span className="text-lg font-normal text-gray-400">·</span>
+                    <EditField
+                      value={zh.about.sectionTitle}
+                      onChange={(v) => updZh("about", { sectionTitle: v })}
+                      className="text-lg font-normal text-gray-400"
+                      placeholder="ZH 标题…"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {de.about.sectionTitle}
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {zh.about.sectionTitle}</span>
+                  </>
+                )}
               </h2>
             </div>
+
             <div className="grid md:grid-cols-2 gap-8 items-start">
-              <div className="space-y-4 text-[var(--school-dark)]">
-                <p className="leading-relaxed">{de.about.desc1}</p>
-                <p className="font-cn leading-relaxed text-sm text-gray-600">{zh.about.desc1}</p>
-                <p className="leading-relaxed text-sm text-gray-500">{zh.about.desc2}</p>
-              </div>
+              {isAdmin ? (
+                <EditBlock label="About Description" className="space-y-3 p-4 bg-[var(--school-gray)]">
+                  <div>
+                    <label className="text-xs text-amber-600 font-semibold block mb-1">DE Description</label>
+                    <EditArea
+                      value={de.about.desc1}
+                      onChange={(v) => updDe("about", { desc1: v })}
+                      className="text-[var(--school-dark)] leading-relaxed"
+                      placeholder="German description…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-amber-600 font-semibold block mb-1">ZH Description 1</label>
+                    <EditArea
+                      value={zh.about.desc1}
+                      onChange={(v) => updZh("about", { desc1: v })}
+                      className="font-cn text-sm text-gray-600 leading-relaxed"
+                      placeholder="中文描述…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-amber-600 font-semibold block mb-1">ZH Description 2</label>
+                    <EditArea
+                      value={zh.about.desc2}
+                      onChange={(v) => updZh("about", { desc2: v })}
+                      className="font-cn text-sm text-gray-500 leading-relaxed"
+                      placeholder="中文描述 2…"
+                    />
+                  </div>
+                </EditBlock>
+              ) : (
+                <div className="space-y-4 text-[var(--school-dark)]">
+                  <p className="leading-relaxed">{de.about.desc1}</p>
+                  <p className="font-cn leading-relaxed text-sm text-gray-600">{zh.about.desc1}</p>
+                  <p className="leading-relaxed text-sm text-gray-500">{zh.about.desc2}</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
-                {[
-                  { icon: "📚", stat: de.about.years, deLabel: de.about.yearsLabel, zhLabel: zh.about.yearsLabel },
-                  { icon: "👩‍🎓", stat: de.about.students, deLabel: de.about.studentsLabel, zhLabel: zh.about.studentsLabel },
-                  { icon: "👨‍🏫", stat: de.about.teachers, deLabel: de.about.teachersLabel, zhLabel: zh.about.teachersLabel },
-                  { icon: "🏅", stat: de.about.coursesCount, deLabel: de.about.coursesLabel, zhLabel: zh.about.coursesLabel },
-                ].map(({ icon, stat, deLabel, zhLabel }) => (
+                {(
+                  [
+                    { icon: "📚", statKey: "years", deLabelKey: "yearsLabel", zhLabelKey: "yearsLabel" },
+                    { icon: "👩‍🎓", statKey: "students", deLabelKey: "studentsLabel", zhLabelKey: "studentsLabel" },
+                    { icon: "👨‍🏫", statKey: "teachers", deLabelKey: "teachersLabel", zhLabelKey: "teachersLabel" },
+                    { icon: "🏅", statKey: "coursesCount", deLabelKey: "coursesLabel", zhLabelKey: "coursesLabel" },
+                  ] as { icon: string; statKey: keyof SiteContent["about"]; deLabelKey: keyof SiteContent["about"]; zhLabelKey: keyof SiteContent["about"] }[]
+                ).map(({ icon, statKey, deLabelKey, zhLabelKey }) => (
                   <div
-                    key={deLabel}
-                    className="bg-white rounded-lg p-5 border border-[var(--school-border)] text-center shadow-sm"
+                    key={statKey}
+                    className={`bg-white rounded-lg p-5 border border-[var(--school-border)] text-center shadow-sm${isAdmin ? " ring-2 ring-amber-300" : ""}`}
                   >
                     <div className="text-3xl mb-1">{icon}</div>
-                    <div className="text-2xl font-bold text-[var(--school-red)]">{stat}</div>
-                    <div className="text-xs text-gray-500 mt-1">{deLabel}</div>
-                    <div className="font-cn text-xs text-gray-400">{zhLabel}</div>
+                    {isAdmin ? (
+                      <>
+                        <EditField
+                          value={de.about[statKey] as string}
+                          onChange={(v) => updDe("about", { [statKey]: v })}
+                          className="text-2xl font-bold text-[var(--school-red)] text-center w-full"
+                          placeholder="Stat…"
+                        />
+                        <EditField
+                          value={de.about[deLabelKey] as string}
+                          onChange={(v) => updDe("about", { [deLabelKey]: v })}
+                          className="text-xs text-gray-500 mt-1 w-full text-center"
+                          placeholder="DE label…"
+                        />
+                        <EditField
+                          value={zh.about[zhLabelKey] as string}
+                          onChange={(v) => updZh("about", { [zhLabelKey]: v })}
+                          className="font-cn text-xs text-gray-400 w-full text-center"
+                          placeholder="ZH 标签…"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-2xl font-bold text-[var(--school-red)]">{de.about[statKey] as string}</div>
+                        <div className="text-xs text-gray-500 mt-1">{de.about[deLabelKey] as string}</div>
+                        <div className="font-cn text-xs text-gray-400">{zh.about[zhLabelKey] as string}</div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -112,15 +516,119 @@ export default function Home() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-8">
               <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
-              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)]">
-                {de.courses.sectionTitle}
-                <span className="text-lg font-normal text-gray-400 ml-2">· {zh.courses.sectionTitle}</span>
+              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] flex items-center gap-2 flex-wrap">
+                {isAdmin ? (
+                  <>
+                    <EditField
+                      value={de.courses.sectionTitle}
+                      onChange={(v) =>
+                        setDraftDe((d) => ({ ...d, courses: { ...d.courses, sectionTitle: v } }))
+                      }
+                      className="text-2xl font-bold text-[var(--school-dark)]"
+                      placeholder="DE title…"
+                    />
+                    <span className="text-lg font-normal text-gray-400">·</span>
+                    <EditField
+                      value={zh.courses.sectionTitle}
+                      onChange={(v) =>
+                        setDraftZh((d) => ({ ...d, courses: { ...d.courses, sectionTitle: v } }))
+                      }
+                      className="text-lg font-normal text-gray-400"
+                      placeholder="ZH 标题…"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {de.courses.sectionTitle}
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {zh.courses.sectionTitle}</span>
+                  </>
+                )}
               </h2>
             </div>
+
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {de.courses.items.map((c, i) => {
                 const zhCourse = zh.courses.items[i];
-                return (
+                return isAdmin ? (
+                  <EditBlock
+                    key={i}
+                    label={`Course ${i + 1}`}
+                    onDelete={() => removeCourse(i)}
+                    className="border-t-4 border-[var(--school-red)] bg-[var(--school-gray)] rounded-lg p-6"
+                  >
+                    <div className="space-y-2 pt-2">
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">Level name (Chinese)</label>
+                        <EditField
+                          value={c.level}
+                          onChange={(v) => { updDeCourse(i, "level", v); updZhCourse(i, "level", v); }}
+                          className="font-cn text-xl font-bold text-[var(--school-dark)] w-full"
+                          placeholder="初级班…"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE level label</label>
+                        <EditField
+                          value={c.levelLabel}
+                          onChange={(v) => updDeCourse(i, "levelLabel", v)}
+                          className="text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide w-full"
+                          placeholder="Anfänger…"
+                        />
+                      </div>
+                      {zhCourse && (
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH level label</label>
+                          <EditField
+                            value={zhCourse.levelLabel}
+                            onChange={(v) => updZhCourse(i, "levelLabel", v)}
+                            className="font-cn text-xs text-gray-400 w-full"
+                            placeholder="初级…"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE ages</label>
+                        <EditField
+                          value={c.ages}
+                          onChange={(v) => updDeCourse(i, "ages", v)}
+                          className="text-xs text-gray-500 w-full"
+                          placeholder="6–10 Jahre…"
+                        />
+                      </div>
+                      {zhCourse && (
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH ages</label>
+                          <EditField
+                            value={zhCourse.ages}
+                            onChange={(v) => updZhCourse(i, "ages", v)}
+                            className="font-cn text-xs text-gray-500 w-full"
+                            placeholder="6–10岁…"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE description</label>
+                        <EditArea
+                          value={c.desc}
+                          onChange={(v) => updDeCourse(i, "desc", v)}
+                          className="text-sm text-gray-600 leading-relaxed"
+                          placeholder="German description…"
+                        />
+                      </div>
+                      {zhCourse && (
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH description</label>
+                          <EditArea
+                            value={zhCourse.desc}
+                            onChange={(v) => updZhCourse(i, "desc", v)}
+                            className="font-cn text-xs text-gray-400 leading-relaxed"
+                            placeholder="中文描述…"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </EditBlock>
+                ) : (
                   <div
                     key={c.level}
                     className="border-t-4 border-[var(--school-red)] bg-[var(--school-gray)] rounded-lg p-6 hover:shadow-lg transition-shadow"
@@ -147,6 +655,15 @@ export default function Home() {
                 );
               })}
             </div>
+
+            {isAdmin && (
+              <button
+                onClick={addCourse}
+                className="mt-6 w-full px-4 py-3 border-2 border-dashed border-amber-400 rounded-lg text-amber-700 hover:border-amber-500 hover:bg-amber-50 font-semibold text-sm transition-colors"
+              >
+                + Add Course Block / Kurs hinzufügen / 添加课程
+              </button>
+            )}
           </div>
         </section>
 
@@ -155,19 +672,137 @@ export default function Home() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-8">
               <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
-              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)]">
-                {de.news.sectionTitle}
-                <span className="text-lg font-normal text-gray-400 ml-2">· {zh.news.sectionTitle}</span>
+              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] flex items-center gap-2 flex-wrap">
+                {isAdmin ? (
+                  <>
+                    <EditField
+                      value={de.news.sectionTitle}
+                      onChange={(v) =>
+                        setDraftDe((d) => ({ ...d, news: { ...d.news, sectionTitle: v } }))
+                      }
+                      className="text-2xl font-bold text-[var(--school-dark)]"
+                      placeholder="DE title…"
+                    />
+                    <span className="text-lg font-normal text-gray-400">·</span>
+                    <EditField
+                      value={zh.news.sectionTitle}
+                      onChange={(v) =>
+                        setDraftZh((d) => ({ ...d, news: { ...d.news, sectionTitle: v } }))
+                      }
+                      className="text-lg font-normal text-gray-400"
+                      placeholder="ZH 标题…"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {de.news.sectionTitle}
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {zh.news.sectionTitle}</span>
+                  </>
+                )}
               </h2>
             </div>
+
+            {isAdmin && (
+              <button
+                onClick={addNews}
+                className="mb-6 w-full px-4 py-3 border-2 border-dashed border-amber-400 rounded-lg text-amber-700 hover:border-amber-500 hover:bg-amber-50 font-semibold text-sm transition-colors"
+              >
+                + Add News Article / Neuigkeit hinzufügen / 添加新闻
+              </button>
+            )}
+
             <div className="space-y-6">
               {de.news.items.map((n, i) => {
                 const zhNews = zh.news.items[i];
-                return (
+                return isAdmin ? (
+                  <EditBlock
+                    key={i}
+                    label={`News ${i + 1}`}
+                    onDelete={() => removeNews(i)}
+                    className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
+                  >
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">
+                          🖼 Image URL (optional)
+                        </label>
+                        <EditField
+                          value={n.imageUrl ?? ""}
+                          onChange={(v) => { updDeNews(i, "imageUrl", v); updZhNews(i, "imageUrl", v); }}
+                          className="text-xs text-gray-500 w-full"
+                          placeholder="https://example.com/photo.jpg"
+                        />
+                        {n.imageUrl && (
+                          <img
+                            src={n.imageUrl}
+                            alt="Preview"
+                            className="mt-2 w-full h-32 object-cover rounded border border-gray-200"
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">Date</label>
+                        <EditField
+                          value={n.date}
+                          onChange={(v) => { updDeNews(i, "date", v); updZhNews(i, "date", v); }}
+                          className="text-xs font-semibold text-[var(--school-red)] tracking-widest w-full"
+                          placeholder="2025-09"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE Title</label>
+                        <EditField
+                          value={n.title}
+                          onChange={(v) => updDeNews(i, "title", v)}
+                          className="font-bold text-[var(--school-dark)] w-full"
+                          placeholder="German title…"
+                        />
+                      </div>
+                      {zhNews && (
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH Title</label>
+                          <EditField
+                            value={zhNews.title}
+                            onChange={(v) => updZhNews(i, "title", v)}
+                            className="font-cn text-sm text-gray-500 w-full"
+                            placeholder="中文标题…"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE Body</label>
+                        <EditArea
+                          value={n.body}
+                          onChange={(v) => updDeNews(i, "body", v)}
+                          className="text-sm text-gray-600 leading-relaxed"
+                          placeholder="German body text…"
+                        />
+                      </div>
+                      {zhNews && (
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH Body</label>
+                          <EditArea
+                            value={zhNews.body}
+                            onChange={(v) => updZhNews(i, "body", v)}
+                            className="font-cn text-xs text-gray-400 leading-relaxed"
+                            placeholder="中文内容…"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </EditBlock>
+                ) : (
                   <article
                     key={n.date + n.title}
                     className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
                   >
+                    {n.imageUrl && (
+                      <img
+                        src={n.imageUrl}
+                        alt={n.title}
+                        className="w-full h-48 object-cover rounded mb-4"
+                      />
+                    )}
                     <time className="text-xs font-semibold text-[var(--school-red)] tracking-widest">
                       {n.date}
                     </time>
@@ -188,53 +823,168 @@ export default function Home() {
             <div className="flex justify-center mb-4">
               <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
             </div>
-            <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] mb-1">
-              {de.contact.sectionTitle}
-              <span className="text-lg font-normal text-gray-400 ml-2">· {zh.contact.sectionTitle}</span>
+            <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] mb-1 flex items-center justify-center gap-2 flex-wrap">
+              {isAdmin ? (
+                <>
+                  <EditField
+                    value={de.contact.sectionTitle}
+                    onChange={(v) => updDe("contact", { sectionTitle: v })}
+                    className="text-2xl font-bold text-[var(--school-dark)]"
+                    placeholder="DE title…"
+                  />
+                  <span className="text-lg font-normal text-gray-400">·</span>
+                  <EditField
+                    value={zh.contact.sectionTitle}
+                    onChange={(v) => updZh("contact", { sectionTitle: v })}
+                    className="text-lg font-normal text-gray-400"
+                    placeholder="ZH 标题…"
+                  />
+                </>
+              ) : (
+                <>
+                  {de.contact.sectionTitle}
+                  <span className="text-lg font-normal text-gray-400 ml-2">· {zh.contact.sectionTitle}</span>
+                </>
+              )}
             </h2>
-            <p className="text-gray-500 mb-1">{de.contact.subtitle}</p>
-            <p className="font-cn text-gray-400 text-sm mb-8">{zh.contact.subtitle}</p>
+            {isAdmin ? (
+              <div className="mb-8 space-y-1">
+                <EditField
+                  value={de.contact.subtitle}
+                  onChange={(v) => updDe("contact", { subtitle: v })}
+                  className="text-gray-500 w-full text-center"
+                  placeholder="DE subtitle…"
+                />
+                <EditField
+                  value={zh.contact.subtitle}
+                  onChange={(v) => updZh("contact", { subtitle: v })}
+                  className="font-cn text-gray-400 text-sm w-full text-center"
+                  placeholder="ZH 副标题…"
+                />
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-500 mb-1">{de.contact.subtitle}</p>
+                <p className="font-cn text-gray-400 text-sm mb-8">{zh.contact.subtitle}</p>
+              </>
+            )}
+
             <div className="grid sm:grid-cols-3 gap-6 text-left">
-              {[
-                {
-                  icon: "📍",
-                  deTitle: de.contact.addressTitle,
-                  zhTitle: zh.contact.addressTitle,
-                  lines: de.contact.addressLines,
-                },
-                {
-                  icon: "✉️",
-                  deTitle: de.contact.emailTitle,
-                  zhTitle: zh.contact.emailTitle,
-                  lines: [de.contact.email],
-                },
-                {
-                  icon: "🕐",
-                  deTitle: de.contact.hoursTitle,
-                  zhTitle: zh.contact.hoursTitle,
-                  lines: de.contact.hoursLines,
-                },
-              ].map(({ icon, deTitle, zhTitle, lines }) => (
-                <div
-                  key={deTitle}
-                  className="bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]"
-                >
-                  <div className="text-3xl mb-3">{icon}</div>
-                  <h3 className="font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{deTitle}</h3>
-                  <p className="font-cn text-xs text-gray-400 mb-2">{zhTitle}</p>
-                  {lines.map((l) => (
-                    <p key={l} className="text-sm text-gray-600">
-                      {l}
-                    </p>
-                  ))}
-                </div>
-              ))}
+              <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
+                <div className="text-3xl mb-3">📍</div>
+                {isAdmin ? (
+                  <div className="space-y-1">
+                    <EditField value={de.contact.addressTitle} onChange={(v) => updDe("contact", { addressTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Address title…" />
+                    <EditField value={zh.contact.addressTitle} onChange={(v) => updZh("contact", { addressTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 地址标题…" />
+                    {de.contact.addressLines.map((l, i) => (
+                      <EditField key={`de-addr-${i}`} value={l} onChange={(v) => updDeAddrLine(i, v)} className="text-sm text-gray-600 w-full" placeholder={`DE address line ${i + 1}…`} />
+                    ))}
+                    {zh.contact.addressLines.map((l, i) => (
+                      <EditField key={`zh-addr-${i}`} value={l} onChange={(v) => updZhAddrLine(i, v)} className="font-cn text-xs text-gray-400 w-full" placeholder={`ZH 地址行 ${i + 1}…`} />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{de.contact.addressTitle}</h3>
+                    <p className="font-cn text-xs text-gray-400 mb-2">{zh.contact.addressTitle}</p>
+                    {de.contact.addressLines.map((l) => (<p key={l} className="text-sm text-gray-600">{l}</p>))}
+                  </>
+                )}
+              </div>
+
+              <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
+                <div className="text-3xl mb-3">✉️</div>
+                {isAdmin ? (
+                  <div className="space-y-1">
+                    <EditField value={de.contact.emailTitle} onChange={(v) => updDe("contact", { emailTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Email title…" />
+                    <EditField value={zh.contact.emailTitle} onChange={(v) => updZh("contact", { emailTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 邮箱标题…" />
+                    <EditField value={de.contact.email} onChange={(v) => { updDe("contact", { email: v }); updZh("contact", { email: v }); }} className="text-sm text-gray-600 w-full" placeholder="email@example.com" />
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{de.contact.emailTitle}</h3>
+                    <p className="font-cn text-xs text-gray-400 mb-2">{zh.contact.emailTitle}</p>
+                    <p className="text-sm text-gray-600">{de.contact.email}</p>
+                  </>
+                )}
+              </div>
+
+              <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
+                <div className="text-3xl mb-3">🕐</div>
+                {isAdmin ? (
+                  <div className="space-y-1">
+                    <EditField value={de.contact.hoursTitle} onChange={(v) => updDe("contact", { hoursTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Hours title…" />
+                    <EditField value={zh.contact.hoursTitle} onChange={(v) => updZh("contact", { hoursTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 时间标题…" />
+                    {de.contact.hoursLines.map((l, i) => (
+                      <EditField key={`de-hrs-${i}`} value={l} onChange={(v) => updDeHoursLine(i, v)} className="text-sm text-gray-600 w-full" placeholder={`DE hours line ${i + 1}…`} />
+                    ))}
+                    {zh.contact.hoursLines.map((l, i) => (
+                      <EditField key={`zh-hrs-${i}`} value={l} onChange={(v) => updZhHoursLine(i, v)} className="font-cn text-xs text-gray-400 w-full" placeholder={`ZH 时间行 ${i + 1}…`} />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{de.contact.hoursTitle}</h3>
+                    <p className="font-cn text-xs text-gray-400 mb-2">{zh.contact.hoursTitle}</p>
+                    {de.contact.hoursLines.map((l) => (<p key={l} className="text-sm text-gray-600">{l}</p>))}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </section>
       </main>
 
       <Footer />
+
+      {/* ── Admin toolbar ─────────────────────────────────────── */}
+      {isAdmin && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--school-dark)]/95 backdrop-blur-sm text-white py-3 px-4 flex items-center justify-between gap-3 flex-wrap shadow-2xl border-t-2 border-amber-400">
+          <div className="flex items-center gap-3">
+            <span className="text-amber-400 text-lg">✏</span>
+            <div>
+              <span className="text-sm font-bold">Edit Mode</span>
+              <span className="text-xs text-gray-400 ml-2">· {currentUser}</span>
+            </div>
+            {isDirty && (
+              <span className="text-xs bg-amber-500 text-amber-900 font-bold px-2 py-0.5 rounded animate-pulse">
+                ● Unsaved changes
+              </span>
+            )}
+            {saved && (
+              <span className="text-xs bg-green-500 text-white font-bold px-2 py-0.5 rounded">
+                ✓ Saved!
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleSave}
+              className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded transition-colors"
+            >
+              💾 Save / Speichern / 保存
+            </button>
+            <button
+              onClick={handleDiscard}
+              className="px-4 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold rounded transition-colors"
+            >
+              ↺ Discard / Verwerfen
+            </button>
+            <a
+              href="/admin"
+              className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded transition-colors"
+            >
+              ⚙ Admin Panel
+            </a>
+            <button
+              onClick={logout}
+              className="px-4 py-1.5 bg-red-700 hover:bg-red-800 text-white text-sm font-semibold rounded transition-colors"
+            >
+              🚪 Logout
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
