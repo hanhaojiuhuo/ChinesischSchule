@@ -8,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
     },
-    sitemap: "https://www.yixin-heilbronn.de/sitemap.xml",
+    sitemap: "https://chinesisch-schule.vercel.app/sitemap.xml",
   };
 }
