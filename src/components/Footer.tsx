@@ -29,13 +29,13 @@ export default function Footer() {
         {/* Quick links */}
         <div>
           <h3 className="font-bold text-[var(--school-red)] mb-3 tracking-wide uppercase text-sm">
-            {de.footer.navigationTitle} · <span className="font-cn">{zh.footer.navigationTitle}</span>
+            <span className="font-cn">{zh.footer.navigationTitle}</span> · {de.footer.navigationTitle}
           </h3>
           <ul className="space-y-2 text-sm text-gray-300">
             {navLinks.map(([deLabel, zhLabel, href]) => (
               <li key={href}>
                 <a href={href} className="hover:text-[var(--school-red)] transition-colors">
-                  {deLabel} · <span className="font-cn">{zhLabel}</span>
+                  <span className="font-cn">{zhLabel}</span> · {deLabel}
                 </a>
               </li>
             ))}
@@ -45,7 +45,7 @@ export default function Footer() {
         {/* Contact */}
         <div>
           <h3 className="font-bold text-[var(--school-red)] mb-3 tracking-wide uppercase text-sm">
-            {de.footer.contactTitle} · <span className="font-cn">{zh.footer.contactTitle}</span>
+            <span className="font-cn">{zh.footer.contactTitle}</span> · {de.footer.contactTitle}
           </h3>
           <address className="not-italic text-sm text-gray-300 space-y-1">
             {de.contact.addressLines.map((line) => (

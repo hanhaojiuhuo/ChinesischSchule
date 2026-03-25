@@ -72,6 +72,7 @@ export default function AdminPage() {
   const [userInput, setUserInput] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [showLoginPw, setShowLoginPw] = useState(false);
 
   // Draft content for the currently edited language
   const [draft, setDraft] = useState<SiteContent>(() => defaultTranslations["de"]);
@@ -88,6 +89,8 @@ export default function AdminPage() {
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [newAdminUser, setNewAdminUser] = useState("");
   const [newAdminPw, setNewAdminPw] = useState("");
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [showNewAdminPw, setShowNewAdminPw] = useState(false);
   const [addAdminMsg, setAddAdminMsg] = useState("");
   const [addAdminSuccess, setAddAdminSuccess] = useState(false);
 
@@ -106,14 +109,25 @@ export default function AdminPage() {
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    const ok = auth.login(userInput.trim(), pwInput);
-    if (ok) {
+    const result = auth.login(userInput.trim(), pwInput);
+    if (result.success) {
       setLoginError("");
       setDraft(getContent(editLang));
-    } else {
+    } else if (result.blocked) {
       setLoginError(
-        "Falscher Benutzername oder Passwort / Wrong username or password / 用户名或密码错误"
+        "🚫 登录已被锁定，今日尝试次数已达上限，请明天再试。/ Login blocked: too many failed attempts today. Try again tomorrow. / Anmeldung gesperrt: Zu viele Fehlversuche heute."
       );
+    } else {
+      const rem = result.remainingAttempts ?? 0;
+      if (rem === 0) {
+        setLoginError(
+          "❌ 用户名或密码错误。今日尝试次数已用完，请明天再试。/ Wrong credentials. No more attempts today. / Falsche Zugangsdaten. Keine Versuche mehr heute."
+        );
+      } else {
+        setLoginError(
+          `❌ 用户名或密码错误。今日剩余尝试次数：${rem} 次。/ Wrong credentials. ${rem} attempt${rem === 1 ? "" : "s"} remaining today. / Falsche Zugangsdaten. Noch ${rem} Versuch${rem === 1 ? "" : "e"} heute.`
+        );
+      }
     }
   }
 
@@ -159,21 +173,22 @@ export default function AdminPage() {
 
   function handleAddAdmin(e: React.FormEvent) {
     e.preventDefault();
-    const result = auth.addAdmin(newAdminUser.trim(), newAdminPw);
+    const result = auth.addAdmin(newAdminUser.trim(), newAdminPw, newAdminEmail.trim());
     if (result.success) {
       setAddAdminMsg(
-        `✓ Administrator "${newAdminUser.trim()}" hinzugefügt / added / 已添加！`
+        `✓ 管理员 "${newAdminUser.trim()}" 已添加！/ Administrator "${newAdminUser.trim()}" added / hinzugefügt！`
       );
       setAddAdminSuccess(true);
       setNewAdminUser("");
       setNewAdminPw("");
+      setNewAdminEmail("");
       setAdminListKey((k) => k + 1);
       setTimeout(() => {
         setAddAdminMsg("");
         setAddAdminSuccess(false);
       }, 3000);
     } else {
-      setAddAdminMsg(result.error ?? "Fehler / Error / 错误");
+      setAddAdminMsg(result.error ?? "错误 / Error / Fehler");
       setAddAdminSuccess(false);
     }
   }
@@ -181,17 +196,17 @@ export default function AdminPage() {
   function handleRemoveAdmin(username: string) {
     if (
       !confirm(
-        `Administrator "${username}" entfernen? / Remove? / 确认删除管理员？`
+        `确认删除管理员 "${username}"？/ Remove administrator "${username}"? / Admin "${username}" entfernen?`
       )
     )
       return;
     const result = auth.removeAdmin(username);
     if (result.success) {
-      setRemoveAdminMsg(`✓ "${username}" entfernt / removed / 已删除`);
+      setRemoveAdminMsg(`✓ "${username}" 已删除 / removed / entfernt`);
       setAdminListKey((k) => k + 1);
       setTimeout(() => setRemoveAdminMsg(""), 3000);
     } else {
-      setRemoveAdminMsg(result.error ?? "Fehler");
+      setRemoveAdminMsg(result.error ?? "错误 / Fehler");
     }
   }
 
@@ -230,7 +245,7 @@ export default function AdminPage() {
       ...d,
       courses: {
         ...d.courses,
-        items: [...d.courses.items, { level: "", levelLabel: "", ages: "", desc: "" }],
+        items: [...d.courses.items, { level: "", levelLabel: "", ages: "", time: "", desc: "" }],
       },
     }));
   }
@@ -282,7 +297,7 @@ export default function AdminPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Benutzername / Username / 用户名
+                用户名 / Username / Benutzername
               </label>
               <input
                 type="text"
@@ -295,16 +310,37 @@ export default function AdminPage() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Passwort / Password / 密码
+                密码 / Password / Passwort
               </label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={pwInput}
-                onChange={(e) => setPwInput(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showLoginPw ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={pwInput}
+                  onChange={(e) => setPwInput(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPw((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                  title={showLoginPw ? "隐藏密码 / Hide password" : "显示密码 / Show password"}
+                >
+                  {showLoginPw ? (
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             {loginError && (
               <p className="text-xs text-red-600 text-center">{loginError}</p>
@@ -313,12 +349,12 @@ export default function AdminPage() {
               type="submit"
               className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold py-2 rounded transition-colors"
             >
-              Anmelden / Login / 登录
+              登录 / Anmelden / Login
             </button>
           </form>
           <p className="text-xs text-gray-400 text-center mt-4">
             <a href="/" className="underline hover:text-[var(--school-red)]">
-              ← Zurück zur Website / Back to site / 返回网站
+              ← 返回网站 / Zurück zur Website / Back to site
             </a>
           </p>
         </div>
@@ -452,10 +488,11 @@ export default function AdminPage() {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Level (Chinese)" value={course.level} onChange={(v) => updateCourse(idx, "level", v)} />
-                <Field label="Level label" value={course.levelLabel} onChange={(v) => updateCourse(idx, "levelLabel", v)} />
-                <Field label="Age range" value={course.ages} onChange={(v) => updateCourse(idx, "ages", v)} />
-                <Field label="Description" value={course.desc} onChange={(v) => updateCourse(idx, "desc", v)} />
+                <Field label="级别（中文）/ Level (Chinese)" value={course.level} onChange={(v) => updateCourse(idx, "level", v)} />
+                <Field label="级别标签 / Level label" value={course.levelLabel} onChange={(v) => updateCourse(idx, "levelLabel", v)} />
+                <Field label="年龄 / Age range" value={course.ages} onChange={(v) => updateCourse(idx, "ages", v)} />
+                <Field label="上课时间 / Class time / Unterrichtszeit" value={course.time ?? ""} onChange={(v) => updateCourse(idx, "time", v)} />
+                <Field label="描述 / Description" value={course.desc} onChange={(v) => updateCourse(idx, "desc", v)} />
               </div>
             </div>
           ))}
@@ -533,16 +570,16 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── Change password ──────────────────────────────── */}
-        <SectionCard title="🔐 Passwort ändern / Change Password / 修改密码">
+        <SectionCard title="🔐 修改密码 / Change Password / Passwort ändern">
           {!showChangePw ? (
             <button onClick={() => setShowChangePw(true)} className="text-sm text-[var(--school-red)] underline">
-              Passwort ändern / Change password / 修改密码
+              修改密码 / Change password / Passwort ändern
             </button>
           ) : (
             <form onSubmit={handleChangePw} className="max-w-sm space-y-3">
-              <Field label="Current password / Aktuelles Passwort / 当前密码" value={oldPw} onChange={setOldPw} type="password" autoComplete="current-password" />
-              <Field label="New password (min 6 chars)" value={newPw} onChange={setNewPw} type="password" autoComplete="new-password" />
-              <Field label="Confirm new password" value={newPwConfirm} onChange={setNewPwConfirm} type="password" autoComplete="new-password" />
+              <Field label="当前密码 / Current password / Aktuelles Passwort" value={oldPw} onChange={setOldPw} type="password" autoComplete="current-password" />
+              <Field label="新密码（至少6位）/ New password (min 6 chars) / Neues Passwort" value={newPw} onChange={setNewPw} type="password" autoComplete="new-password" />
+              <Field label="确认新密码 / Confirm new password / Neues Passwort bestätigen" value={newPwConfirm} onChange={setNewPwConfirm} type="password" autoComplete="new-password" />
               {pwChangeMsg && (
                 <p className={`text-xs ${pwChangeMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>
                   {pwChangeMsg}
@@ -550,14 +587,14 @@ export default function AdminPage() {
               )}
               <div className="flex gap-3">
                 <button type="submit" className="px-4 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white text-sm font-semibold rounded transition-colors">
-                  Speichern / Save
+                  保存 / Save / Speichern
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowChangePw(false); setPwChangeMsg(""); setOldPw(""); setNewPw(""); setNewPwConfirm(""); }}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded transition-colors"
                 >
-                  Abbrechen / Cancel
+                  取消 / Cancel / Abbrechen
                 </button>
               </div>
             </form>
@@ -565,11 +602,11 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── Admin management ─────────────────────────────── */}
-        <SectionCard title="👥 Administratoren / Administrators / 管理员管理">
+        <SectionCard title="👥 管理员管理 / Administrators / Administratoren">
           {/* Current admin list */}
           <div className="mb-4" key={adminListKey}>
             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Aktuelle Admins / Current Admins / 当前管理员
+              当前管理员 / Current Admins / Aktuelle Admins
             </h4>
             <div className="space-y-2">
               {adminList.map((a) => (
@@ -577,14 +614,19 @@ export default function AdminPage() {
                   key={a.username}
                   className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded px-3 py-2"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-[var(--school-dark)]">
-                      {a.username}
-                    </span>
-                    {a.username === auth.currentUser && (
-                      <span className="text-xs bg-[var(--school-red)] text-white px-1.5 py-0.5 rounded">
-                        you
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-[var(--school-dark)]">
+                        {a.username}
                       </span>
+                      {a.username === auth.currentUser && (
+                        <span className="text-xs bg-[var(--school-red)] text-white px-1.5 py-0.5 rounded">
+                          当前 / you
+                        </span>
+                      )}
+                    </div>
+                    {a.email && (
+                      <span className="text-xs text-gray-400">✉ {a.email}</span>
                     )}
                   </div>
                   {a.username !== auth.currentUser && (
@@ -592,7 +634,7 @@ export default function AdminPage() {
                       onClick={() => handleRemoveAdmin(a.username)}
                       className="text-xs text-red-500 hover:text-red-700 font-semibold transition-colors"
                     >
-                      ✕ Remove
+                      ✕ 删除 / Remove
                     </button>
                   )}
                 </div>
@@ -609,23 +651,56 @@ export default function AdminPage() {
               onClick={() => setShowAddAdmin(true)}
               className="text-sm text-[var(--school-red)] underline"
             >
-              + Administrator hinzufügen / Add administrator / 添加管理员
+              + 添加管理员 / Add administrator / Administrator hinzufügen
             </button>
           ) : (
             <form onSubmit={handleAddAdmin} className="max-w-sm space-y-3 border-t border-gray-100 pt-4">
               <h4 className="text-sm font-semibold text-[var(--school-dark)]">
-                Neuen Admin hinzufügen / Add New Administrator / 添加新管理员
+                添加新管理员 / Add New Administrator / Neuen Admin hinzufügen
               </h4>
               <Field
-                label="Username / Benutzername / 用户名 (min 4 chars)"
+                label="用户名 / Username / Benutzername（至少4个字符 / min 4 chars）"
                 value={newAdminUser}
                 onChange={setNewAdminUser}
               />
+              <div className="mb-3">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  密码 / Password / Passwort（至少6位 / min 6 chars）
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewAdminPw ? "text" : "password"}
+                    autoComplete="new-password"
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    value={newAdminPw}
+                    onChange={(e) => setNewAdminPw(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAdminPw((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                    title={showNewAdminPw ? "隐藏密码 / Hide password" : "显示密码 / Show password"}
+                  >
+                    {showNewAdminPw ? (
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
               <Field
-                label="Password / Passwort / 密码 (min 6 chars)"
-                value={newAdminPw}
-                onChange={setNewAdminPw}
-                type="password"
+                label="邮箱（用于密码重置）/ Email (for password reset) / E-Mail (für Passwort-Reset)"
+                value={newAdminEmail}
+                onChange={setNewAdminEmail}
+                type="email"
               />
               {addAdminMsg && (
                 <p className={`text-xs ${addAdminSuccess ? "text-green-600" : "text-red-600"}`}>
@@ -637,14 +712,14 @@ export default function AdminPage() {
                   type="submit"
                   className="px-4 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white text-sm font-semibold rounded transition-colors"
                 >
-                  Hinzufügen / Add / 添加
+                  添加 / Add / Hinzufügen
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowAddAdmin(false); setAddAdminMsg(""); setNewAdminUser(""); setNewAdminPw(""); }}
+                  onClick={() => { setShowAddAdmin(false); setAddAdminMsg(""); setNewAdminUser(""); setNewAdminPw(""); setNewAdminEmail(""); }}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded transition-colors"
                 >
-                  Abbrechen / Cancel
+                  取消 / Cancel / Abbrechen
                 </button>
               </div>
             </form>
