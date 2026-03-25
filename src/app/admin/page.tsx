@@ -97,19 +97,28 @@ export default function AdminPage() {
   // Remove-admin feedback
   const [removeAdminMsg, setRemoveAdminMsg] = useState("");
 
-  // Refresh trigger for admin list
+  // Admin list (loaded async from API)
+  const [adminList, setAdminList] = useState<import("@/contexts/AuthContext").AdminUser[]>([]);
   const [adminListKey, setAdminListKey] = useState(0);
 
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // When edit language changes, load its content into the draft
   useEffect(() => {
     setDraft(getContent(editLang));
   }, [editLang, getContent]);
 
-  function handleLogin(e: React.FormEvent) {
+  // Load admin list whenever adminListKey changes or admin logs in
+  useEffect(() => {
+    if (auth.isAdmin) {
+      auth.getAdmins().then(setAdminList);
+    }
+  }, [auth, adminListKey]);
+
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    const result = auth.login(userInput.trim(), pwInput);
+    const result = await auth.login(userInput.trim(), pwInput);
     if (result.success) {
       setLoginError("");
       setDraft(getContent(editLang));
@@ -131,20 +140,22 @@ export default function AdminPage() {
     }
   }
 
-  function handleSave() {
-    saveContent(editLang, draft);
+  async function handleSave() {
+    setSaving(true);
+    await saveContent(editLang, draft);
+    setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
 
-  function handleReset() {
+  async function handleReset() {
     if (confirm("Alle Änderungen zurücksetzen? / Reset all changes? / 重置所有更改？")) {
-      resetContent(editLang);
+      await resetContent(editLang);
       setDraft(defaultTranslations[editLang]);
     }
   }
 
-  function handleChangePw(e: React.FormEvent) {
+  async function handleChangePw(e: React.FormEvent) {
     e.preventDefault();
     if (!newPw || newPw.length < 6) {
       setPwChangeMsg("Mindestens 6 Zeichen / Min 6 characters / 至少6个字符");
@@ -156,7 +167,7 @@ export default function AdminPage() {
       );
       return;
     }
-    const result = auth.changePassword(auth.currentUser!, oldPw, newPw);
+    const result = await auth.changePassword(auth.currentUser!, oldPw, newPw);
     if (result.success) {
       setPwChangeMsg("✓ Passwort geändert! / Password changed! / 密码已修改！");
       setOldPw("");
@@ -171,9 +182,9 @@ export default function AdminPage() {
     }
   }
 
-  function handleAddAdmin(e: React.FormEvent) {
+  async function handleAddAdmin(e: React.FormEvent) {
     e.preventDefault();
-    const result = auth.addAdmin(newAdminUser.trim(), newAdminPw, newAdminEmail.trim());
+    const result = await auth.addAdmin(newAdminUser.trim(), newAdminPw, newAdminEmail.trim());
     if (result.success) {
       setAddAdminMsg(
         `✓ 管理员 "${newAdminUser.trim()}" 已添加！/ Administrator "${newAdminUser.trim()}" added / hinzugefügt！`
@@ -193,14 +204,14 @@ export default function AdminPage() {
     }
   }
 
-  function handleRemoveAdmin(username: string) {
+  async function handleRemoveAdmin(username: string) {
     if (
       !confirm(
         `确认删除管理员 "${username}"？/ Remove administrator "${username}"? / Admin "${username}" entfernen?`
       )
     )
       return;
-    const result = auth.removeAdmin(username);
+    const result = await auth.removeAdmin(username);
     if (result.success) {
       setRemoveAdminMsg(`✓ "${username}" 已删除 / removed / entfernt`);
       setAdminListKey((k) => k + 1);
@@ -364,7 +375,6 @@ export default function AdminPage() {
 
   /* ── Admin panel ─────────────────────────────────────────── */
   const langLabels: Record<Language, string> = { de: "Deutsch", zh: "中文", en: "English" };
-  const adminList = auth.getAdmins();
 
   return (
     <div className="min-h-screen bg-[var(--school-gray)]">
@@ -394,9 +404,10 @@ export default function AdminPage() {
           </div>
           <button
             onClick={handleSave}
-            className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded transition-colors"
+            disabled={saving}
+            className="px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold rounded transition-colors"
           >
-            {saved ? "✓ Gespeichert!" : "Speichern / Save / 保存"}
+            {saving ? "⏳ Speichern…" : saved ? "✓ Gespeichert!" : "Speichern / Save / 保存"}
           </button>
           <button
             onClick={handleReset}
@@ -422,9 +433,9 @@ export default function AdminPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
           <strong>Sprache bearbeiten / Editing language:</strong> {langLabels[editLang]} &nbsp;|&nbsp;
-          Änderungen werden im Browser gespeichert.
-          Changes are saved in the browser.
-          更改保存在浏览器中。
+          Änderungen werden in der Vercel-Cloud gespeichert.
+          Changes are saved in Vercel cloud.
+          更改保存在 Vercel 云端。
         </div>
 
         {/* ── School identity ─────────────────────────────── */}
@@ -730,9 +741,10 @@ export default function AdminPage() {
         <div className="sticky bottom-6 flex justify-center">
           <button
             onClick={handleSave}
-            className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg transition-colors text-base"
+            disabled={saving}
+            className="px-8 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold rounded-lg shadow-lg transition-colors text-base"
           >
-            {saved ? "✓ Gespeichert! / Saved! / 已保存！" : "💾 Speichern / Save / 保存"}
+            {saving ? "⏳ Speichern…" : saved ? "✓ Gespeichert! / Saved! / 已保存！" : "💾 Speichern / Save / 保存"}
           </button>
         </div>
       </div>

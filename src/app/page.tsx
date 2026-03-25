@@ -220,9 +220,11 @@ export default function Home() {
   }
 
   /* ── Save / Discard ──────────────────────────────────────── */
-  function handleSave() {
-    saveContent("de", draftDe);
-    saveContent("zh", draftZh);
+  async function handleSave() {
+    await Promise.all([
+      saveContent("de", draftDe),
+      saveContent("zh", draftZh),
+    ]);
     setIsDirty(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
