@@ -38,8 +38,8 @@ export default function Navbar() {
               href={link.href}
               className="px-3 py-2 text-sm font-medium text-[var(--school-dark)] rounded hover:bg-[var(--school-red-light)] hover:text-[var(--school-red)] transition-colors"
             >
-              {link.de}
-              <span className="text-xs text-gray-400 ml-1">· {link.zh}</span>
+              <span className="font-cn">{link.zh}</span>
+              <span className="text-xs text-gray-400 ml-1">· {link.de}</span>
             </a>
           ))}
         </nav>
@@ -96,7 +96,7 @@ export default function Navbar() {
               onClick={() => setOpen(false)}
               className="block px-6 py-3 text-sm font-medium text-[var(--school-dark)] hover:bg-[var(--school-red-light)] hover:text-[var(--school-red)] border-b border-[var(--school-border)] transition-colors"
             >
-              {link.de} · <span className="font-cn">{link.zh}</span>
+              <span className="font-cn">{link.zh}</span> · {link.de}
             </a>
           ))}
           <a

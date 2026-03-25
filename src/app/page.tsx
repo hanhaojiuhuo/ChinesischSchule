@@ -137,7 +137,7 @@ export default function Home() {
 
   /* ── Course management ───────────────────────────────────── */
   function addCourse() {
-    const blank: CourseItem = { level: "", levelLabel: "", ages: "", desc: "" };
+    const blank: CourseItem = { level: "", levelLabel: "", ages: "", time: "", desc: "" };
     setDraftDe((d) => ({ ...d, courses: { ...d.courses, items: [...d.courses.items, blank] } }));
     setDraftZh((d) => ({ ...d, courses: { ...d.courses, items: [...d.courses.items, blank] } }));
     setIsDirty(true);
@@ -360,24 +360,24 @@ export default function Home() {
                 </EditBlock>
               ) : (
                 <>
-                  <p className="text-gray-300 text-lg mb-2 max-w-md">
-                    {de.hero.tagline}
-                  </p>
-                  <p className="font-cn text-gray-400 text-base mb-6 max-w-md">
+                  <p className="font-cn text-gray-300 text-lg mb-2 max-w-md">
                     {zh.hero.tagline}
+                  </p>
+                  <p className="text-gray-400 text-base mb-6 max-w-md">
+                    {de.hero.tagline}
                   </p>
                   <div className="flex flex-wrap gap-3">
                     <a
                       href="#courses"
                       className="px-6 py-3 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold rounded transition-colors"
                     >
-                      {de.hero.discoverCourses} · {zh.hero.discoverCourses}
+                      {zh.hero.discoverCourses} · {de.hero.discoverCourses}
                     </a>
                     <a
                       href="#contact"
                       className="px-6 py-3 border border-white/30 hover:border-white text-white font-semibold rounded transition-colors"
                     >
-                      {de.hero.contactUs} · {zh.hero.contactUs}
+                      {zh.hero.contactUs} · {de.hero.contactUs}
                     </a>
                   </div>
                 </>
@@ -416,8 +416,8 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    {de.about.sectionTitle}
-                    <span className="text-lg font-normal text-gray-400 ml-2">· {zh.about.sectionTitle}</span>
+                    {zh.about.sectionTitle}
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.about.sectionTitle}</span>
                   </>
                 )}
               </h2>
@@ -456,9 +456,9 @@ export default function Home() {
                 </EditBlock>
               ) : (
                 <div className="space-y-4 text-[var(--school-dark)]">
-                  <p className="leading-relaxed">{de.about.desc1}</p>
                   <p className="font-cn leading-relaxed text-sm text-gray-600">{zh.about.desc1}</p>
-                  <p className="leading-relaxed text-sm text-gray-500">{zh.about.desc2}</p>
+                  <p className="font-cn leading-relaxed text-xs text-gray-500">{zh.about.desc2}</p>
+                  <p className="leading-relaxed text-sm text-gray-600">{de.about.desc1}</p>
                 </div>
               )}
 
@@ -500,8 +500,8 @@ export default function Home() {
                     ) : (
                       <>
                         <div className="text-2xl font-bold text-[var(--school-red)]">{de.about[statKey] as string}</div>
-                        <div className="text-xs text-gray-500 mt-1">{de.about[deLabelKey] as string}</div>
-                        <div className="font-cn text-xs text-gray-400">{zh.about[zhLabelKey] as string}</div>
+                        <div className="font-cn text-xs text-gray-500 mt-1">{zh.about[zhLabelKey] as string}</div>
+                        <div className="text-xs text-gray-400">{de.about[deLabelKey] as string}</div>
                       </>
                     )}
                   </div>
@@ -539,8 +539,8 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    {de.courses.sectionTitle}
-                    <span className="text-lg font-normal text-gray-400 ml-2">· {zh.courses.sectionTitle}</span>
+                    {zh.courses.sectionTitle}
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.courses.sectionTitle}</span>
                   </>
                 )}
               </h2>
@@ -558,7 +558,7 @@ export default function Home() {
                   >
                     <div className="space-y-2 pt-2">
                       <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">Level name (Chinese)</label>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">级别名称（中文）/ Level name (Chinese)</label>
                         <EditField
                           value={c.level}
                           onChange={(v) => { updDeCourse(i, "level", v); updZhCourse(i, "level", v); }}
@@ -566,38 +566,49 @@ export default function Home() {
                           placeholder="初级班…"
                         />
                       </div>
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE level label</label>
-                        <EditField
-                          value={c.levelLabel}
-                          onChange={(v) => updDeCourse(i, "levelLabel", v)}
-                          className="text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide w-full"
-                          placeholder="Anfänger…"
-                        />
-                      </div>
                       {zhCourse && (
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH level label</label>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文级别标签 / ZH level label</label>
                           <EditField
                             value={zhCourse.levelLabel}
                             onChange={(v) => updZhCourse(i, "levelLabel", v)}
-                            className="font-cn text-xs text-gray-400 w-full"
+                            className="font-cn text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide w-full"
                             placeholder="初级…"
                           />
                         </div>
                       )}
                       <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE ages</label>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文级别标签 / DE level label</label>
                         <EditField
-                          value={c.ages}
-                          onChange={(v) => updDeCourse(i, "ages", v)}
-                          className="text-xs text-gray-500 w-full"
-                          placeholder="6–10 Jahre…"
+                          value={c.levelLabel}
+                          onChange={(v) => updDeCourse(i, "levelLabel", v)}
+                          className="text-xs text-gray-400 w-full"
+                          placeholder="Anfänger…"
                         />
                       </div>
                       {zhCourse && (
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH ages</label>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文上课时间 / ZH class time</label>
+                          <EditField
+                            value={zhCourse.time ?? ""}
+                            onChange={(v) => updZhCourse(i, "time", v)}
+                            className="font-cn text-xs text-[var(--school-red)] font-semibold w-full"
+                            placeholder="周六 09:00–10:30…"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文上课时间 / DE class time</label>
+                        <EditField
+                          value={c.time ?? ""}
+                          onChange={(v) => updDeCourse(i, "time", v)}
+                          className="text-xs text-gray-400 w-full"
+                          placeholder="Sa. 09:00–10:30 Uhr…"
+                        />
+                      </div>
+                      {zhCourse && (
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文年龄 / ZH ages</label>
                           <EditField
                             value={zhCourse.ages}
                             onChange={(v) => updZhCourse(i, "ages", v)}
@@ -607,25 +618,34 @@ export default function Home() {
                         </div>
                       )}
                       <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE description</label>
-                        <EditArea
-                          value={c.desc}
-                          onChange={(v) => updDeCourse(i, "desc", v)}
-                          className="text-sm text-gray-600 leading-relaxed"
-                          placeholder="German description…"
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文年龄 / DE ages</label>
+                        <EditField
+                          value={c.ages}
+                          onChange={(v) => updDeCourse(i, "ages", v)}
+                          className="text-xs text-gray-500 w-full"
+                          placeholder="6–10 Jahre…"
                         />
                       </div>
                       {zhCourse && (
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH description</label>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文描述 / ZH description</label>
                           <EditArea
                             value={zhCourse.desc}
                             onChange={(v) => updZhCourse(i, "desc", v)}
-                            className="font-cn text-xs text-gray-400 leading-relaxed"
+                            className="font-cn text-sm text-gray-600 leading-relaxed"
                             placeholder="中文描述…"
                           />
                         </div>
                       )}
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文描述 / DE description</label>
+                        <EditArea
+                          value={c.desc}
+                          onChange={(v) => updDeCourse(i, "desc", v)}
+                          className="text-xs text-gray-500 leading-relaxed"
+                          placeholder="German description…"
+                        />
+                      </div>
                     </div>
                   </EditBlock>
                 ) : (
@@ -636,22 +656,33 @@ export default function Home() {
                     <div className="font-cn text-xl font-bold text-[var(--school-dark)] mb-1">
                       {c.level}
                     </div>
-                    <div className="text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide mb-1">
-                      {c.levelLabel}
-                    </div>
                     {zhCourse && (
-                      <div className="font-cn text-xs text-gray-400 mb-3">
+                      <div className="font-cn text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide mb-1">
                         {zhCourse.levelLabel}
                       </div>
                     )}
+                    <div className="text-xs text-gray-400 mb-3">
+                      {c.levelLabel}
+                    </div>
                     <div className="border-t border-gray-200 pt-3 mt-1">
-                      <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-                        <span>🕐</span> {c.ages}{zhCourse ? ` · ${zhCourse.ages}` : ""}
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">{c.desc}</p>
-                      {zhCourse && (
-                        <p className="font-cn text-xs text-gray-400 leading-relaxed mt-2">{zhCourse.desc}</p>
+                      {(c.time || (zhCourse && zhCourse.time)) && (
+                        <div className="text-xs text-[var(--school-red)] font-semibold mb-2 flex items-center gap-1">
+                          <span>🕐</span>
+                          {zhCourse?.time && <span className="font-cn">{zhCourse.time}</span>}
+                          {zhCourse?.time && c.time && <span className="text-gray-400 mx-1">·</span>}
+                          {c.time && <span>{c.time}</span>}
+                        </div>
                       )}
+                      <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                        <span>👤</span>
+                        {zhCourse && <span className="font-cn">{zhCourse.ages}</span>}
+                        {zhCourse && <span className="text-gray-400 mx-1">·</span>}
+                        <span>{c.ages}</span>
+                      </div>
+                      {zhCourse && (
+                        <p className="font-cn text-sm text-gray-600 leading-relaxed">{zhCourse.desc}</p>
+                      )}
+                      <p className="text-xs text-gray-500 leading-relaxed mt-1">{c.desc}</p>
                     </div>
                   </div>
                 );
@@ -697,8 +728,8 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    {de.news.sectionTitle}
-                    <span className="text-lg font-normal text-gray-400 ml-2">· {zh.news.sectionTitle}</span>
+                    {zh.news.sectionTitle}
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.news.sectionTitle}</span>
                   </>
                 )}
               </h2>
@@ -808,10 +839,10 @@ export default function Home() {
                     <time className="text-xs font-semibold text-[var(--school-red)] tracking-widest">
                       {n.date}
                     </time>
-                    <h3 className="font-bold text-[var(--school-dark)] mt-1">{n.title}</h3>
-                    {zhNews && <p className="font-cn text-sm text-gray-500 mt-0.5">{zhNews.title}</p>}
-                    <p className="mt-2 text-sm text-gray-600 leading-relaxed">{n.body}</p>
-                    {zhNews && <p className="font-cn mt-1 text-xs text-gray-400 leading-relaxed">{zhNews.body}</p>}
+                    {zhNews && <h3 className="font-cn font-bold text-[var(--school-dark)] mt-1">{zhNews.title}</h3>}
+                    <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>
+                    {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed">{zhNews.body}</p>}
+                    <p className="mt-1 text-xs text-gray-400 leading-relaxed">{n.body}</p>
                   </article>
                 );
               })}
@@ -844,8 +875,8 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  {de.contact.sectionTitle}
-                  <span className="text-lg font-normal text-gray-400 ml-2">· {zh.contact.sectionTitle}</span>
+                  {zh.contact.sectionTitle}
+                  <span className="text-lg font-normal text-gray-400 ml-2">· {de.contact.sectionTitle}</span>
                 </>
               )}
             </h2>
@@ -866,8 +897,8 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <p className="text-gray-500 mb-1">{de.contact.subtitle}</p>
-                <p className="font-cn text-gray-400 text-sm mb-8">{zh.contact.subtitle}</p>
+                <p className="font-cn text-gray-500 mb-1">{zh.contact.subtitle}</p>
+                <p className="text-gray-400 text-sm mb-8">{de.contact.subtitle}</p>
               </>
             )}
 
@@ -887,9 +918,10 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <h3 className="font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{de.contact.addressTitle}</h3>
-                    <p className="font-cn text-xs text-gray-400 mb-2">{zh.contact.addressTitle}</p>
-                    {de.contact.addressLines.map((l) => (<p key={l} className="text-sm text-gray-600">{l}</p>))}
+                    <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.addressTitle}</h3>
+                    <p className="text-xs text-gray-400 mb-2">{de.contact.addressTitle}</p>
+                    {zh.contact.addressLines.map((l) => (<p key={l} className="font-cn text-sm text-gray-600">{l}</p>))}
+                    {de.contact.addressLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
                   </>
                 )}
               </div>
@@ -904,8 +936,8 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <h3 className="font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{de.contact.emailTitle}</h3>
-                    <p className="font-cn text-xs text-gray-400 mb-2">{zh.contact.emailTitle}</p>
+                    <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.emailTitle}</h3>
+                    <p className="text-xs text-gray-400 mb-2">{de.contact.emailTitle}</p>
                     <p className="text-sm text-gray-600">{de.contact.email}</p>
                   </>
                 )}
@@ -926,9 +958,10 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <h3 className="font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{de.contact.hoursTitle}</h3>
-                    <p className="font-cn text-xs text-gray-400 mb-2">{zh.contact.hoursTitle}</p>
-                    {de.contact.hoursLines.map((l) => (<p key={l} className="text-sm text-gray-600">{l}</p>))}
+                    <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.hoursTitle}</h3>
+                    <p className="text-xs text-gray-400 mb-2">{de.contact.hoursTitle}</p>
+                    {zh.contact.hoursLines.map((l) => (<p key={l} className="font-cn text-sm text-gray-600">{l}</p>))}
+                    {de.contact.hoursLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
                   </>
                 )}
               </div>

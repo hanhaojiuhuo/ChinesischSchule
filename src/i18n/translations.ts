@@ -4,6 +4,7 @@ export interface CourseItem {
   level: string;
   levelLabel: string;
   ages: string;
+  time?: string;
   desc: string;
 }
 
@@ -105,24 +106,28 @@ const de: SiteContent = {
         level: "初级班",
         levelLabel: "Anfänger",
         ages: "6–10 Jahre",
+        time: "Sa. 09:00–10:30 Uhr",
         desc: "Pinyin, Grundvokabular und einfache Sätze",
       },
       {
         level: "中级班",
         levelLabel: "Mittelstufe",
         ages: "10–14 Jahre",
+        time: "Sa. 09:00–11:00 Uhr",
         desc: "HSK 2–3, Lesen und Schreiben",
       },
       {
         level: "高级班",
         levelLabel: "Fortgeschrittene",
         ages: "14+ Jahre",
+        time: "Sa. 09:00–11:30 Uhr",
         desc: "HSK 4–6, Konversation und Kultur",
       },
       {
         level: "成人班",
         levelLabel: "Erwachsene",
         ages: "18+ Jahre",
+        time: "Sa. 10:00–13:00 Uhr",
         desc: "Alltagskommunikation, Reise & Geschäft",
       },
     ],
@@ -200,24 +205,28 @@ const zh: SiteContent = {
         level: "初级班",
         levelLabel: "初级",
         ages: "6–10岁",
+        time: "周六 09:00–10:30",
         desc: "拼音、基础词汇、简单句子",
       },
       {
         level: "中级班",
         levelLabel: "中级",
         ages: "10–14岁",
+        time: "周六 09:00–11:00",
         desc: "HSK 2–3，读写能力进阶",
       },
       {
         level: "高级班",
         levelLabel: "高级",
         ages: "14岁以上",
+        time: "周六 09:00–11:30",
         desc: "HSK 4–6，高阶汉语、文化与文学",
       },
       {
         level: "成人班",
         levelLabel: "成人",
         ages: "18岁以上",
+        time: "周六 10:00–13:00",
         desc: "日常交流、旅行与商务",
       },
     ],
@@ -295,24 +304,28 @@ const en: SiteContent = {
         level: "初级班",
         levelLabel: "Beginner",
         ages: "Ages 6–10",
+        time: "Sat. 09:00–10:30",
         desc: "Pinyin, basic vocabulary, simple sentences",
       },
       {
         level: "中级班",
         levelLabel: "Intermediate",
         ages: "Ages 10–14",
+        time: "Sat. 09:00–11:00",
         desc: "HSK 2–3, reading and writing skills",
       },
       {
         level: "高级班",
         levelLabel: "Advanced",
         ages: "Ages 14+",
+        time: "Sat. 09:00–11:30",
         desc: "HSK 4–6, conversation and culture",
       },
       {
         level: "成人班",
         levelLabel: "Adult",
         ages: "Ages 18+",
+        time: "Sat. 10:00–13:00",
         desc: "Daily communication, travel & business",
       },
     ],

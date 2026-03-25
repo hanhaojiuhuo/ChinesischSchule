@@ -11,14 +11,15 @@ import React, {
 export interface AdminUser {
   username: string;
   password: string;
+  email?: string;
 }
 
 interface AuthContextValue {
   isAdmin: boolean;
   currentUser: string | null;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string) => { success: boolean; remainingAttempts?: number; blocked?: boolean };
   logout: () => void;
-  addAdmin: (username: string, password: string) => { success: boolean; error?: string };
+  addAdmin: (username: string, password: string, email?: string) => { success: boolean; error?: string };
   changePassword: (
     username: string,
     oldPassword: string,
@@ -31,7 +32,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   isAdmin: false,
   currentUser: null,
-  login: () => false,
+  login: () => ({ success: false }),
   logout: () => {},
   addAdmin: () => ({ success: false }),
   changePassword: () => ({ success: false }),
@@ -41,10 +42,52 @@ const AuthContext = createContext<AuthContextValue>({
 
 const ADMINS_KEY = "yixin-admins";
 const SESSION_KEY = "yixin-admin-session";
+const LOGIN_FAILURES_KEY = "yixin-login-failures";
+const MAX_DAILY_ATTEMPTS = 3;
 
 const DEFAULT_ADMINS: AdminUser[] = [
   { username: "admin_yixin", password: "yixin" },
 ];
+
+function getTodayString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+interface LoginFailures {
+  count: number;
+  date: string;
+}
+
+function loadLoginFailures(): LoginFailures {
+  try {
+    const stored = localStorage.getItem(LOGIN_FAILURES_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as LoginFailures;
+      if (parsed.date === getTodayString()) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { count: 0, date: getTodayString() };
+}
+
+function persistLoginFailures(failures: LoginFailures) {
+  try {
+    localStorage.setItem(LOGIN_FAILURES_KEY, JSON.stringify(failures));
+  } catch {
+    // ignore
+  }
+}
+
+function resetLoginFailures() {
+  try {
+    localStorage.removeItem(LOGIN_FAILURES_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 function loadAdmins(): AdminUser[] {
   try {
@@ -92,12 +135,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = useCallback((username: string, password: string): boolean => {
+  const login = useCallback((username: string, password: string): { success: boolean; remainingAttempts?: number; blocked?: boolean } => {
+    const failures = loadLoginFailures();
+    if (failures.count >= MAX_DAILY_ATTEMPTS) {
+      return { success: false, blocked: true, remainingAttempts: 0 };
+    }
     const admins = loadAdmins();
     const found = admins.find(
       (a) => a.username === username && a.password === password
     );
     if (found) {
+      resetLoginFailures();
       setIsAdmin(true);
       setCurrentUser(username);
       try {
@@ -105,9 +153,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // ignore
       }
-      return true;
+      return { success: true };
     }
-    return false;
+    const updated = { count: failures.count + 1, date: getTodayString() };
+    persistLoginFailures(updated);
+    const remaining = MAX_DAILY_ATTEMPTS - updated.count;
+    return { success: false, remainingAttempts: remaining };
   }, []);
 
   const logout = useCallback(() => {
@@ -121,20 +172,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addAdmin = useCallback(
-    (username: string, password: string): { success: boolean; error?: string } => {
+    (username: string, password: string, email?: string): { success: boolean; error?: string } => {
       const trimmed = username.trim();
       if (!trimmed || trimmed.length < 4) {
         return {
           success: false,
           error:
-            "Username must be ≥ 4 characters / Benutzername mind. 4 Zeichen / 用户名至少4个字符",
+            "用户名至少4个字符 / Username must be ≥ 4 characters / Benutzername mind. 4 Zeichen",
         };
       }
       if (!password || password.length < 6) {
         return {
           success: false,
           error:
-            "Password must be ≥ 6 characters / Passwort mind. 6 Zeichen / 密码至少6个字符",
+            "密码至少6个字符 / Password must be ≥ 6 characters / Passwort mind. 6 Zeichen",
         };
       }
       const admins = loadAdmins();
@@ -142,10 +193,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {
           success: false,
           error:
-            "Username already exists / Benutzername bereits vorhanden / 用户名已存在",
+            "用户名已存在 / Username already exists / Benutzername bereits vorhanden",
         };
       }
-      const updated = [...admins, { username: trimmed, password }];
+      const trimmedEmail = email?.trim() || undefined;
+      const updated = [...admins, { username: trimmed, password, email: trimmedEmail }];
       persistAdmins(updated);
       return { success: true };
     },
@@ -162,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {
           success: false,
           error:
-            "New password must be ≥ 6 characters / Mind. 6 Zeichen / 至少6个字符",
+            "至少6个字符 / New password must be ≥ 6 characters / Mind. 6 Zeichen",
         };
       }
       const admins = loadAdmins();
@@ -173,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {
           success: false,
           error:
-            "Current password incorrect / Aktuelles Passwort falsch / 当前密码不正确",
+            "当前密码不正确 / Current password incorrect / Aktuelles Passwort falsch",
         };
       }
       const updated = admins.map((a, i) =>
@@ -191,19 +243,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {
           success: false,
           error:
-            "Cannot remove yourself / Sich selbst nicht entfernen / 无法删除自己",
+            "无法删除自己 / Cannot remove yourself / Sich selbst nicht entfernen",
         };
       }
       const admins = loadAdmins();
       const filtered = admins.filter((a) => a.username !== username);
       if (filtered.length === admins.length) {
-        return { success: false, error: "User not found" };
+        return { success: false, error: "用户不存在 / User not found" };
       }
       if (filtered.length === 0) {
         return {
           success: false,
           error:
-            "Cannot remove the last administrator / Letzten Admin nicht entfernen / 无法删除最后一个管理员",
+            "无法删除最后一个管理员 / Cannot remove the last administrator / Letzten Admin nicht entfernen",
         };
       }
       persistAdmins(filtered);
