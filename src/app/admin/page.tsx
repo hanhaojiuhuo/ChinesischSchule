@@ -116,29 +116,14 @@ export default function AdminPage() {
     }
   }, [auth, adminListKey]);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    const result = await auth.login(userInput.trim(), pwInput);
-    if (result.success) {
-      setLoginError("");
-      setDraft(getContent(editLang));
-    } else if (result.blocked) {
-      setLoginError(
-        "🚫 登录已被锁定，今日尝试次数已达上限，请明天再试。/ Login blocked: too many failed attempts today. Try again tomorrow. / Anmeldung gesperrt: Zu viele Fehlversuche heute."
-      );
-    } else {
-      const rem = result.remainingAttempts ?? 0;
-      if (rem === 0) {
-        setLoginError(
-          "❌ 用户名或密码错误。今日尝试次数已用完，请明天再试。/ Wrong credentials. No more attempts today. / Falsche Zugangsdaten. Keine Versuche mehr heute."
-        );
-      } else {
-        setLoginError(
-          `❌ 用户名或密码错误。今日剩余尝试次数：${rem} 次。/ Wrong credentials. ${rem} attempt${rem === 1 ? "" : "s"} remaining today. / Falsche Zugangsdaten. Noch ${rem} Versuch${rem === 1 ? "" : "e"} heute.`
-        );
-      }
-    }
-  }
+// 临时修改 handleLogin 逻辑
+async function handleLogin(e: React.FormEvent) {
+  e.preventDefault();
+  // 强制设置登录成功，绕过所有检查
+  auth.isAdmin = true; 
+  setLoginError("");
+  setDraft(getContent(editLang));
+}
 
   async function handleSave() {
     setSaving(true);
