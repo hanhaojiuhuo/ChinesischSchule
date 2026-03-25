@@ -17,37 +17,47 @@ export interface AdminUser {
 interface AuthContextValue {
   isAdmin: boolean;
   currentUser: string | null;
-  login: (username: string, password: string) => { success: boolean; remainingAttempts?: number; blocked?: boolean };
-  logout: () => void;
-  addAdmin: (username: string, password: string, email?: string) => { success: boolean; error?: string };
+  authLoading: boolean;
+  login: (
+    username: string,
+    password: string
+  ) => Promise<{
+    success: boolean;
+    remainingAttempts?: number;
+    blocked?: boolean;
+  }>;
+  logout: () => Promise<void>;
+  addAdmin: (
+    username: string,
+    password: string,
+    email?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   changePassword: (
     username: string,
     oldPassword: string,
     newPassword: string
-  ) => { success: boolean; error?: string };
-  removeAdmin: (username: string) => { success: boolean; error?: string };
-  getAdmins: () => AdminUser[];
+  ) => Promise<{ success: boolean; error?: string }>;
+  removeAdmin: (
+    username: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  getAdmins: () => Promise<AdminUser[]>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   isAdmin: false,
   currentUser: null,
-  login: () => ({ success: false }),
-  logout: () => {},
-  addAdmin: () => ({ success: false }),
-  changePassword: () => ({ success: false }),
-  removeAdmin: () => ({ success: false }),
-  getAdmins: () => [],
+  authLoading: true,
+  login: async () => ({ success: false }),
+  logout: async () => {},
+  addAdmin: async () => ({ success: false }),
+  changePassword: async () => ({ success: false }),
+  removeAdmin: async () => ({ success: false }),
+  getAdmins: async () => [],
 });
 
-const ADMINS_KEY = "yixin-admins";
 const SESSION_KEY = "yixin-admin-session";
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
 const MAX_DAILY_ATTEMPTS = 3;
-
-const DEFAULT_ADMINS: AdminUser[] = [
-  { username: "admin_yixin", password: "yixin" },
-];
 
 function getTodayString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -89,79 +99,117 @@ function resetLoginFailures() {
   }
 }
 
-function loadAdmins(): AdminUser[] {
+async function fetchAdmins(): Promise<AdminUser[]> {
   try {
-    const stored = localStorage.getItem(ADMINS_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as AdminUser[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
+    const res = await fetch("/api/admins");
+    if (res.ok) {
+      return (await res.json()) as AdminUser[];
     }
   } catch {
     // ignore
   }
-  return DEFAULT_ADMINS;
+  return [{ username: "admin_yixin", password: "yixin" }];
 }
 
-function persistAdmins(admins: AdminUser[]) {
+async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
   try {
-    localStorage.setItem(ADMINS_KEY, JSON.stringify(admins));
+    const res = await fetch("/api/admins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(admins),
+    });
+    return res.ok;
   } catch {
-    // ignore
+    return false;
   }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // Restore session on mount
   useEffect(() => {
-    try {
-      const session = localStorage.getItem(SESSION_KEY);
-      if (session) {
-        const admins = loadAdmins();
-        if (admins.some((a) => a.username === session)) {
-          setIsAdmin(true);
-          setCurrentUser(session);
-        } else {
-          // Session user no longer exists — clear stale session
-          localStorage.removeItem(SESSION_KEY);
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const login = useCallback((username: string, password: string): { success: boolean; remainingAttempts?: number; blocked?: boolean } => {
-    const failures = loadLoginFailures();
-    if (failures.count >= MAX_DAILY_ATTEMPTS) {
-      return { success: false, blocked: true, remainingAttempts: 0 };
-    }
-    const admins = loadAdmins();
-    const found = admins.find(
-      (a) => a.username === username && a.password === password
-    );
-    if (found) {
-      resetLoginFailures();
-      setIsAdmin(true);
-      setCurrentUser(username);
+    async function restoreSession() {
       try {
-        localStorage.setItem(SESSION_KEY, username);
+        const session = localStorage.getItem(SESSION_KEY);
+        if (session) {
+          const admins = await fetchAdmins();
+          if (admins.some((a) => a.username === session)) {
+            setIsAdmin(true);
+            setCurrentUser(session);
+            // Re-issue server-side session cookie (in case it expired)
+            try {
+              await fetch("/api/auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: session }),
+              });
+            } catch {
+              // ignore
+            }
+          } else {
+            // Session user no longer exists — clear stale session
+            localStorage.removeItem(SESSION_KEY);
+          }
+        }
       } catch {
         // ignore
+      } finally {
+        setAuthLoading(false);
       }
-      return { success: true };
     }
-    const updated = { count: failures.count + 1, date: getTodayString() };
-    persistLoginFailures(updated);
-    const remaining = MAX_DAILY_ATTEMPTS - updated.count;
-    return { success: false, remainingAttempts: remaining };
+    restoreSession();
   }, []);
 
-  const logout = useCallback(() => {
+  const login = useCallback(
+    async (
+      username: string,
+      password: string
+    ): Promise<{
+      success: boolean;
+      remainingAttempts?: number;
+      blocked?: boolean;
+    }> => {
+      const failures = loadLoginFailures();
+      if (failures.count >= MAX_DAILY_ATTEMPTS) {
+        return { success: false, blocked: true, remainingAttempts: 0 };
+      }
+      const admins = await fetchAdmins();
+      const found = admins.find(
+        (a) => a.username === username && a.password === password
+      );
+      if (found) {
+        resetLoginFailures();
+        setIsAdmin(true);
+        setCurrentUser(username);
+        try {
+          localStorage.setItem(SESSION_KEY, username);
+        } catch {
+          // ignore
+        }
+        // Set server-side session cookie for API route authentication
+        try {
+          await fetch("/api/auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username }),
+          });
+        } catch {
+          // ignore — server session is best-effort
+        }
+        return { success: true };
+      }
+      const updated = { count: failures.count + 1, date: getTodayString() };
+      persistLoginFailures(updated);
+      const remaining = MAX_DAILY_ATTEMPTS - updated.count;
+      return { success: false, remainingAttempts: remaining };
+    },
+    []
+  );
+
+  const logout = useCallback(async () => {
     setIsAdmin(false);
     setCurrentUser(null);
     try {
@@ -169,10 +217,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
+    // Clear server-side session cookie
+    try {
+      await fetch("/api/auth", { method: "DELETE" });
+    } catch {
+      // ignore
+    }
   }, []);
 
   const addAdmin = useCallback(
-    (username: string, password: string, email?: string): { success: boolean; error?: string } => {
+    async (
+      username: string,
+      password: string,
+      email?: string
+    ): Promise<{ success: boolean; error?: string }> => {
       const trimmed = username.trim();
       if (!trimmed || trimmed.length < 4) {
         return {
@@ -188,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "密码至少6个字符 / Password must be ≥ 6 characters / Passwort mind. 6 Zeichen",
         };
       }
-      const admins = loadAdmins();
+      const admins = await fetchAdmins();
       if (admins.some((a) => a.username === trimmed)) {
         return {
           success: false,
@@ -197,19 +255,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
       const trimmedEmail = email?.trim() || undefined;
-      const updated = [...admins, { username: trimmed, password, email: trimmedEmail }];
-      persistAdmins(updated);
+      const updated = [
+        ...admins,
+        { username: trimmed, password, email: trimmedEmail },
+      ];
+      const ok = await saveAdmins(updated);
+      if (!ok) {
+        return {
+          success: false,
+          error: "保存失败 / Failed to save / Speichern fehlgeschlagen",
+        };
+      }
       return { success: true };
     },
     []
   );
 
   const changePassword = useCallback(
-    (
+    async (
       username: string,
       oldPassword: string,
       newPassword: string
-    ): { success: boolean; error?: string } => {
+    ): Promise<{ success: boolean; error?: string }> => {
       if (!newPassword || newPassword.length < 6) {
         return {
           success: false,
@@ -217,7 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "至少6个字符 / New password must be ≥ 6 characters / Mind. 6 Zeichen",
         };
       }
-      const admins = loadAdmins();
+      const admins = await fetchAdmins();
       const idx = admins.findIndex(
         (a) => a.username === username && a.password === oldPassword
       );
@@ -231,14 +298,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updated = admins.map((a, i) =>
         i === idx ? { ...a, password: newPassword } : a
       );
-      persistAdmins(updated);
+      const ok = await saveAdmins(updated);
+      if (!ok) {
+        return {
+          success: false,
+          error: "保存失败 / Failed to save / Speichern fehlgeschlagen",
+        };
+      }
       return { success: true };
     },
     []
   );
 
   const removeAdmin = useCallback(
-    (username: string): { success: boolean; error?: string } => {
+    async (
+      username: string
+    ): Promise<{ success: boolean; error?: string }> => {
       if (username === currentUser) {
         return {
           success: false,
@@ -246,7 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "无法删除自己 / Cannot remove yourself / Sich selbst nicht entfernen",
         };
       }
-      const admins = loadAdmins();
+      const admins = await fetchAdmins();
       const filtered = admins.filter((a) => a.username !== username);
       if (filtered.length === admins.length) {
         return { success: false, error: "用户不存在 / User not found" };
@@ -258,14 +333,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "无法删除最后一个管理员 / Cannot remove the last administrator / Letzten Admin nicht entfernen",
         };
       }
-      persistAdmins(filtered);
+      const ok = await saveAdmins(filtered);
+      if (!ok) {
+        return {
+          success: false,
+          error: "保存失败 / Failed to save / Speichern fehlgeschlagen",
+        };
+      }
       return { success: true };
     },
     [currentUser]
   );
 
-  const getAdmins = useCallback((): AdminUser[] => {
-    return loadAdmins();
+  const getAdmins = useCallback(async (): Promise<AdminUser[]> => {
+    return fetchAdmins();
   }, []);
 
   return (
@@ -273,6 +354,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         isAdmin,
         currentUser,
+        authLoading,
         login,
         logout,
         addAdmin,

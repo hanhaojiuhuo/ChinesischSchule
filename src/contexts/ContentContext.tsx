@@ -6,6 +6,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 import type { Language, SiteContent } from "@/i18n/translations";
 import { defaultTranslations } from "@/i18n/translations";
@@ -14,30 +15,55 @@ type ContentOverrides = Partial<Record<Language, SiteContent>>;
 
 interface ContentContextValue {
   getContent: (lang: Language) => SiteContent;
-  saveContent: (lang: Language, content: SiteContent) => void;
-  resetContent: (lang: Language) => void;
+  saveContent: (lang: Language, content: SiteContent) => Promise<void>;
+  resetContent: (lang: Language) => Promise<void>;
+  contentLoading: boolean;
 }
 
 const ContentContext = createContext<ContentContextValue>({
   getContent: (lang) => defaultTranslations[lang],
-  saveContent: () => {},
-  resetContent: () => {},
+  saveContent: async () => {},
+  resetContent: async () => {},
+  contentLoading: true,
 });
 
-const STORAGE_KEY = "yixin-content-overrides";
+async function fetchOverrides(): Promise<ContentOverrides> {
+  try {
+    const res = await fetch("/api/content");
+    if (res.ok) {
+      return (await res.json()) as ContentOverrides;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
+async function persistOverrides(overrides: ContentOverrides): Promise<void> {
+  try {
+    await fetch("/api/content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(overrides),
+    });
+  } catch {
+    // ignore
+  }
+}
 
 export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [overrides, setOverrides] = useState<ContentOverrides>({});
+  const [contentLoading, setContentLoading] = useState(true);
+  // Mutable ref keeps the latest overrides in sync so concurrent saves
+  // always build on top of the most recent in-memory state.
+  const overridesRef = useRef<ContentOverrides>(overrides);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setOverrides(JSON.parse(stored));
-      }
-    } catch {
-      // localStorage not available or invalid JSON
-    }
+    fetchOverrides().then((data) => {
+      overridesRef.current = data;
+      setOverrides(data);
+      setContentLoading(false);
+    });
   }, []);
 
   const getContent = useCallback(
@@ -47,36 +73,25 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     [overrides]
   );
 
-  const saveContent = useCallback(
-    (lang: Language, content: SiteContent) => {
-      setOverrides((prev) => {
-        const next = { ...prev, [lang]: content };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // localStorage not available
-        }
-        return next;
-      });
-    },
-    []
-  );
+  const saveContent = useCallback(async (lang: Language, content: SiteContent) => {
+    const next = { ...overridesRef.current, [lang]: content };
+    overridesRef.current = next;
+    setOverrides(next);
+    await persistOverrides(next);
+  }, []);
 
-  const resetContent = useCallback((lang: Language) => {
-    setOverrides((prev) => {
-      const next = { ...prev };
-      delete next[lang];
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // localStorage not available
-      }
-      return next;
-    });
+  const resetContent = useCallback(async (lang: Language) => {
+    const next = { ...overridesRef.current };
+    delete next[lang];
+    overridesRef.current = next;
+    setOverrides(next);
+    await persistOverrides(next);
   }, []);
 
   return (
-    <ContentContext.Provider value={{ getContent, saveContent, resetContent }}>
+    <ContentContext.Provider
+      value={{ getContent, saveContent, resetContent, contentLoading }}
+    >
       {children}
     </ContentContext.Provider>
   );
