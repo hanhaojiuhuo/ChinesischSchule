@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export const dynamic = "force-static";
 
-const siteUrl = "https://www.yixin-heilbronn.de";
+const siteUrl = "https://chinesisch-schule.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
