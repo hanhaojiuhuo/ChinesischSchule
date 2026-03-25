@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description:
     "Willkommen bei der Yi Xin Chinesischen Sprachschule Heilbronn. " +
     "欢迎来到海尔布隆一心中文学校。",
+  verification: {
+    google: '-2VqwDTJfPGLEolppWc9q1KO-fndtYbtaElEDzqCYS8',
+  },
   icons: { icon: "/favicon.ico" },
 };
 
