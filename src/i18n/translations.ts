@@ -345,13 +345,10 @@ const en: SiteContent = {
   },
   contact: {
     sectionTitle: "Contact",
-    subtitle: "Get in Touch",
     addressTitle: "Address",
     addressLines: ["Heilbronn", "Baden-Württemberg, Germany"],
     emailTitle: "Email",
     email: "info@yixin-heilbronn.de",
-    hoursTitle: "Class Times",
-    hoursLines: ["Saturdays", "09:00 – 13:00"],
   },
   footer: {
     navigationTitle: "Navigation",
