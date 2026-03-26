@@ -89,6 +89,7 @@ export default function AdminPage() {
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [newAdminUser, setNewAdminUser] = useState("");
   const [newAdminPw, setNewAdminPw] = useState("");
+  const [newAdminPwConfirm, setNewAdminPwConfirm] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [showNewAdminPw, setShowNewAdminPw] = useState(false);
   const [addAdminMsg, setAddAdminMsg] = useState("");
@@ -180,6 +181,13 @@ export default function AdminPage() {
 
   async function handleAddAdmin(e: React.FormEvent) {
     e.preventDefault();
+    if (newAdminPw !== newAdminPwConfirm) {
+      setAddAdminMsg(
+        "密码不匹配 / Passwords do not match / Passwörter stimmen nicht überein"
+      );
+      setAddAdminSuccess(false);
+      return;
+    }
     const result = await auth.addAdmin(newAdminUser.trim(), newAdminPw, newAdminEmail.trim());
     if (result.success) {
       setAddAdminMsg(
@@ -188,6 +196,7 @@ export default function AdminPage() {
       setAddAdminSuccess(true);
       setNewAdminUser("");
       setNewAdminPw("");
+      setNewAdminPwConfirm("");
       setNewAdminEmail("");
       setAdminListKey((k) => k + 1);
       setTimeout(() => {
@@ -716,6 +725,13 @@ export default function AdminPage() {
                 </div>
               </div>
               <Field
+                label="确认密码 / Confirm Password / Passwort bestätigen"
+                value={newAdminPwConfirm}
+                onChange={setNewAdminPwConfirm}
+                type={showNewAdminPw ? "text" : "password"}
+                autoComplete="new-password"
+              />
+              <Field
                 label="邮箱（用于密码重置）/ Email (for password reset) / E-Mail (für Passwort-Reset)"
                 value={newAdminEmail}
                 onChange={setNewAdminEmail}
@@ -735,7 +751,7 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowAddAdmin(false); setAddAdminMsg(""); setNewAdminUser(""); setNewAdminPw(""); setNewAdminEmail(""); }}
+                  onClick={() => { setShowAddAdmin(false); setAddAdminMsg(""); setNewAdminUser(""); setNewAdminPw(""); setNewAdminPwConfirm(""); setNewAdminEmail(""); }}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded transition-colors"
                 >
                   取消 / Cancel / Abbrechen
