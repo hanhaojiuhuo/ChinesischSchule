@@ -154,7 +154,14 @@ async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(admins),
     });
-    return res.ok;
+    if (!res.ok) {
+      // API sync failed (e.g. session cookie not set, Vercel not configured),
+      // but the data was already written to localStorage — treat as success.
+      console.warn(
+        `[AuthContext] Admin list saved to localStorage only (API returned ${res.status}).`
+      );
+    }
+    return true;
   } catch {
     // Network error — local storage was already updated.
     // Warn so developers can see the data is only stored locally.
