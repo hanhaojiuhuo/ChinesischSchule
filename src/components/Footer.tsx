@@ -10,9 +10,9 @@ export default function Footer() {
 
   const navLinks: [string, string, string][] = [
     [de.nav.home, zh.nav.home, "#home"],
-    [de.nav.about, zh.nav.about, "#about"],
     [de.nav.courses, zh.nav.courses, "#courses"],
     [de.nav.news, zh.nav.news, "#news"],
+    [de.nav.about, zh.nav.about, "#about"],
     [de.nav.contact, zh.nav.contact, "#contact"],
   ];
 

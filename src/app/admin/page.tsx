@@ -98,6 +98,9 @@ export default function AdminPage() {
   // Remove-admin feedback
   const [removeAdminMsg, setRemoveAdminMsg] = useState("");
 
+  // Forgot-password state
+  const [showForgotPw, setShowForgotPw] = useState(false);
+
   // Admin list (loaded async from API)
   const [adminList, setAdminList] = useState<import("@/contexts/AuthContext").AdminUser[]>([]);
   const [adminListKey, setAdminListKey] = useState(0);
@@ -368,6 +371,34 @@ export default function AdminPage() {
               登录 / Anmelden / Login
             </button>
           </form>
+
+          {/* Forgot password */}
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setShowForgotPw((v) => !v)}
+              className="text-xs text-[var(--school-red)] underline hover:opacity-80 transition-opacity"
+            >
+              忘记密码？/ Passwort vergessen? / Forgot password?
+            </button>
+          </div>
+          {showForgotPw && (
+            <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 space-y-2">
+              <p className="font-semibold">
+                🔐 密码重置说明 / Passwort-Reset / Password Reset
+              </p>
+              <p>
+                <strong>DE:</strong> Bitten Sie einen anderen Administrator, Ihr Passwort im Admin-Panel zurückzusetzen (Bereich &bdquo;Administratoren verwalten&rdquo;). Falls Sie der einzige Administrator sind, aktivieren Sie den Wiederherstellungsmodus (<code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code>) in den Vercel-Umgebungsvariablen.
+              </p>
+              <p>
+                <strong>ZH:</strong> 请联系其他管理员，在管理面板的「管理员管理」中重置您的密码。若您是唯一管理员，请在 Vercel 环境变量中设置 <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> 并重新部署以进入恢复模式。
+              </p>
+              <p>
+                <strong>EN:</strong> Ask another administrator to reset your password in the Admin Panel under &quot;Manage Administrators&quot;. If you are the sole administrator, set <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> in your Vercel environment variables and redeploy to enter recovery mode.
+              </p>
+            </div>
+          )}
+
           <p className="text-xs text-gray-400 text-center mt-4">
             <a href="/" className="underline hover:text-[var(--school-red)]">
               ← 返回网站 / Zurück zur Website / Back to site
@@ -516,7 +547,7 @@ export default function AdminPage() {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="级别（中文）/ Level (Chinese)" value={course.level} onChange={(v) => updateCourse(idx, "level", v)} />
+                <Field label="课程 / Kurs" value={course.level} onChange={(v) => updateCourse(idx, "level", v)} />
                 <Field label="级别标签 / Level label" value={course.levelLabel} onChange={(v) => updateCourse(idx, "levelLabel", v)} />
                 <Field label="年龄 / Age range" value={course.ages} onChange={(v) => updateCourse(idx, "ages", v)} />
                 <Field label="上课时间 / Class time / Unterrichtszeit" value={course.time ?? ""} onChange={(v) => updateCourse(idx, "time", v)} />

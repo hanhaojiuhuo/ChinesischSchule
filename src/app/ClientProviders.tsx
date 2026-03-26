@@ -3,6 +3,7 @@
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ContentProvider } from "@/contexts/ContentContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import CookieConsent from "@/components/CookieConsent";
 
 export default function ClientProviders({
   children,
@@ -12,7 +13,10 @@ export default function ClientProviders({
   return (
     <LanguageProvider>
       <ContentProvider>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <CookieConsent />
+        </AuthProvider>
       </ContentProvider>
     </LanguageProvider>
   );

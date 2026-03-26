@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
@@ -82,6 +82,112 @@ function EditBlock({
         </button>
       )}
       {children}
+    </div>
+  );
+}
+
+/* Drag-and-drop image upload zone for news items */
+function ImageDropZone({
+  imageUrl,
+  onUrlChange,
+}: {
+  imageUrl: string;
+  onUrlChange: (url: string) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadFile = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        setUploadError("Only image files are supported.");
+        return;
+      }
+      setUploading(true);
+      setUploadError("");
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          onUrlChange(data.url);
+        } else {
+          setUploadError(data.error ?? "Upload failed.");
+        }
+      } catch {
+        setUploadError("Upload failed.");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [onUrlChange]
+  );
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+  }
+
+  return (
+    <div>
+      <label className="text-xs text-amber-600 font-semibold block mb-0.5">
+        🖼 Bild / Image (optional — URL eingeben oder Datei hochladen)
+      </label>
+      {/* URL input */}
+      <input
+        type="text"
+        value={imageUrl}
+        onChange={(e) => onUrlChange(e.target.value)}
+        className="w-full bg-amber-50/30 border-b-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 focus:bg-amber-50/60 transition-colors text-xs text-gray-500 mb-2"
+        placeholder="https://example.com/photo.jpg"
+      />
+      {/* Drag-and-drop zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+          dragging
+            ? "border-amber-500 bg-amber-100"
+            : "border-gray-300 hover:border-amber-400 hover:bg-amber-50/30"
+        }`}
+      >
+        {uploading ? (
+          <p className="text-xs text-amber-700 font-semibold">⏳ Uploading…</p>
+        ) : (
+          <p className="text-xs text-gray-400">
+            📂 Bild hierher ziehen oder klicken · Drag image here or click to upload
+          </p>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileInput}
+        />
+      </div>
+      {uploadError && (
+        <p className="text-xs text-red-500 mt-1">{uploadError}</p>
+      )}
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt="Preview"
+          className="mt-2 w-full h-32 object-cover rounded border border-gray-200"
+        />
+      )}
     </div>
   );
 }
@@ -394,125 +500,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── About ──────────────────────────────────────────── */}
-        <section id="about" className="py-16 px-4 bg-[var(--school-gray)]">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center gap-3 mb-8">
-              <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
-              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] flex items-center gap-2 flex-wrap">
-                {isAdmin ? (
-                  <>
-                    <EditField
-                      value={de.about.sectionTitle}
-                      onChange={(v) => updDe("about", { sectionTitle: v })}
-                      className="text-2xl font-bold text-[var(--school-dark)]"
-                      placeholder="DE title…"
-                    />
-                    <span className="text-lg font-normal text-gray-400">·</span>
-                    <EditField
-                      value={zh.about.sectionTitle}
-                      onChange={(v) => updZh("about", { sectionTitle: v })}
-                      className="text-lg font-normal text-gray-400"
-                      placeholder="ZH 标题…"
-                    />
-                  </>
-                ) : (
-                  <>
-                    {zh.about.sectionTitle}
-                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.about.sectionTitle}</span>
-                  </>
-                )}
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-8 items-start">
-              {isAdmin ? (
-                <EditBlock label="About Description" className="space-y-3 p-4 bg-[var(--school-gray)]">
-                  <div>
-                    <label className="text-xs text-amber-600 font-semibold block mb-1">DE Description</label>
-                    <EditArea
-                      value={de.about.desc1}
-                      onChange={(v) => updDe("about", { desc1: v })}
-                      className="text-[var(--school-dark)] leading-relaxed"
-                      placeholder="German description…"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-amber-600 font-semibold block mb-1">ZH Description 1</label>
-                    <EditArea
-                      value={zh.about.desc1}
-                      onChange={(v) => updZh("about", { desc1: v })}
-                      className="font-cn text-sm text-gray-600 leading-relaxed"
-                      placeholder="中文描述…"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-amber-600 font-semibold block mb-1">ZH Description 2</label>
-                    <EditArea
-                      value={zh.about.desc2}
-                      onChange={(v) => updZh("about", { desc2: v })}
-                      className="font-cn text-sm text-gray-500 leading-relaxed"
-                      placeholder="中文描述 2…"
-                    />
-                  </div>
-                </EditBlock>
-              ) : (
-                <div className="space-y-4 text-[var(--school-dark)]">
-                  <p className="font-cn leading-relaxed text-sm text-gray-600">{zh.about.desc1}</p>
-                  <p className="font-cn leading-relaxed text-xs text-gray-500">{zh.about.desc2}</p>
-                  <p className="leading-relaxed text-sm text-gray-600">{de.about.desc1}</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                {(
-                  [
-                    { icon: "📚", statKey: "years", deLabelKey: "yearsLabel", zhLabelKey: "yearsLabel" },
-                    { icon: "👩‍🎓", statKey: "students", deLabelKey: "studentsLabel", zhLabelKey: "studentsLabel" },
-                    { icon: "👨‍🏫", statKey: "teachers", deLabelKey: "teachersLabel", zhLabelKey: "teachersLabel" },
-                    { icon: "🏅", statKey: "coursesCount", deLabelKey: "coursesLabel", zhLabelKey: "coursesLabel" },
-                  ] as { icon: string; statKey: keyof SiteContent["about"]; deLabelKey: keyof SiteContent["about"]; zhLabelKey: keyof SiteContent["about"] }[]
-                ).map(({ icon, statKey, deLabelKey, zhLabelKey }) => (
-                  <div
-                    key={statKey}
-                    className={`bg-white rounded-lg p-5 border border-[var(--school-border)] text-center shadow-sm${isAdmin ? " ring-2 ring-amber-300" : ""}`}
-                  >
-                    <div className="text-3xl mb-1">{icon}</div>
-                    {isAdmin ? (
-                      <>
-                        <EditField
-                          value={de.about[statKey] as string}
-                          onChange={(v) => updDe("about", { [statKey]: v })}
-                          className="text-2xl font-bold text-[var(--school-red)] text-center w-full"
-                          placeholder="Stat…"
-                        />
-                        <EditField
-                          value={de.about[deLabelKey] as string}
-                          onChange={(v) => updDe("about", { [deLabelKey]: v })}
-                          className="text-xs text-gray-500 mt-1 w-full text-center"
-                          placeholder="DE label…"
-                        />
-                        <EditField
-                          value={zh.about[zhLabelKey] as string}
-                          onChange={(v) => updZh("about", { [zhLabelKey]: v })}
-                          className="font-cn text-xs text-gray-400 w-full text-center"
-                          placeholder="ZH 标签…"
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-2xl font-bold text-[var(--school-red)]">{de.about[statKey] as string}</div>
-                        <div className="font-cn text-xs text-gray-500 mt-1">{zh.about[zhLabelKey] as string}</div>
-                        <div className="text-xs text-gray-400">{de.about[deLabelKey] as string}</div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* ── Courses ────────────────────────────────────────── */}
         <section id="courses" className="py-16 px-4 bg-white">
           <div className="max-w-6xl mx-auto">
@@ -701,7 +688,6 @@ export default function Home() {
             )}
           </div>
         </section>
-
         {/* ── News ───────────────────────────────────────────── */}
         <section id="news" className="py-16 px-4 bg-[var(--school-gray)]">
           <div className="max-w-6xl mx-auto">
@@ -757,24 +743,10 @@ export default function Home() {
                     className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
                   >
                     <div className="space-y-3 pt-2">
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">
-                          🖼 Image URL (optional)
-                        </label>
-                        <EditField
-                          value={n.imageUrl ?? ""}
-                          onChange={(v) => { updDeNews(i, "imageUrl", v); updZhNews(i, "imageUrl", v); }}
-                          className="text-xs text-gray-500 w-full"
-                          placeholder="https://example.com/photo.jpg"
-                        />
-                        {n.imageUrl && (
-                          <img
-                            src={n.imageUrl}
-                            alt="Preview"
-                            className="mt-2 w-full h-32 object-cover rounded border border-gray-200"
-                          />
-                        )}
-                      </div>
+                      <ImageDropZone
+                        imageUrl={n.imageUrl ?? ""}
+                        onUrlChange={(v) => { updDeNews(i, "imageUrl", v); updZhNews(i, "imageUrl", v); }}
+                      />
                       <div>
                         <label className="text-xs text-amber-600 font-semibold block mb-0.5">Date</label>
                         <EditField
@@ -848,6 +820,124 @@ export default function Home() {
                   </article>
                 );
               })}
+            </div>
+          </div>
+        </section>
+        {/* ── About ──────────────────────────────────────────── */}
+        <section id="about" className="py-16 px-4 bg-white">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center gap-3 mb-8">
+              <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
+              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] flex items-center gap-2 flex-wrap">
+                {isAdmin ? (
+                  <>
+                    <EditField
+                      value={de.about.sectionTitle}
+                      onChange={(v) => updDe("about", { sectionTitle: v })}
+                      className="text-2xl font-bold text-[var(--school-dark)]"
+                      placeholder="DE title…"
+                    />
+                    <span className="text-lg font-normal text-gray-400">·</span>
+                    <EditField
+                      value={zh.about.sectionTitle}
+                      onChange={(v) => updZh("about", { sectionTitle: v })}
+                      className="text-lg font-normal text-gray-400"
+                      placeholder="ZH 标题…"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {zh.about.sectionTitle}
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.about.sectionTitle}</span>
+                  </>
+                )}
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+              {isAdmin ? (
+                <EditBlock label="About Description" className="space-y-3 p-4 bg-[var(--school-gray)]">
+                  <div>
+                    <label className="text-xs text-amber-600 font-semibold block mb-1">DE Description</label>
+                    <EditArea
+                      value={de.about.desc1}
+                      onChange={(v) => updDe("about", { desc1: v })}
+                      className="text-[var(--school-dark)] leading-relaxed"
+                      placeholder="German description…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-amber-600 font-semibold block mb-1">ZH Description 1</label>
+                    <EditArea
+                      value={zh.about.desc1}
+                      onChange={(v) => updZh("about", { desc1: v })}
+                      className="font-cn text-sm text-gray-600 leading-relaxed"
+                      placeholder="中文描述…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-amber-600 font-semibold block mb-1">ZH Description 2</label>
+                    <EditArea
+                      value={zh.about.desc2}
+                      onChange={(v) => updZh("about", { desc2: v })}
+                      className="font-cn text-sm text-gray-500 leading-relaxed"
+                      placeholder="中文描述 2…"
+                    />
+                  </div>
+                </EditBlock>
+              ) : (
+                <div className="space-y-4 text-[var(--school-dark)]">
+                  <p className="font-cn leading-relaxed text-sm text-gray-600">{zh.about.desc1}</p>
+                  <p className="font-cn leading-relaxed text-xs text-gray-500">{zh.about.desc2}</p>
+                  <p className="leading-relaxed text-sm text-gray-600">{de.about.desc1}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                {(
+                  [
+                    { icon: "📚", statKey: "years", deLabelKey: "yearsLabel", zhLabelKey: "yearsLabel" },
+                    { icon: "👩‍🎓", statKey: "students", deLabelKey: "studentsLabel", zhLabelKey: "studentsLabel" },
+                    { icon: "👨‍🏫", statKey: "teachers", deLabelKey: "teachersLabel", zhLabelKey: "teachersLabel" },
+                    { icon: "🏅", statKey: "coursesCount", deLabelKey: "coursesLabel", zhLabelKey: "coursesLabel" },
+                  ] as { icon: string; statKey: keyof SiteContent["about"]; deLabelKey: keyof SiteContent["about"]; zhLabelKey: keyof SiteContent["about"] }[]
+                ).map(({ icon, statKey, deLabelKey, zhLabelKey }) => (
+                  <div
+                    key={statKey}
+                    className={`bg-white rounded-lg p-5 border border-[var(--school-border)] text-center shadow-sm${isAdmin ? " ring-2 ring-amber-300" : ""}`}
+                  >
+                    <div className="text-3xl mb-1">{icon}</div>
+                    {isAdmin ? (
+                      <>
+                        <EditField
+                          value={de.about[statKey] as string}
+                          onChange={(v) => updDe("about", { [statKey]: v })}
+                          className="text-2xl font-bold text-[var(--school-red)] text-center w-full"
+                          placeholder="Stat…"
+                        />
+                        <EditField
+                          value={de.about[deLabelKey] as string}
+                          onChange={(v) => updDe("about", { [deLabelKey]: v })}
+                          className="text-xs text-gray-500 mt-1 w-full text-center"
+                          placeholder="DE label…"
+                        />
+                        <EditField
+                          value={zh.about[zhLabelKey] as string}
+                          onChange={(v) => updZh("about", { [zhLabelKey]: v })}
+                          className="font-cn text-xs text-gray-400 w-full text-center"
+                          placeholder="ZH 标签…"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-2xl font-bold text-[var(--school-red)]">{de.about[statKey] as string}</div>
+                        <div className="font-cn text-xs text-gray-500 mt-1">{zh.about[zhLabelKey] as string}</div>
+                        <div className="text-xs text-gray-400">{de.about[deLabelKey] as string}</div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
