@@ -116,14 +116,23 @@ export default function AdminPage() {
     }
   }, [auth, adminListKey]);
 
-// 临时修改 handleLogin 逻辑
-async function handleLogin(e: React.FormEvent) {
-  e.preventDefault();
-  // 强制设置登录成功，绕过所有检查
-  auth.isAdmin = true; 
-  setLoginError("");
-  setDraft(getContent(editLang));
-}
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    const result = await auth.login(userInput, pwInput);
+    if (result.blocked) {
+      setLoginError(
+        "Zu viele Fehlversuche. Bitte morgen erneut versuchen. / Too many failed attempts. Please try again tomorrow. / 登录尝试次数过多，请明天再试。"
+      );
+    } else if (!result.success) {
+      const remaining = result.remainingAttempts ?? 0;
+      setLoginError(
+        `Falsches Passwort / Incorrect password / 密码错误${remaining > 0 ? ` (${remaining} Versuche übrig / attempts left / 次尝试剩余)` : ""}`
+      );
+    } else {
+      setLoginError("");
+      setDraft(getContent(editLang));
+    }
+  }
 
   async function handleSave() {
     setSaving(true);

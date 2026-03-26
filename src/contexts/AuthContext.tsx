@@ -57,6 +57,7 @@ const AuthContext = createContext<AuthContextValue>({
 
 const SESSION_KEY = "yixin-admin-session";
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
+const LOCAL_ADMINS_KEY = "yixin-admins";
 const MAX_DAILY_ATTEMPTS = 3;
 
 function getTodayString(): string {
@@ -99,19 +100,54 @@ function resetLoginFailures() {
   }
 }
 
-async function fetchAdmins(): Promise<AdminUser[]> {
+function loadLocalAdmins(): AdminUser[] | null {
   try {
-    const res = await fetch("/api/admins");
-    if (res.ok) {
-      return (await res.json()) as AdminUser[];
+    const stored = localStorage.getItem(LOCAL_ADMINS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as AdminUser[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
     }
   } catch {
     // ignore
   }
-  return [{ username: "admin_yixin", password: "yixin" }];
+  return null;
+}
+
+function persistLocalAdmins(admins: AdminUser[]) {
+  try {
+    localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(admins));
+  } catch {
+    // ignore
+  }
+}
+
+async function fetchAdmins(): Promise<AdminUser[]> {
+  try {
+    const res = await fetch("/api/admins");
+    if (res.ok) {
+      const apiAdmins = (await res.json()) as AdminUser[];
+      // If the API returned only the hardcoded default, prefer locally-saved
+      // admins (set when Vercel Edge Config is not configured).
+      const isDefault =
+        apiAdmins.length === 1 && apiAdmins[0].username === "admin_yixin";
+      if (isDefault) {
+        const local = loadLocalAdmins();
+        if (local) return local;
+      }
+      return apiAdmins;
+    }
+  } catch {
+    // ignore
+  }
+  // Fallback: local storage → hardcoded default
+  return loadLocalAdmins() ?? [{ username: "admin_yixin", password: "yixin" }];
 }
 
 async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
+  // Always persist locally so data survives page reloads even without Vercel.
+  persistLocalAdmins(admins);
   try {
     const res = await fetch("/api/admins", {
       method: "POST",
@@ -120,7 +156,12 @@ async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
     });
     return res.ok;
   } catch {
-    return false;
+    // Network error — local storage was already updated.
+    // Warn so developers can see the data is only stored locally.
+    console.warn(
+      "[AuthContext] Admin list saved to localStorage only (API unreachable)."
+    );
+    return true;
   }
 }
 
