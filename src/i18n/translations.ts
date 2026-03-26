@@ -13,6 +13,8 @@ export interface NewsItem {
   title: string;
   body: string;
   imageUrl?: string;
+  imageCaption?: string;
+  imagePosition?: "before" | "after";
 }
 
 export interface SiteContent {
@@ -55,13 +57,10 @@ export interface SiteContent {
   };
   contact: {
     sectionTitle: string;
-    subtitle: string;
     addressTitle: string;
     addressLines: string[];
     emailTitle: string;
     email: string;
-    hoursTitle: string;
-    hoursLines: string[];
   };
   footer: {
     navigationTitle: string;
@@ -154,13 +153,10 @@ const de: SiteContent = {
   },
   contact: {
     sectionTitle: "Kontakt",
-    subtitle: "Kontaktieren Sie uns",
     addressTitle: "Adresse",
     addressLines: ["Heilbronn", "Baden-Württemberg, Deutschland"],
     emailTitle: "E-Mail",
     email: "info@yixin-heilbronn.de",
-    hoursTitle: "Unterrichtszeiten",
-    hoursLines: ["Samstags", "09:00 – 13:00 Uhr"],
   },
   footer: {
     navigationTitle: "Navigation",
@@ -253,13 +249,10 @@ const zh: SiteContent = {
   },
   contact: {
     sectionTitle: "联系我们",
-    subtitle: "请与我们联系",
     addressTitle: "地址",
     addressLines: ["海尔布隆", "巴登-符腾堡州，德国"],
     emailTitle: "邮箱",
     email: "info@yixin-heilbronn.de",
-    hoursTitle: "上课时间",
-    hoursLines: ["每周六", "09:00 – 13:00"],
   },
   footer: {
     navigationTitle: "导航",
