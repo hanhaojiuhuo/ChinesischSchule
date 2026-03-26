@@ -5,9 +5,9 @@ import SchoolLogo from "./SchoolLogo";
 
 const navLinks = [
   { de: "Home", zh: "首页", href: "#home" },
-  { de: "Über uns", zh: "关于我们", href: "#about" },
-  { de: "Kurse", zh: "课程", href: "#courses" },
+  { de: "Kursangebot", zh: "课程", href: "#courses" },
   { de: "Aktuelles", zh: "新闻", href: "#news" },
+  { de: "Über uns", zh: "关于我们", href: "#about" },
   { de: "Kontakt", zh: "联系", href: "#contact" },
 ];
 
