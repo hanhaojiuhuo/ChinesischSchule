@@ -18,6 +18,8 @@ interface AuthContextValue {
   isAdmin: boolean;
   currentUser: string | null;
   authLoading: boolean;
+  /** True when the current session was established via recovery mode. */
+  isRecoverySession: boolean;
   login: (
     username: string,
     password: string
@@ -47,6 +49,7 @@ const AuthContext = createContext<AuthContextValue>({
   isAdmin: false,
   currentUser: null,
   authLoading: true,
+  isRecoverySession: false,
   login: async () => ({ success: false }),
   logout: async () => {},
   addAdmin: async () => ({ success: false }),
@@ -115,14 +118,6 @@ function loadLocalAdmins(): AdminUser[] | null {
   return null;
 }
 
-function persistLocalAdmins(admins: AdminUser[]) {
-  try {
-    localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(admins));
-  } catch {
-    // ignore
-  }
-}
-
 async function fetchAdmins(): Promise<AdminUser[]> {
   try {
     const res = await fetch("/api/admins");
@@ -146,8 +141,8 @@ async function fetchAdmins(): Promise<AdminUser[]> {
 }
 
 async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
-  // Always persist locally so data survives page reloads even without Vercel.
-  persistLocalAdmins(admins);
+  // Persist to the server (Vercel Edge Config) only — not to localStorage —
+  // so admin accounts are stored centrally and not tied to a single browser.
   try {
     const res = await fetch("/api/admins", {
       method: "POST",
@@ -155,20 +150,15 @@ async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
       body: JSON.stringify(admins),
     });
     if (!res.ok) {
-      // API sync failed (e.g. session cookie not set, Vercel not configured),
-      // but the data was already written to localStorage — treat as success.
       console.warn(
-        `[AuthContext] Admin list saved to localStorage only (API returned ${res.status}).`
+        `[AuthContext] Failed to save admin list (API returned ${res.status}).`
       );
+      return false;
     }
     return true;
   } catch {
-    // Network error — local storage was already updated.
-    // Warn so developers can see the data is only stored locally.
-    console.warn(
-      "[AuthContext] Admin list saved to localStorage only (API unreachable)."
-    );
-    return true;
+    console.warn("[AuthContext] Failed to save admin list (API unreachable).");
+    return false;
   }
 }
 
@@ -176,6 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isRecoverySession, setIsRecoverySession] = useState(false);
 
   // Restore session on mount
   useEffect(() => {
@@ -249,6 +240,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return { success: true };
       }
+
+      // Normal login failed — try recovery mode (only active when
+      // RECOVERY_MODE=true is set in the deployment environment).
+      try {
+        const recovRes = await fetch("/api/recovery", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username }),
+        });
+        if (recovRes.ok) {
+          resetLoginFailures();
+          setIsAdmin(true);
+          setCurrentUser(username);
+          setIsRecoverySession(true);
+          try {
+            localStorage.setItem(SESSION_KEY, username);
+          } catch {
+            // ignore
+          }
+          return { success: true };
+        }
+      } catch {
+        // Recovery endpoint unreachable — fall through to failure
+      }
+
       const updated = { count: failures.count + 1, date: getTodayString() };
       persistLoginFailures(updated);
       const remaining = MAX_DAILY_ATTEMPTS - updated.count;
@@ -260,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     setIsAdmin(false);
     setCurrentUser(null);
+    setIsRecoverySession(false);
     try {
       localStorage.removeItem(SESSION_KEY);
     } catch {
@@ -403,6 +420,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin,
         currentUser,
         authLoading,
+        isRecoverySession,
         login,
         logout,
         addAdmin,
