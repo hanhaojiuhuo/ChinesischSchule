@@ -117,12 +117,24 @@ export default function AdminPage() {
   }, [auth, adminListKey]);
 
   async function handleLogin(e: React.FormEvent) {
-  e.preventDefault();
-  
-  // 绕过逻辑：直接清理错误并加载内容
-  setLoginError("");
-  setDraft(getContent(editLang));
-}
+    e.preventDefault();
+    setLoginError("");
+    const result = await auth.login(userInput.trim(), pwInput);
+    if (!result.success) {
+      if (result.blocked) {
+        setLoginError(
+          "登录已被暂时封锁 / Login temporarily blocked / Anmeldung vorübergehend gesperrt"
+        );
+      } else {
+        const rem = result.remainingAttempts ?? 0;
+        setLoginError(
+          rem > 0
+            ? `密码错误，还剩 ${rem} 次 / Wrong password, ${rem} attempt(s) left / Falsches Passwort, noch ${rem} Versuch(e)`
+            : "登录已被暂时封锁 / Login temporarily blocked / Anmeldung vorübergehend gesperrt"
+        );
+      }
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -415,6 +427,18 @@ export default function AdminPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {auth.isRecoverySession && (
+          <div className="mb-6 p-4 bg-amber-50 border-2 border-amber-400 rounded-lg text-sm text-amber-900">
+            <strong>⚠️ 恢复模式已激活 / Recovery Mode Active / Wiederherstellungsmodus aktiv</strong>
+            <p className="mt-1">
+              您正在通过恢复模式访问管理面板。请立即在下方【管理员管理】部分创建一个新管理员账户，然后在 Vercel 环境变量中删除 <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> 并重新部署。
+            </p>
+            <p className="mt-1 text-xs opacity-80">
+              You are logged in via recovery mode. Create a new admin account below, then remove <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> from your Vercel environment variables and redeploy. ·
+              Sie sind im Wiederherstellungsmodus angemeldet. Erstellen Sie unten ein neues Admin-Konto und entfernen Sie anschließend <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> aus den Vercel-Umgebungsvariablen.
+            </p>
+          </div>
+        )}
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
           <strong>Sprache bearbeiten / Editing language:</strong> {langLabels[editLang]} &nbsp;|&nbsp;
           Änderungen werden in der Vercel-Cloud gespeichert.
