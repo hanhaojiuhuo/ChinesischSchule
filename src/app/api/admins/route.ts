@@ -9,7 +9,7 @@ export interface AdminUser {
 }
 
 const DEFAULT_ADMINS: AdminUser[] = [
-  { username: "admin_yixin", password: "yixin" },
+  { username: "admin", password: "yixin" },
 ];
 
 const EDGE_CONFIG_KEY = "yixin-admins";
