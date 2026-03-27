@@ -91,7 +91,7 @@ export default function AdminPage() {
   const auth = useAuth();
 
   // Login form state
-  const [userInput, setUserInput] = useState("admin_yixin");
+  const [userInput, setUserInput] = useState("admin");
   const [pwInput, setPwInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showLoginPw, setShowLoginPw] = useState(false);
@@ -443,7 +443,7 @@ export default function AdminPage() {
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-                placeholder="admin_yixin"
+                placeholder="admin"
               />
             </div>
             <div>

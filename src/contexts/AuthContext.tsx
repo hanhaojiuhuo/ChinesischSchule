@@ -132,7 +132,7 @@ async function fetchAdmins(): Promise<AdminUser[]> {
       // If the API returned only the hardcoded default, prefer locally-saved
       // admins (set when Vercel Edge Config is not configured).
       const isDefault =
-        apiAdmins.length === 1 && apiAdmins[0].username === "admin_yixin";
+        apiAdmins.length === 1 && apiAdmins[0].username === "admin";
       if (isDefault) {
         const local = loadLocalAdmins();
         if (local) return local;
@@ -143,7 +143,7 @@ async function fetchAdmins(): Promise<AdminUser[]> {
     // ignore
   }
   // Fallback: local storage → hardcoded default
-  return loadLocalAdmins() ?? [{ username: "admin_yixin", password: "yixin" }];
+  return loadLocalAdmins() ?? [{ username: "admin", password: "yixin" }];
 }
 
 async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
