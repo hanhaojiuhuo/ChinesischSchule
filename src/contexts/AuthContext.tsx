@@ -288,10 +288,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsRecoverySession(true);
           try {
             localStorage.setItem(SESSION_KEY, username);
+            localStorage.setItem(RECOVERY_SESSION_KEY, "1");
           } catch {
             // ignore
           }
-          try { localStorage.setItem(RECOVERY_SESSION_KEY, "1"); } catch { /* ignore */ }
           return { success: true };
         }
       } catch {

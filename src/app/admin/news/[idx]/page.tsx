@@ -11,7 +11,9 @@ export default function AdminNewsEditPage() {
   const router = useRouter();
   const idxParam = params.idx as string;
   const isNew = idxParam === "new";
-  const idx = isNew ? -1 : parseInt(idxParam, 10);
+  const parsedIdx = isNew ? -1 : parseInt(idxParam, 10);
+  const idx = !isNew && isNaN(parsedIdx) ? -1 : parsedIdx;
+  const isInvalid = !isNew && isNaN(parsedIdx);
 
   const { getContent, saveContent } = useContent();
   const { isAdmin } = useAuth();
@@ -137,6 +139,10 @@ export default function AdminNewsEditPage() {
     return <div className="min-h-screen flex items-center justify-center text-gray-500">Redirecting…</div>;
   }
 
+  if (isInvalid) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-500">Ungültiger Index / Invalid index</div>;
+  }
+
   return (
     <div className="min-h-screen bg-[var(--school-gray)]">
       <div className="sticky top-0 z-40 bg-[var(--school-dark)] text-white px-4 py-3 flex items-center justify-between gap-4 shadow-md">
@@ -162,10 +168,11 @@ export default function AdminNewsEditPage() {
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         {/* Date */}
         <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label htmlFor="news-date" className="block text-sm font-semibold text-gray-700 mb-2">
             📅 Datum / Date / 日期 <span className="font-normal text-gray-400">(auto-generated if empty)</span>
           </label>
           <input
+            id="news-date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}

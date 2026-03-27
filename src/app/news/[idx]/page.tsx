@@ -14,8 +14,8 @@ export default function NewsDetailPage() {
 
   const de = getContent("de");
   const zh = getContent("zh");
-  const news = de.news.items[idx];
-  const zhNews = zh.news.items[idx];
+  const news = !isNaN(idx) ? de.news.items[idx] : undefined;
+  const zhNews = !isNaN(idx) ? zh.news.items[idx] : undefined;
 
   if (!news) {
     return (
