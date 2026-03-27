@@ -8,12 +8,30 @@ export interface CourseItem {
   desc: string;
 }
 
+export interface NewsTextBlock {
+  type: "text";
+  content: string;
+}
+
+export interface NewsImageBlock {
+  type: "image";
+  url: string;
+  caption?: string;
+}
+
+export type NewsBodyBlock = NewsTextBlock | NewsImageBlock;
+
 export interface NewsItem {
   date: string;
   title: string;
   body: string;
+  /** Flexible body blocks (text + images in any order). When present, `body` is ignored for rendering. */
+  bodyBlocks?: NewsBodyBlock[];
+  /** @deprecated Use bodyBlocks instead */
   imageUrl?: string;
+  /** @deprecated Use bodyBlocks instead */
   imageCaption?: string;
+  /** @deprecated Use bodyBlocks instead */
   imagePosition?: "before" | "after";
 }
 
@@ -357,3 +375,19 @@ const en: SiteContent = {
 };
 
 export const defaultTranslations: Record<Language, SiteContent> = { de, zh, en };
+
+/** Convert a NewsItem (possibly using legacy single-image fields) into bodyBlocks. */
+export function getNewsBodyBlocks(item: NewsItem): NewsBodyBlock[] {
+  if (item.bodyBlocks && item.bodyBlocks.length > 0) return item.bodyBlocks;
+  const blocks: NewsBodyBlock[] = [];
+  if (item.imageUrl && item.imagePosition !== "after") {
+    blocks.push({ type: "image", url: item.imageUrl, caption: item.imageCaption });
+  }
+  if (item.body) {
+    blocks.push({ type: "text", content: item.body });
+  }
+  if (item.imageUrl && item.imagePosition === "after") {
+    blocks.push({ type: "image", url: item.imageUrl, caption: item.imageCaption });
+  }
+  return blocks;
+}

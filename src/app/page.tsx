@@ -8,6 +8,7 @@ import SchoolLogo from "@/components/SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { SiteContent, CourseItem, NewsItem } from "@/i18n/translations";
+import { getNewsBodyBlocks } from "@/i18n/translations";
 import { defaultTranslations } from "@/i18n/translations";
 
 /* ─── Inline editable helpers ──────────────────────────────── */
@@ -189,7 +190,7 @@ export default function Home() {
 
   /* ── News management ─────────────────────────────────────── */
   function addNews() {
-    const blank: NewsItem = { date: "", title: "", body: "", imageUrl: "" };
+    const blank: NewsItem = { date: "", title: "", body: "", bodyBlocks: [{ type: "text", content: "" }] };
     setDraftDe((d) => ({ ...d, news: { ...d.news, items: [blank, ...d.news.items] } }));
     setDraftZh((d) => ({ ...d, news: { ...d.news, items: [blank, ...d.news.items] } }));
     setIsDirty(true);
@@ -752,42 +753,9 @@ export default function Home() {
                             />
                           </div>
                         )}
-                        <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">🖼 Image URL (optional)</label>
-                          <EditField
-                            value={n.imageUrl ?? ""}
-                            onChange={(v) => { updDeNews(i, "imageUrl", v); updZhNews(i, "imageUrl", v); }}
-                            className="text-xs text-gray-500 w-full"
-                            placeholder="https://example.com/photo.jpg"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">Image Caption (optional)</label>
-                          <EditField
-                            value={n.imageCaption ?? ""}
-                            onChange={(v) => { updDeNews(i, "imageCaption", v); updZhNews(i, "imageCaption", v); }}
-                            className="text-xs text-gray-500 w-full"
-                            placeholder="Caption for the image…"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">Image Position</label>
-                          <select
-                            value={n.imagePosition ?? "before"}
-                            onChange={(e) => { updDeNews(i, "imagePosition", e.target.value); updZhNews(i, "imagePosition", e.target.value); }}
-                            className="w-full bg-amber-50/30 border-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 text-xs text-gray-600 rounded-sm px-2 py-1"
-                          >
-                            <option value="before">Before text</option>
-                            <option value="after">After text</option>
-                          </select>
-                        </div>
-                        {n.imageUrl && (
-                          <img
-                            src={n.imageUrl}
-                            alt="Preview"
-                            className="w-full h-32 object-cover rounded border border-gray-200"
-                          />
-                        )}
+                        <p className="text-xs text-amber-500 italic">
+                          💡 Use the dedicated News Editor (/admin/news/{i}) for images & block editing.
+                        </p>
                       </div>
                     </EditBlock>
                   );
@@ -802,6 +770,9 @@ export default function Home() {
                         {pageItems.map((n, slot) => {
                           const actualIdx = newsPage * NEWS_PER_PAGE + slot;
                           const zhNews = zh.news.items[actualIdx];
+                          const blocks = getNewsBodyBlocks(n);
+                          const firstImage = blocks.find((b): b is import("@/i18n/translations").NewsImageBlock => b.type === "image");
+                          const firstText = blocks.find((b): b is import("@/i18n/translations").NewsTextBlock => b.type === "text");
                           return (
                             <Link
                               key={n.date + n.title + actualIdx}
@@ -809,15 +780,15 @@ export default function Home() {
                               className="block group"
                             >
                               <article className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                                {n.imageUrl && n.imagePosition !== "after" && (
+                                {firstImage && (
                                   <figure className="mb-4">
                                     <img
-                                      src={n.imageUrl}
-                                      alt={n.imageCaption ?? n.title}
+                                      src={firstImage.url}
+                                      alt={firstImage.caption ?? n.title}
                                       className="w-full h-48 object-cover rounded"
                                     />
-                                    {n.imageCaption && (
-                                      <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{n.imageCaption}</figcaption>
+                                    {firstImage.caption && (
+                                      <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{firstImage.caption}</figcaption>
                                     )}
                                   </figure>
                                 )}
@@ -827,19 +798,7 @@ export default function Home() {
                                 {zhNews && <h3 className="font-cn font-bold text-[var(--school-dark)] mt-1 group-hover:text-[var(--school-red)] transition-colors">{zhNews.title}</h3>}
                                 <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>
                                 {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{zhNews.body}</p>}
-                                <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{n.body}</p>
-                                {n.imageUrl && n.imagePosition === "after" && (
-                                  <figure className="mt-4">
-                                    <img
-                                      src={n.imageUrl}
-                                      alt={n.imageCaption ?? n.title}
-                                      className="w-full h-48 object-cover rounded"
-                                    />
-                                    {n.imageCaption && (
-                                      <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{n.imageCaption}</figcaption>
-                                    )}
-                                  </figure>
-                                )}
+                                <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{firstText ? firstText.content : n.body}</p>
                               </article>
                             </Link>
                           );
