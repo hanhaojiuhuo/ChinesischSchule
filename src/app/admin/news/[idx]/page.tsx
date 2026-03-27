@@ -116,7 +116,25 @@ export default function AdminNewsEditPage() {
     }
   }
 
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+  function validateImageFile(file: File): string | null {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      return "Only JPG, PNG, GIF, and WebP images are allowed. / Nur JPG, PNG, GIF und WebP Bilder erlaubt. / 仅支持 JPG、PNG、GIF、WebP 格式。";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return "File size must be under 5 MB. / Dateigröße muss unter 5 MB liegen. / 文件大小不能超过 5 MB。";
+    }
+    return null;
+  }
+
   async function handleUpload(file: File, lang: "de" | "zh", blockIdx: number) {
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setUploadError(validationError);
+      return;
+    }
     setUploadingIdx({ lang, idx: blockIdx });
     setUploadError("");
     try {
@@ -198,6 +216,8 @@ export default function AdminNewsEditPage() {
                       const file = e.dataTransfer.files?.[0];
                       if (file && file.type.startsWith("image/")) {
                         handleUpload(file, lang, bIdx);
+                      } else if (file) {
+                        setUploadError("Only JPG, PNG, GIF, and WebP images are allowed. / Nur JPG, PNG, GIF und WebP Bilder erlaubt. / 仅支持 JPG、PNG、GIF、WebP 格式。");
                       }
                     }}
                     onClick={() => {
@@ -218,6 +238,7 @@ export default function AdminNewsEditPage() {
                         <p className="text-2xl mb-1">📎</p>
                         <p className="text-sm text-gray-500">Drop image here or click to upload</p>
                         <p className="text-xs text-gray-400">Bild hierher ziehen oder klicken / 拖拽图片到此处或点击上传</p>
+                        <p className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WebP · max 5 MB</p>
                       </div>
                     )}
                   </div>
@@ -301,7 +322,7 @@ export default function AdminNewsEditPage() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/gif,image/webp"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
