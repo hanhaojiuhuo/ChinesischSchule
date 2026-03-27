@@ -189,30 +189,37 @@ export default function AdminNewsEditPage() {
               ) : (
                 <div className="border border-gray-200 rounded p-3 bg-gray-50">
                   <label className="block text-xs font-semibold text-gray-500 mb-1">🖼 Image</label>
-                  <input
-                    type="url"
-                    value={block.url}
-                    onChange={(e) => {
-                      setBlocks((prev) =>
-                        prev.map((b, i) => (i === bIdx ? { ...b, url: e.target.value } : b))
-                      );
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && file.type.startsWith("image/")) {
+                        handleUpload(file, lang, bIdx);
+                      }
                     }}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:border-[var(--school-red)]"
-                    placeholder="https://example.com/photo.jpg"
-                  />
-                  <div className="flex items-center gap-2 mb-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUploadingIdx({ lang, idx: bIdx });
-                        fileInputRef.current?.click();
-                      }}
-                      disabled={uploadingIdx !== null}
-                      className="px-3 py-1.5 bg-[var(--school-dark)] hover:bg-gray-700 disabled:opacity-60 text-white text-xs font-semibold rounded transition-colors"
-                    >
-                      {uploadingIdx?.lang === lang && uploadingIdx?.idx === bIdx ? "⏳ Uploading…" : "📎 Upload"}
-                    </button>
-                    {block.url && <span className="text-xs text-green-600">✓</span>}
+                    onClick={() => {
+                      setUploadingIdx({ lang, idx: bIdx });
+                      fileInputRef.current?.click();
+                    }}
+                    className="border-2 border-dashed border-gray-300 hover:border-[var(--school-red)] rounded-lg p-4 text-center cursor-pointer transition-colors mb-2"
+                  >
+                    {uploadingIdx?.lang === lang && uploadingIdx?.idx === bIdx ? (
+                      <p className="text-sm text-gray-500">⏳ Uploading… / 上传中…</p>
+                    ) : block.url ? (
+                      <div>
+                        <img src={block.url} alt={block.caption ?? ""} className="mx-auto max-h-40 object-cover rounded border border-gray-200 mb-2" />
+                        <p className="text-xs text-gray-400">Click or drop to replace / Klicken oder Bild hierher ziehen / 点击或拖拽替换图片</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-2xl mb-1">📎</p>
+                        <p className="text-sm text-gray-500">Drop image here or click to upload</p>
+                        <p className="text-xs text-gray-400">Bild hierher ziehen oder klicken / 拖拽图片到此处或点击上传</p>
+                      </div>
+                    )}
                   </div>
                   <input
                     type="text"
@@ -225,9 +232,6 @@ export default function AdminNewsEditPage() {
                     className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--school-red)]"
                     placeholder="Caption (optional) / Bildunterschrift"
                   />
-                  {block.url && (
-                    <img src={block.url} alt={block.caption ?? ""} className="mt-2 max-h-40 object-cover rounded border border-gray-200" />
-                  )}
                 </div>
               )}
             </div>

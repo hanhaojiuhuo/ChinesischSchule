@@ -59,6 +59,16 @@ export default function Footer() {
                 {de.contact.email}
               </a>
             </p>
+            {de.contact.phone && (
+              <p>
+                <a
+                  href={`tel:${de.contact.phone.replace(/\s/g, "")}`}
+                  className="hover:text-[var(--school-red)] transition-colors"
+                >
+                  {de.contact.phone}
+                </a>
+              </p>
+            )}
           </address>
         </div>
       </div>

@@ -18,6 +18,28 @@ const EDGE_CONFIG_KEY = "yixin-admins";
 /** Time-slot duration for HMAC-based code validity (10 minutes). */
 const CODE_SLOT_MS = 10 * 60 * 1000;
 
+/** Rate-limit: max attempts per email within 1 hour. */
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+/** In-memory rate-limit store (keyed by email). Reset on server restart. */
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+
+function checkRateLimit(key: string): { allowed: boolean; remaining: number; retryAfterMs: number } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(key, { count: 1, windowStart: now });
+    return { allowed: true, remaining: RATE_LIMIT_MAX - 1, retryAfterMs: 0 };
+  }
+  if (entry.count >= RATE_LIMIT_MAX) {
+    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - entry.windowStart);
+    return { allowed: false, remaining: 0, retryAfterMs };
+  }
+  entry.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count, retryAfterMs: 0 };
+}
+
 async function readAdmins(): Promise<AdminUser[]> {
   try {
     if (!process.env.EDGE_CONFIG) {
@@ -102,33 +124,50 @@ export async function POST(request: Request) {
       );
     }
 
-    /* ── Step 1: Request a reset code ─────────────────────────────── */
+    /* ── Step 1: Request a reset code (by email) ──────────────────── */
     if (action === "request") {
-      const { username } = body;
-      if (!username?.trim()) {
+      const { email } = body;
+      if (!email?.trim()) {
         return NextResponse.json(
-          { error: "Username is required" },
+          { error: "Email is required" },
           { status: 400 }
         );
       }
 
-      const admins = await readAdmins();
-      const admin = admins.find((a) => a.username === username.trim());
+      const normalizedEmail = email.trim().toLowerCase();
 
-      // Respond the same way regardless of whether the user exists, to avoid
-      // leaking account information.
-      if (!admin?.email) {
-        return NextResponse.json({ success: true });
+      // Rate limit by email
+      const rl = checkRateLimit(normalizedEmail);
+      if (!rl.allowed) {
+        const retryMinutes = Math.ceil(rl.retryAfterMs / 60000);
+        return NextResponse.json(
+          {
+            error: `Too many attempts. Please try again in ${retryMinutes} minute(s). / Zu viele Versuche. Bitte versuchen Sie es in ${retryMinutes} Minute(n) erneut. / 尝试次数过多，请在 ${retryMinutes} 分钟后重试。`,
+            rateLimited: true,
+            retryAfterMs: rl.retryAfterMs,
+          },
+          { status: 429 }
+        );
       }
 
-      const code = generateCode(username.trim(), apiKey);
+      const admins = await readAdmins();
+      const admin = admins.find(
+        (a) => a.email && a.email.toLowerCase() === normalizedEmail
+      );
+
+      // Always respond success to avoid leaking whether an email is registered
+      if (!admin) {
+        return NextResponse.json({ success: true, remaining: rl.remaining });
+      }
+
+      const code = generateCode(admin.username, apiKey);
       const fromEmail =
         process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
       const resend = new Resend(apiKey);
       const { error } = await resend.emails.send({
         from: fromEmail,
-        to: admin.email,
+        to: admin.email!,
         subject:
           "Passwort-Reset Verifizierungscode / Password Reset Code / 密码重置验证码",
         html: `
@@ -165,20 +204,33 @@ export async function POST(request: Request) {
         );
       }
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, remaining: rl.remaining });
     }
 
     /* ── Step 2: Verify a code (no password change yet) ───────────── */
     if (action === "verify") {
-      const { username, code } = body;
-      if (!username?.trim() || !code?.trim()) {
+      const { email, code } = body;
+      if (!email?.trim() || !code?.trim()) {
         return NextResponse.json(
-          { error: "Username and code are required" },
+          { error: "Email and code are required" },
           { status: 400 }
         );
       }
 
-      const valid = verifyCode(username.trim(), apiKey, code.trim());
+      const normalizedEmail = email.trim().toLowerCase();
+      const admins = await readAdmins();
+      const admin = admins.find(
+        (a) => a.email && a.email.toLowerCase() === normalizedEmail
+      );
+
+      if (!admin) {
+        return NextResponse.json(
+          { error: "Invalid or expired code" },
+          { status: 400 }
+        );
+      }
+
+      const valid = verifyCode(admin.username, apiKey, code.trim());
       if (!valid) {
         return NextResponse.json(
           { error: "Invalid or expired code" },
@@ -191,10 +243,10 @@ export async function POST(request: Request) {
 
     /* ── Step 3: Reset the password ───────────────────────────────── */
     if (action === "reset") {
-      const { username, code, newPassword } = body;
-      if (!username?.trim() || !code?.trim() || !newPassword) {
+      const { email, code, newPassword } = body;
+      if (!email?.trim() || !code?.trim() || !newPassword) {
         return NextResponse.json(
-          { error: "Username, code, and new password are required" },
+          { error: "Email, code, and new password are required" },
           { status: 400 }
         );
       }
@@ -206,23 +258,28 @@ export async function POST(request: Request) {
         );
       }
 
-      // Re-verify the code before applying the change
-      if (!verifyCode(username.trim(), apiKey, code.trim())) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const admins = await readAdmins();
+      const admin = admins.find(
+        (a) => a.email && a.email.toLowerCase() === normalizedEmail
+      );
+
+      if (!admin) {
         return NextResponse.json(
           { error: "Invalid or expired code" },
           { status: 400 }
         );
       }
 
-      const admins = await readAdmins();
-      const idx = admins.findIndex((a) => a.username === username.trim());
-      if (idx === -1) {
+      // Re-verify the code before applying the change
+      if (!verifyCode(admin.username, apiKey, code.trim())) {
         return NextResponse.json(
-          { error: "Admin account not found" },
-          { status: 404 }
+          { error: "Invalid or expired code" },
+          { status: 400 }
         );
       }
 
+      const idx = admins.findIndex((a) => a.username === admin.username);
       const updated = admins.map((a, i) =>
         i === idx ? { ...a, password: newPassword } : a
       );
@@ -239,7 +296,6 @@ export async function POST(request: Request) {
       }
 
       // Send confirmation email (best-effort — password is already saved)
-      const admin = admins[idx];
       if (admin.email) {
         const fromEmail =
           process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";

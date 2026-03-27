@@ -97,6 +97,18 @@ export default function AdminPage() {
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [, setLoginBlocked] = useState(false);
 
+  // Pre-fill username from last session (runs once on mount; userInput
+  // dependency intentionally omitted to avoid overwriting user edits)
+  useEffect(() => {
+    try {
+      const lastUser = localStorage.getItem("yixin-admin-session");
+      if (lastUser && !userInput) {
+        setUserInput(lastUser);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Draft content for the currently edited language
   const [draft, setDraft] = useState<SiteContent>(() => defaultTranslations["de"]);
   const [editLang, setEditLang] = useState<Language>("de");
@@ -128,12 +140,14 @@ export default function AdminPage() {
 
   // Forgot-password state (0=hidden, 1=request, 2=verify, 3=new-password, 4=done)
   const [forgotPwStep, setForgotPwStep] = useState(0);
-  const [forgotPwUsername, setForgotPwUsername] = useState("");
+  const [forgotPwEmail, setForgotPwEmail] = useState("");
   const [forgotPwCode, setForgotPwCode] = useState("");
   const [forgotPwNewPw, setForgotPwNewPw] = useState("");
   const [forgotPwNewPwConfirm, setForgotPwNewPwConfirm] = useState("");
   const [forgotPwError, setForgotPwError] = useState("");
   const [forgotPwLoading, setForgotPwLoading] = useState(false);
+  const [forgotPwResendCount, setForgotPwResendCount] = useState(0);
+  const [forgotPwRateLimited, setForgotPwRateLimited] = useState(false);
 
   // Admin list (loaded async from API)
   const [adminList, setAdminList] = useState<import("@/contexts/AuthContext").AdminUser[]>([]);
@@ -456,6 +470,8 @@ export default function AdminPage() {
                 setForgotPwCode("");
                 setForgotPwNewPw("");
                 setForgotPwNewPwConfirm("");
+                setForgotPwResendCount(0);
+                setForgotPwRateLimited(false);
               }}
               className="text-xs text-[var(--school-red)] underline hover:opacity-80 transition-opacity"
             >
@@ -475,25 +491,30 @@ export default function AdminPage() {
                 {forgotPwStep === 4 && "✅ 密码已重置 · Passwort zurückgesetzt · Password Reset"}
               </p>
 
-              {/* Step 1 – enter username */}
+              {/* Step 1 – enter email */}
               {forgotPwStep === 1 && (
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    if (!forgotPwUsername.trim()) return;
+                    if (!forgotPwEmail.trim()) return;
                     setForgotPwLoading(true);
                     setForgotPwError("");
+                    setForgotPwRateLimited(false);
                     try {
                       const res = await fetch("/api/password-reset", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "request", username: forgotPwUsername.trim() }),
+                        body: JSON.stringify({ action: "request", email: forgotPwEmail.trim() }),
                       });
                       const data = await res.json();
                       if (!res.ok) {
+                        if (data.rateLimited) {
+                          setForgotPwRateLimited(true);
+                        }
                         setForgotPwError(data.error ?? "Error");
                       } else {
                         setForgotPwStep(2);
+                        setForgotPwResendCount(0);
                       }
                     } catch {
                       setForgotPwError("Network error / Netzwerkfehler");
@@ -504,20 +525,27 @@ export default function AdminPage() {
                   className="space-y-2"
                 >
                   <p className="text-xs text-gray-600">
-                    DE: Geben Sie Ihren Benutzernamen ein. Falls eine E-Mail-Adresse hinterlegt ist, erhalten Sie einen Verifizierungscode.<br />
-                    EN: Enter your username. If an email address is on file, you will receive a verification code.<br />
-                    ZH: 请输入您的用户名。如果账户绑定了邮箱，您将收到验证码。
+                    DE: Geben Sie Ihre E-Mail-Adresse ein. Falls die Adresse im System hinterlegt ist, erhalten Sie einen Verifizierungscode.<br />
+                    EN: Enter your email address. If the address is on file, you will receive a verification code.<br />
+                    ZH: 请输入您的邮箱地址。如果该邮箱已注册，您将收到验证码。
                   </p>
                   <input
-                    type="text"
-                    value={forgotPwUsername}
-                    onChange={(e) => setForgotPwUsername(e.target.value)}
-                    placeholder="用户名 / Username / Benutzername"
+                    type="email"
+                    value={forgotPwEmail}
+                    onChange={(e) => setForgotPwEmail(e.target.value)}
+                    placeholder="E-Mail / Email / 邮箱"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-                    autoComplete="username"
+                    autoComplete="email"
                     required
                   />
                   {forgotPwError && <p className="text-xs text-red-600">{forgotPwError}</p>}
+                  {forgotPwRateLimited && (
+                    <p className="text-xs text-amber-600">
+                      DE: Bitte kontaktieren Sie einen Administrator, falls Sie keinen Zugang erhalten.<br />
+                      EN: Please contact an administrator if you are unable to reset your password.<br />
+                      ZH: 如果无法重置密码，请联系管理员。
+                    </p>
+                  )}
                   <button
                     type="submit"
                     disabled={forgotPwLoading}
@@ -540,7 +568,7 @@ export default function AdminPage() {
                       const res = await fetch("/api/password-reset", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "verify", username: forgotPwUsername.trim(), code: forgotPwCode.trim() }),
+                        body: JSON.stringify({ action: "verify", email: forgotPwEmail.trim(), code: forgotPwCode.trim() }),
                       });
                       const data = await res.json();
                       if (!res.ok) {
@@ -557,9 +585,9 @@ export default function AdminPage() {
                   className="space-y-2"
                 >
                   <p className="text-xs text-gray-600">
-                    DE: Ein Code wurde an Ihre hinterlegte E-Mail gesendet (gültig 20 Min.).<br />
-                    EN: A code was sent to your registered email address (valid 20 min).<br />
-                    ZH: 验证码已发送到您的绑定邮箱（有效期 20 分钟）。
+                    DE: Falls die E-Mail-Adresse im System registriert ist, wurde ein Verifizierungscode gesendet (gültig 20 Min.).<br />
+                    EN: If the email is registered in the system, a verification code was sent (valid 20 min).<br />
+                    ZH: 如果该邮箱已在系统中注册，验证码已发送（有效期 20 分钟）。
                   </p>
                   <input
                     type="text"
@@ -581,6 +609,55 @@ export default function AdminPage() {
                   >
                     {forgotPwLoading ? "⏳ …" : "验证 / Bestätigen / Verify"}
                   </button>
+                  {/* Retry / Resend code */}
+                  <button
+                    type="button"
+                    disabled={forgotPwLoading || forgotPwRateLimited}
+                    onClick={async () => {
+                      setForgotPwLoading(true);
+                      setForgotPwError("");
+                      setForgotPwRateLimited(false);
+                      try {
+                        const res = await fetch("/api/password-reset", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "request", email: forgotPwEmail.trim() }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                          if (data.rateLimited) {
+                            setForgotPwRateLimited(true);
+                          }
+                          setForgotPwError(data.error ?? "Error");
+                        } else {
+                          setForgotPwResendCount((c) => c + 1);
+                          setForgotPwCode("");
+                          setForgotPwError("");
+                        }
+                      } catch {
+                        setForgotPwError("Network error / Netzwerkfehler");
+                      } finally {
+                        setForgotPwLoading(false);
+                      }
+                    }}
+                    className="w-full text-xs text-[var(--school-red)] underline hover:opacity-80 disabled:opacity-40"
+                  >
+                    {forgotPwResendCount > 0
+                      ? `🔁 Code erneut gesendet (${forgotPwResendCount}×) / Resent / 已重发`
+                      : "🔁 Code erneut senden / Resend code / 重新发送验证码"}
+                  </button>
+                  {forgotPwRateLimited && (
+                    <p className="text-xs text-amber-600">
+                      DE: Zu viele Versuche. Bitte kontaktieren Sie einen Administrator.<br />
+                      EN: Too many attempts. Please contact an administrator.<br />
+                      ZH: 尝试次数过多，请联系管理员。
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400">
+                    DE: Kein Code erhalten? Prüfen Sie Ihren Spam-Ordner oder kontaktieren Sie den Administrator.<br />
+                    EN: Didn&apos;t receive a code? Check your spam folder or contact the administrator.<br />
+                    ZH: 没收到验证码？请检查垃圾邮件或联系管理员。
+                  </p>
                   <button
                     type="button"
                     onClick={() => { setForgotPwStep(1); setForgotPwError(""); setForgotPwCode(""); }}
@@ -612,7 +689,7 @@ export default function AdminPage() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           action: "reset",
-                          username: forgotPwUsername.trim(),
+                          email: forgotPwEmail.trim(),
                           code: forgotPwCode.trim(),
                           newPassword: forgotPwNewPw,
                         }),
@@ -688,11 +765,13 @@ export default function AdminPage() {
                     type="button"
                     onClick={() => {
                       setForgotPwStep(0);
-                      setForgotPwUsername("");
+                      setForgotPwEmail("");
                       setForgotPwCode("");
                       setForgotPwNewPw("");
                       setForgotPwNewPwConfirm("");
                       setForgotPwError("");
+                      setForgotPwResendCount(0);
+                      setForgotPwRateLimited(false);
                     }}
                     className="text-xs text-[var(--school-red)] underline hover:opacity-80"
                   >
@@ -1009,6 +1088,8 @@ export default function AdminPage() {
             <Field label="Address title" value={draft.contact.addressTitle} onChange={(v) => updateContact("addressTitle", v)} />
             <Field label="Email title" value={draft.contact.emailTitle} onChange={(v) => updateContact("emailTitle", v)} />
             <Field label="Email address" value={draft.contact.email} onChange={(v) => updateContact("email", v)} />
+            <Field label="Phone title" value={draft.contact.phoneTitle} onChange={(v) => updateContact("phoneTitle", v)} />
+            <Field label="Phone number" value={draft.contact.phone} onChange={(v) => updateContact("phone", v)} />
           </div>
           <div className="mt-2">
             <label className="block text-xs font-semibold text-gray-600 mb-1">Address lines (one per line)</label>
