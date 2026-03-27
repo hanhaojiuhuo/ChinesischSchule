@@ -1,0 +1,285 @@
+import { NextResponse } from "next/server";
+import { createHmac } from "crypto";
+import { createClient } from "@vercel/edge-config";
+import { Resend } from "resend";
+
+interface AdminUser {
+  username: string;
+  password: string;
+  email?: string;
+}
+
+const DEFAULT_ADMINS: AdminUser[] = [
+  { username: "admin_yixin", password: "yixin" },
+];
+
+const EDGE_CONFIG_KEY = "yixin-admins";
+
+/** Time-slot duration for HMAC-based code validity (10 minutes). */
+const CODE_SLOT_MS = 10 * 60 * 1000;
+
+async function readAdmins(): Promise<AdminUser[]> {
+  try {
+    if (!process.env.EDGE_CONFIG) {
+      return DEFAULT_ADMINS;
+    }
+    const client = createClient(process.env.EDGE_CONFIG);
+    const admins = await client.get<AdminUser[]>(EDGE_CONFIG_KEY);
+    if (Array.isArray(admins) && admins.length > 0) {
+      return admins;
+    }
+  } catch {
+    // fall through to defaults
+  }
+  return DEFAULT_ADMINS;
+}
+
+async function writeAdmins(admins: AdminUser[]): Promise<boolean> {
+  if (!process.env.VERCEL_API_TOKEN || !process.env.EDGE_CONFIG_ID) {
+    return false;
+  }
+  try {
+    const res = await fetch(
+      `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/items`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: [{ operation: "upsert", key: EDGE_CONFIG_KEY, value: admins }],
+        }),
+      }
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Generate a 6-digit HMAC-based code tied to a username and a 10-minute time
+ * slot. Stateless – no server-side storage required.
+ * Domain separation ("password-reset") is included in the HMAC message so the
+ * raw API key can be used directly as the HMAC secret without modification.
+ */
+function generateCode(username: string, secret: string): string {
+  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
+  const mac = createHmac("sha256", secret);
+  mac.update(`password-reset:${username}:${slot}`);
+  const num = parseInt(mac.digest("hex").slice(0, 8), 16);
+  return String(num % 1_000_000).padStart(6, "0");
+}
+
+/**
+ * Verify a code against the current and previous time slot so codes remain
+ * valid for up to 20 minutes regardless of when the user acts.
+ */
+function verifyCode(username: string, secret: string, code: string): boolean {
+  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
+  for (const s of [slot, slot - 1]) {
+    const mac = createHmac("sha256", secret);
+    mac.update(`password-reset:${username}:${s}`);
+    const num = parseInt(mac.digest("hex").slice(0, 8), 16);
+    if (String(num % 1_000_000).padStart(6, "0") === code) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as Record<string, string>;
+    const { action } = body;
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Email service not configured (RESEND_API_KEY missing)" },
+        { status: 503 }
+      );
+    }
+
+    /* ── Step 1: Request a reset code ─────────────────────────────── */
+    if (action === "request") {
+      const { username } = body;
+      if (!username?.trim()) {
+        return NextResponse.json(
+          { error: "Username is required" },
+          { status: 400 }
+        );
+      }
+
+      const admins = await readAdmins();
+      const admin = admins.find((a) => a.username === username.trim());
+
+      // Respond the same way regardless of whether the user exists, to avoid
+      // leaking account information.
+      if (!admin?.email) {
+        return NextResponse.json({ success: true });
+      }
+
+      const code = generateCode(username.trim(), apiKey);
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+
+      const resend = new Resend(apiKey);
+      const { error } = await resend.emails.send({
+        from: fromEmail,
+        to: admin.email,
+        subject:
+          "Passwort-Reset Verifizierungscode / Password Reset Code / 密码重置验证码",
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+            <h2 style="color:#c0392b">
+              YiXin 中文学校 · Chinesisch Schule Heilbronn
+            </h2>
+            <h3>Passwort-Reset / Password Reset / 密码重置</h3>
+            <p>
+              <strong>DE:</strong> Ihr Verifizierungscode lautet:<br>
+              <strong>EN:</strong> Your verification code is:<br>
+              <strong>ZH:</strong> 您的验证码为：
+            </p>
+            <p style="font-size:36px;letter-spacing:8px;font-weight:bold;color:#c0392b;text-align:center">
+              ${code}
+            </p>
+            <p style="color:#666;font-size:13px">
+              DE: Dieser Code ist 20 Minuten gültig.<br>
+              EN: This code is valid for 20 minutes.<br>
+              ZH: 此验证码有效期为 20 分钟。
+            </p>
+            <p style="color:#999;font-size:12px">
+              Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.<br>
+              If you did not request this, please ignore this email.<br>
+              如非本人操作，请忽略此邮件。
+            </p>
+          </div>`,
+      });
+
+      if (error) {
+        return NextResponse.json(
+          { error: "Failed to send email" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    /* ── Step 2: Verify a code (no password change yet) ───────────── */
+    if (action === "verify") {
+      const { username, code } = body;
+      if (!username?.trim() || !code?.trim()) {
+        return NextResponse.json(
+          { error: "Username and code are required" },
+          { status: 400 }
+        );
+      }
+
+      const valid = verifyCode(username.trim(), apiKey, code.trim());
+      if (!valid) {
+        return NextResponse.json(
+          { error: "Invalid or expired code" },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    /* ── Step 3: Reset the password ───────────────────────────────── */
+    if (action === "reset") {
+      const { username, code, newPassword } = body;
+      if (!username?.trim() || !code?.trim() || !newPassword) {
+        return NextResponse.json(
+          { error: "Username, code, and new password are required" },
+          { status: 400 }
+        );
+      }
+
+      if (newPassword.length < 6) {
+        return NextResponse.json(
+          { error: "Password must be at least 6 characters" },
+          { status: 400 }
+        );
+      }
+
+      // Re-verify the code before applying the change
+      if (!verifyCode(username.trim(), apiKey, code.trim())) {
+        return NextResponse.json(
+          { error: "Invalid or expired code" },
+          { status: 400 }
+        );
+      }
+
+      const admins = await readAdmins();
+      const idx = admins.findIndex((a) => a.username === username.trim());
+      if (idx === -1) {
+        return NextResponse.json(
+          { error: "Admin account not found" },
+          { status: 404 }
+        );
+      }
+
+      const updated = admins.map((a, i) =>
+        i === idx ? { ...a, password: newPassword } : a
+      );
+
+      const saved = await writeAdmins(updated);
+      if (!saved) {
+        return NextResponse.json(
+          {
+            error:
+              "Password reset requires Vercel Edge Config to be configured (VERCEL_API_TOKEN / EDGE_CONFIG_ID missing)",
+          },
+          { status: 503 }
+        );
+      }
+
+      // Send confirmation email (best-effort — password is already saved)
+      const admin = admins[idx];
+      if (admin.email) {
+        const fromEmail =
+          process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+        const resend = new Resend(apiKey);
+        const { error: emailError } = await resend.emails.send({
+          from: fromEmail,
+          to: admin.email,
+          subject:
+            "Passwort erfolgreich geändert / Password Changed / 密码已更改",
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+              <h2 style="color:#c0392b">
+                YiXin 中文学校 · Chinesisch Schule Heilbronn
+              </h2>
+              <h3>Passwort erfolgreich geändert / Password Changed / 密码已更改</h3>
+              <p>
+                <strong>DE:</strong> Das Passwort Ihres Admin-Kontos wurde erfolgreich geändert.<br>
+                <strong>EN:</strong> Your admin account password has been successfully changed.<br>
+                <strong>ZH:</strong> 您的管理员账户密码已成功更改。
+              </p>
+              <p style="color:#666;font-size:13px">
+                DE: Falls Sie diese Änderung nicht vorgenommen haben, wenden Sie sich sofort an einen anderen Administrator.<br>
+                EN: If you did not make this change, contact another administrator immediately.<br>
+                ZH: 如非本人操作，请立即联系其他管理员。
+              </p>
+            </div>`,
+        });
+        if (emailError) {
+          console.warn(
+            "[password-reset] Confirmation email failed to send:",
+            emailError
+          );
+        }
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
+}

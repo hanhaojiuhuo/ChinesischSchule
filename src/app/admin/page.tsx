@@ -117,8 +117,14 @@ export default function AdminPage() {
   // Remove-admin feedback
   const [removeAdminMsg, setRemoveAdminMsg] = useState("");
 
-  // Forgot-password state
-  const [showForgotPw, setShowForgotPw] = useState(false);
+  // Forgot-password state (0=hidden, 1=request, 2=verify, 3=new-password, 4=done)
+  const [forgotPwStep, setForgotPwStep] = useState(0);
+  const [forgotPwUsername, setForgotPwUsername] = useState("");
+  const [forgotPwCode, setForgotPwCode] = useState("");
+  const [forgotPwNewPw, setForgotPwNewPw] = useState("");
+  const [forgotPwNewPwConfirm, setForgotPwNewPwConfirm] = useState("");
+  const [forgotPwError, setForgotPwError] = useState("");
+  const [forgotPwLoading, setForgotPwLoading] = useState(false);
 
   // Admin list (loaded async from API)
   const [adminList, setAdminList] = useState<import("@/contexts/AuthContext").AdminUser[]>([]);
@@ -410,26 +416,252 @@ export default function AdminPage() {
           <div className="mt-4 text-center">
             <button
               type="button"
-              onClick={() => setShowForgotPw((v) => !v)}
+              onClick={() => {
+                setForgotPwStep((s) => (s === 0 ? 1 : 0));
+                setForgotPwError("");
+                setForgotPwCode("");
+                setForgotPwNewPw("");
+                setForgotPwNewPwConfirm("");
+              }}
               className="text-xs text-[var(--school-red)] underline hover:opacity-80 transition-opacity"
             >
               忘记密码？/ Passwort vergessen? / Forgot password?
             </button>
           </div>
-          {showForgotPw && (
-            <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 space-y-2">
-              <p className="font-semibold">
-                🔐 密码重置说明 / Passwort-Reset / Password Reset
+
+          {/* ── Forgot-password multi-step form ── */}
+          {forgotPwStep > 0 && (
+            <div className="mt-3 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
+              {/* Step indicator */}
+              <p className="text-xs font-semibold text-gray-700 text-center">
+                🔐{" "}
+                {forgotPwStep === 1 && "密码重置 · Passwort-Reset · Password Reset"}
+                {forgotPwStep === 2 && "输入验证码 · Code eingeben · Enter Code"}
+                {forgotPwStep === 3 && "设置新密码 · Neues Passwort · New Password"}
+                {forgotPwStep === 4 && "✅ 密码已重置 · Passwort zurückgesetzt · Password Reset"}
               </p>
-              <p>
-                <strong>DE:</strong> Bitten Sie einen anderen Administrator, Ihr Passwort im Admin-Panel zurückzusetzen (Bereich &bdquo;Administratoren verwalten&rdquo;). Falls Sie der einzige Administrator sind, aktivieren Sie den Wiederherstellungsmodus (<code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code>) in den Vercel-Umgebungsvariablen.
-              </p>
-              <p>
-                <strong>ZH:</strong> 请联系其他管理员，在管理面板的「管理员管理」中重置您的密码。若您是唯一管理员，请在 Vercel 环境变量中设置 <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> 并重新部署以进入恢复模式。
-              </p>
-              <p>
-                <strong>EN:</strong> Ask another administrator to reset your password in the Admin Panel under &quot;Manage Administrators&quot;. If you are the sole administrator, set <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> in your Vercel environment variables and redeploy to enter recovery mode.
-              </p>
+
+              {/* Step 1 – enter username */}
+              {forgotPwStep === 1 && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!forgotPwUsername.trim()) return;
+                    setForgotPwLoading(true);
+                    setForgotPwError("");
+                    try {
+                      const res = await fetch("/api/password-reset", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "request", username: forgotPwUsername.trim() }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        setForgotPwError(data.error ?? "Error");
+                      } else {
+                        setForgotPwStep(2);
+                      }
+                    } catch {
+                      setForgotPwError("Network error / Netzwerkfehler");
+                    } finally {
+                      setForgotPwLoading(false);
+                    }
+                  }}
+                  className="space-y-2"
+                >
+                  <p className="text-xs text-gray-600">
+                    DE: Geben Sie Ihren Benutzernamen ein. Falls eine E-Mail-Adresse hinterlegt ist, erhalten Sie einen Verifizierungscode.<br />
+                    EN: Enter your username. If an email address is on file, you will receive a verification code.<br />
+                    ZH: 请输入您的用户名。如果账户绑定了邮箱，您将收到验证码。
+                  </p>
+                  <input
+                    type="text"
+                    value={forgotPwUsername}
+                    onChange={(e) => setForgotPwUsername(e.target.value)}
+                    placeholder="用户名 / Username / Benutzername"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    autoComplete="username"
+                    required
+                  />
+                  {forgotPwError && <p className="text-xs text-red-600">{forgotPwError}</p>}
+                  <button
+                    type="submit"
+                    disabled={forgotPwLoading}
+                    className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
+                  >
+                    {forgotPwLoading ? "⏳ …" : "发送验证码 / Code senden / Send Code"}
+                  </button>
+                </form>
+              )}
+
+              {/* Step 2 – enter verification code */}
+              {forgotPwStep === 2 && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!forgotPwCode.trim()) return;
+                    setForgotPwLoading(true);
+                    setForgotPwError("");
+                    try {
+                      const res = await fetch("/api/password-reset", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "verify", username: forgotPwUsername.trim(), code: forgotPwCode.trim() }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        setForgotPwError(data.error ?? "Invalid code / Ungültiger Code / 验证码无效");
+                      } else {
+                        setForgotPwStep(3);
+                      }
+                    } catch {
+                      setForgotPwError("Network error / Netzwerkfehler");
+                    } finally {
+                      setForgotPwLoading(false);
+                    }
+                  }}
+                  className="space-y-2"
+                >
+                  <p className="text-xs text-gray-600">
+                    DE: Ein Code wurde an Ihre hinterlegte E-Mail gesendet (gültig 20 Min.).<br />
+                    EN: A code was sent to your registered email address (valid 20 min).<br />
+                    ZH: 验证码已发送到您的绑定邮箱（有效期 20 分钟）。
+                  </p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    value={forgotPwCode}
+                    onChange={(e) => setForgotPwCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="6-stelliger Code / 6-digit code / 6位验证码"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center tracking-widest focus:outline-none focus:border-[var(--school-red)]"
+                    autoComplete="one-time-code"
+                    required
+                  />
+                  {forgotPwError && <p className="text-xs text-red-600">{forgotPwError}</p>}
+                  <button
+                    type="submit"
+                    disabled={forgotPwLoading}
+                    className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
+                  >
+                    {forgotPwLoading ? "⏳ …" : "验证 / Bestätigen / Verify"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotPwStep(1); setForgotPwError(""); setForgotPwCode(""); }}
+                    className="w-full text-xs text-gray-500 underline hover:opacity-80"
+                  >
+                    ← 返回 / Zurück / Back
+                  </button>
+                </form>
+              )}
+
+              {/* Step 3 – enter new password */}
+              {forgotPwStep === 3 && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (forgotPwNewPw.length < 6) {
+                      setForgotPwError("至少6个字符 / Min. 6 Zeichen / Min 6 characters");
+                      return;
+                    }
+                    if (forgotPwNewPw !== forgotPwNewPwConfirm) {
+                      setForgotPwError("密码不匹配 / Passwörter stimmen nicht überein / Passwords do not match");
+                      return;
+                    }
+                    setForgotPwLoading(true);
+                    setForgotPwError("");
+                    try {
+                      const res = await fetch("/api/password-reset", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "reset",
+                          username: forgotPwUsername.trim(),
+                          code: forgotPwCode.trim(),
+                          newPassword: forgotPwNewPw,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        setForgotPwError(data.error ?? "Error");
+                      } else {
+                        // Clear any stale local admin cache so next login
+                        // fetches the updated list from the server.
+                        try { localStorage.removeItem("yixin-admins"); } catch { /* ignore */ }
+                        setForgotPwStep(4);
+                      }
+                    } catch {
+                      setForgotPwError("Network error / Netzwerkfehler");
+                    } finally {
+                      setForgotPwLoading(false);
+                    }
+                  }}
+                  className="space-y-2"
+                >
+                  <p className="text-xs text-gray-600">
+                    DE: Legen Sie Ihr neues Passwort fest (mind. 6 Zeichen).<br />
+                    EN: Set your new password (minimum 6 characters).<br />
+                    ZH: 请设置新密码（至少6个字符）。
+                  </p>
+                  <input
+                    type="password"
+                    value={forgotPwNewPw}
+                    onChange={(e) => setForgotPwNewPw(e.target.value)}
+                    placeholder="新密码 / Neues Passwort / New password"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                  />
+                  <input
+                    type="password"
+                    value={forgotPwNewPwConfirm}
+                    onChange={(e) => setForgotPwNewPwConfirm(e.target.value)}
+                    placeholder="确认密码 / Passwort bestätigen / Confirm password"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    autoComplete="new-password"
+                    required
+                  />
+                  {forgotPwError && <p className="text-xs text-red-600">{forgotPwError}</p>}
+                  <button
+                    type="submit"
+                    disabled={forgotPwLoading}
+                    className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
+                  >
+                    {forgotPwLoading ? "⏳ …" : "保存新密码 / Speichern / Save"}
+                  </button>
+                </form>
+              )}
+
+              {/* Step 4 – success */}
+              {forgotPwStep === 4 && (
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-green-700 font-semibold">
+                    密码已成功重置！/ Passwort erfolgreich zurückgesetzt! / Password reset successfully!
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    DE: Sie erhalten eine Bestätigungs-E-Mail. Sie können sich jetzt mit Ihrem neuen Passwort anmelden.<br />
+                    EN: A confirmation email has been sent. You can now log in with your new password.<br />
+                    ZH: 确认邮件已发送。您现在可以使用新密码登录。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotPwStep(0);
+                      setForgotPwUsername("");
+                      setForgotPwCode("");
+                      setForgotPwNewPw("");
+                      setForgotPwNewPwConfirm("");
+                      setForgotPwError("");
+                    }}
+                    className="text-xs text-[var(--school-red)] underline hover:opacity-80"
+                  >
+                    ← 返回登录 / Zurück zur Anmeldung / Back to Login
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
