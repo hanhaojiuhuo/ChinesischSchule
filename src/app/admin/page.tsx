@@ -48,15 +48,34 @@ function Field({
 function SectionCard({
   title,
   children,
+  onSave,
+  saveStatus = "idle",
 }: {
   title: string;
   children: React.ReactNode;
+  onSave?: () => void;
+  saveStatus?: "idle" | "saving" | "saved";
 }) {
   return (
     <div className="border border-gray-200 rounded-lg p-5 mb-6 bg-white shadow-sm">
-      <h3 className="font-bold text-[var(--school-dark)] text-base mb-4 pb-2 border-b border-gray-100">
-        {title}
-      </h3>
+      <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-4">
+        <h3 className="font-bold text-[var(--school-dark)] text-base">
+          {title}
+        </h3>
+        {onSave && (
+          <button
+            onClick={onSave}
+            disabled={saveStatus === "saving"}
+            className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-xs font-semibold rounded transition-colors"
+          >
+            {saveStatus === "saving"
+              ? "⏳ …"
+              : saveStatus === "saved"
+              ? "✓ Gespeichert!"
+              : "💾 Speichern"}
+          </button>
+        )}
+      </div>
       {children}
     </div>
   );
@@ -108,6 +127,10 @@ export default function AdminPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Per-section save status
+  type SaveStatus = "idle" | "saving" | "saved";
+  const [sectionStatus, setSectionStatus] = useState<Record<string, SaveStatus>>({});
+
   // When edit language changes, load its content into the draft
   useEffect(() => {
     setDraft(getContent(editLang));
@@ -152,6 +175,17 @@ export default function AdminPage() {
     if (confirm("Alle Änderungen zurücksetzen? / Reset all changes? / 重置所有更改？")) {
       await resetContent(editLang);
       setDraft(defaultTranslations[editLang]);
+    }
+  }
+
+  async function handleSectionSave(sectionKey: string) {
+    setSectionStatus((s) => ({ ...s, [sectionKey]: "saving" }));
+    try {
+      await saveContent(editLang, draft);
+      setSectionStatus((s) => ({ ...s, [sectionKey]: "saved" }));
+      setTimeout(() => setSectionStatus((s) => ({ ...s, [sectionKey]: "idle" })), 2500);
+    } catch {
+      setSectionStatus((s) => ({ ...s, [sectionKey]: "idle" }));
     }
   }
 
@@ -487,14 +521,14 @@ export default function AdminPage() {
         </div>
 
         {/* ── School identity ─────────────────────────────── */}
-        <SectionCard title="🏫 Schulinfo / School Info / 学校信息">
+        <SectionCard title="🏫 Schulinfo / School Info / 学校信息" onSave={() => handleSectionSave("schoolInfo")} saveStatus={sectionStatus["schoolInfo"]}>
           <Field label="School Name (full)" value={draft.schoolName} onChange={(v) => setField("schoolName", v)} />
           <Field label="School Name (short)" value={draft.schoolNameShort} onChange={(v) => setField("schoolNameShort", v)} />
           <Field label="School Subtitle" value={draft.schoolSubtitle} onChange={(v) => setField("schoolSubtitle", v)} />
         </SectionCard>
 
         {/* ── Navigation ──────────────────────────────────── */}
-        <SectionCard title="🔗 Navigation">
+        <SectionCard title="🔗 Navigation" onSave={() => handleSectionSave("nav")} saveStatus={sectionStatus["nav"]}>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {(Object.keys(draft.nav) as (keyof SiteContent["nav"])[]).map((key) => (
               <Field key={key} label={key} value={draft.nav[key]} onChange={(v) => updateNav(key, v)} />
@@ -503,7 +537,7 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── Hero ────────────────────────────────────────── */}
-        <SectionCard title="🌟 Hero Section">
+        <SectionCard title="🌟 Hero Section" onSave={() => handleSectionSave("hero")} saveStatus={sectionStatus["hero"]}>
           <Field label="Tagline (main)" value={draft.hero.tagline} onChange={(v) => updateHero("tagline", v)} />
           <Field label="Tagline 2 (sub)" value={draft.hero.tagline2} onChange={(v) => updateHero("tagline2", v)} />
           <div className="grid grid-cols-2 gap-3">
@@ -513,7 +547,7 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── About ───────────────────────────────────────── */}
-        <SectionCard title="ℹ️ About Section / Über uns / 关于我们">
+        <SectionCard title="ℹ️ About Section / Über uns / 关于我们" onSave={() => handleSectionSave("about")} saveStatus={sectionStatus["about"]}>
           <Field label="Section title" value={draft.about.sectionTitle} onChange={(v) => updateAbout("sectionTitle", v)} />
           <Field label="Description paragraph 1" value={draft.about.desc1} onChange={(v) => updateAbout("desc1", v)} multiline />
           <Field label="Description paragraph 2" value={draft.about.desc2} onChange={(v) => updateAbout("desc2", v)} multiline />
@@ -532,7 +566,7 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── Courses ─────────────────────────────────────── */}
-        <SectionCard title="📚 Courses / Kurse / 课程">
+        <SectionCard title="📚 Courses / Kurse / 课程" onSave={() => handleSectionSave("courses")} saveStatus={sectionStatus["courses"]}>
           <Field
             label="Section title"
             value={draft.courses.sectionTitle}
@@ -564,7 +598,7 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── News ────────────────────────────────────────── */}
-        <SectionCard title="📰 News / Aktuelles / 学校新闻">
+        <SectionCard title="📰 News / Aktuelles / 学校新闻" onSave={() => handleSectionSave("news")} saveStatus={sectionStatus["news"]}>
           <Field
             label="Section title"
             value={draft.news.sectionTitle}
@@ -605,7 +639,7 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── Contact ─────────────────────────────────────── */}
-        <SectionCard title="📍 Contact / Kontakt / 联系我们">
+        <SectionCard title="📍 Contact / Kontakt / 联系我们" onSave={() => handleSectionSave("contact")} saveStatus={sectionStatus["contact"]}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Section title" value={draft.contact.sectionTitle} onChange={(v) => updateContact("sectionTitle", v)} />
             <Field label="Address title" value={draft.contact.addressTitle} onChange={(v) => updateContact("addressTitle", v)} />
@@ -623,7 +657,7 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── Footer labels ────────────────────────────────── */}
-        <SectionCard title="🔻 Footer">
+        <SectionCard title="🔻 Footer" onSave={() => handleSectionSave("footer")} saveStatus={sectionStatus["footer"]}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Navigation section title" value={draft.footer.navigationTitle} onChange={(v) => setDraft((d) => ({ ...d, footer: { ...d.footer, navigationTitle: v } }))} />
             <Field label="Contact section title" value={draft.footer.contactTitle} onChange={(v) => setDraft((d) => ({ ...d, footer: { ...d.footer, contactTitle: v } }))} />
