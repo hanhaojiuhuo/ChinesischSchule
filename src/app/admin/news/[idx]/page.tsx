@@ -178,7 +178,7 @@ export default function AdminNewsEditPage() {
             onChange={(e) => setDate(e.target.value)}
             className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
           />
-          <p className="text-xs text-gray-400 mt-1">Leave empty to use today&apos;s date when saving.</p>
+          <p className="text-xs text-gray-400 mt-1">Leave empty to use today&apos;s date when saving. / Leer lassen, um das heutige Datum beim Speichern zu verwenden. / 保存时留空以使用今天的日期。</p>
         </div>
 
         {/* DE Title + Body */}
