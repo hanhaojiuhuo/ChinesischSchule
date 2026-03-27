@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
-import type { SiteContent, CourseItem, NewsItem } from "@/i18n/translations";
+import type { SiteContent, CourseItem, NewsItem, NewsImageBlock, NewsTextBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
 import { defaultTranslations } from "@/i18n/translations";
 
@@ -771,8 +771,8 @@ export default function Home() {
                           const actualIdx = newsPage * NEWS_PER_PAGE + slot;
                           const zhNews = zh.news.items[actualIdx];
                           const blocks = getNewsBodyBlocks(n);
-                          const firstImage = blocks.find((b): b is import("@/i18n/translations").NewsImageBlock => b.type === "image");
-                          const firstText = blocks.find((b): b is import("@/i18n/translations").NewsTextBlock => b.type === "text");
+                          const firstImage = blocks.find((b): b is NewsImageBlock => b.type === "image");
+                          const firstText = blocks.find((b): b is NewsTextBlock => b.type === "text");
                           return (
                             <Link
                               key={n.date + n.title + actualIdx}

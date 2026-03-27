@@ -95,7 +95,7 @@ export default function AdminPage() {
   const [pwInput, setPwInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showLoginPw, setShowLoginPw] = useState(false);
-  const [loginBlocked, setLoginBlocked] = useState(false);
+  const [, setLoginBlocked] = useState(false);
 
   // Draft content for the currently edited language
   const [draft, setDraft] = useState<SiteContent>(() => defaultTranslations["de"]);
