@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
@@ -95,6 +96,9 @@ export default function Home() {
   const [draftZh, setDraftZh] = useState<SiteContent>(() => defaultTranslations["zh"]);
   const [isDirty, setIsDirty] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [courseOffset, setCourseOffset] = useState(0);
+  const [newsPage, setNewsPage] = useState(0);
+  const NEWS_PER_PAGE = 4;
 
   // Sync drafts when ContentContext loads saved data from localStorage
   useEffect(() => {
@@ -114,6 +118,12 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
+
+  // Reset news page when content changes
+  useEffect(() => {
+    setNewsPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getContent]);
 
   const de = draftDe;
   const zh = draftZh;
@@ -437,148 +447,195 @@ export default function Home() {
               </h2>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {de.courses.items.map((c, i) => {
-                const zhCourse = zh.courses.items[i];
-                return isAdmin ? (
-                  <EditBlock
-                    key={i}
-                    label={`Course ${i + 1}`}
-                    onDelete={() => removeCourse(i)}
-                    className="border-t-4 border-[var(--school-red)] bg-[var(--school-gray)] rounded-lg p-6"
-                  >
-                    <div className="space-y-2 pt-2">
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">级别名称（中文）/ Level name (Chinese)</label>
-                        <EditField
-                          value={c.level}
-                          onChange={(v) => { updDeCourse(i, "level", v); updZhCourse(i, "level", v); }}
-                          className="font-cn text-xl font-bold text-[var(--school-dark)] w-full"
-                          placeholder="初级班…"
-                        />
-                      </div>
-                      {zhCourse && (
+            {isAdmin ? (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {de.courses.items.map((c, i) => {
+                  const zhCourse = zh.courses.items[i];
+                  return (
+                    <EditBlock
+                      key={i}
+                      label={`Course ${i + 1}`}
+                      onDelete={() => removeCourse(i)}
+                      className="border-t-4 border-[var(--school-red)] bg-[var(--school-gray)] rounded-lg p-6"
+                    >
+                      <div className="space-y-2 pt-2">
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文级别标签 / ZH level label</label>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">级别名称（中文）/ Level name (Chinese)</label>
                           <EditField
-                            value={zhCourse.levelLabel}
-                            onChange={(v) => updZhCourse(i, "levelLabel", v)}
-                            className="font-cn text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide w-full"
-                            placeholder="初级…"
+                            value={c.level}
+                            onChange={(v) => { updDeCourse(i, "level", v); updZhCourse(i, "level", v); }}
+                            className="font-cn text-xl font-bold text-[var(--school-dark)] w-full"
+                            placeholder="初级班…"
                           />
                         </div>
-                      )}
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文级别标签 / DE level label</label>
-                        <EditField
-                          value={c.levelLabel}
-                          onChange={(v) => updDeCourse(i, "levelLabel", v)}
-                          className="text-xs text-gray-400 w-full"
-                          placeholder="Anfänger…"
-                        />
-                      </div>
-                      {zhCourse && (
+                        {zhCourse && (
+                          <div>
+                            <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文级别标签 / ZH level label</label>
+                            <EditField
+                              value={zhCourse.levelLabel}
+                              onChange={(v) => updZhCourse(i, "levelLabel", v)}
+                              className="font-cn text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide w-full"
+                              placeholder="初级…"
+                            />
+                          </div>
+                        )}
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文上课时间 / ZH class time</label>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文级别标签 / DE level label</label>
                           <EditField
-                            value={zhCourse.time ?? ""}
-                            onChange={(v) => updZhCourse(i, "time", v)}
-                            className="font-cn text-xs text-[var(--school-red)] font-semibold w-full"
-                            placeholder="周六 09:00–10:30…"
+                            value={c.levelLabel}
+                            onChange={(v) => updDeCourse(i, "levelLabel", v)}
+                            className="text-xs text-gray-400 w-full"
+                            placeholder="Anfänger…"
                           />
                         </div>
-                      )}
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文上课时间 / DE class time</label>
-                        <EditField
-                          value={c.time ?? ""}
-                          onChange={(v) => updDeCourse(i, "time", v)}
-                          className="text-xs text-gray-400 w-full"
-                          placeholder="Sa. 09:00–10:30 Uhr…"
-                        />
-                      </div>
-                      {zhCourse && (
+                        {zhCourse && (
+                          <div>
+                            <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文上课时间 / ZH class time</label>
+                            <EditField
+                              value={zhCourse.time ?? ""}
+                              onChange={(v) => updZhCourse(i, "time", v)}
+                              className="font-cn text-xs text-[var(--school-red)] font-semibold w-full"
+                              placeholder="周六 09:00–10:30…"
+                            />
+                          </div>
+                        )}
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文年龄 / ZH ages</label>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文上课时间 / DE class time</label>
                           <EditField
-                            value={zhCourse.ages}
-                            onChange={(v) => updZhCourse(i, "ages", v)}
-                            className="font-cn text-xs text-gray-500 w-full"
-                            placeholder="6–10岁…"
+                            value={c.time ?? ""}
+                            onChange={(v) => updDeCourse(i, "time", v)}
+                            className="text-xs text-gray-400 w-full"
+                            placeholder="Sa. 09:00–10:30 Uhr…"
                           />
                         </div>
-                      )}
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文年龄 / DE ages</label>
-                        <EditField
-                          value={c.ages}
-                          onChange={(v) => updDeCourse(i, "ages", v)}
-                          className="text-xs text-gray-500 w-full"
-                          placeholder="6–10 Jahre…"
-                        />
-                      </div>
-                      {zhCourse && (
+                        {zhCourse && (
+                          <div>
+                            <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文年龄 / ZH ages</label>
+                            <EditField
+                              value={zhCourse.ages}
+                              onChange={(v) => updZhCourse(i, "ages", v)}
+                              className="font-cn text-xs text-gray-500 w-full"
+                              placeholder="6–10岁…"
+                            />
+                          </div>
+                        )}
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文描述 / ZH description</label>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文年龄 / DE ages</label>
+                          <EditField
+                            value={c.ages}
+                            onChange={(v) => updDeCourse(i, "ages", v)}
+                            className="text-xs text-gray-500 w-full"
+                            placeholder="6–10 Jahre…"
+                          />
+                        </div>
+                        {zhCourse && (
+                          <div>
+                            <label className="text-xs text-amber-600 font-semibold block mb-0.5">中文描述 / ZH description</label>
+                            <EditArea
+                              value={zhCourse.desc}
+                              onChange={(v) => updZhCourse(i, "desc", v)}
+                              className="font-cn text-sm text-gray-600 leading-relaxed"
+                              placeholder="中文描述…"
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文描述 / DE description</label>
                           <EditArea
-                            value={zhCourse.desc}
-                            onChange={(v) => updZhCourse(i, "desc", v)}
-                            className="font-cn text-sm text-gray-600 leading-relaxed"
-                            placeholder="中文描述…"
+                            value={c.desc}
+                            onChange={(v) => updDeCourse(i, "desc", v)}
+                            className="text-xs text-gray-500 leading-relaxed"
+                            placeholder="German description…"
                           />
                         </div>
-                      )}
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">德文描述 / DE description</label>
-                        <EditArea
-                          value={c.desc}
-                          onChange={(v) => updDeCourse(i, "desc", v)}
-                          className="text-xs text-gray-500 leading-relaxed"
-                          placeholder="German description…"
-                        />
                       </div>
-                    </div>
-                  </EditBlock>
-                ) : (
-                  <div
-                    key={c.level}
-                    className="border-t-4 border-[var(--school-red)] bg-[var(--school-gray)] rounded-lg p-6 hover:shadow-lg transition-shadow"
-                  >
-                    <div className="font-cn text-xl font-bold text-[var(--school-dark)] mb-1">
-                      {c.level}
-                    </div>
-                    {zhCourse && (
-                      <div className="font-cn text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide mb-1">
-                        {zhCourse.levelLabel}
-                      </div>
-                    )}
-                    <div className="text-xs text-gray-400 mb-3">
-                      {c.levelLabel}
-                    </div>
-                    <div className="border-t border-gray-200 pt-3 mt-1">
-                      {(c.time || (zhCourse && zhCourse.time)) && (
-                        <div className="text-xs text-[var(--school-red)] font-semibold mb-2 flex items-center gap-1">
-                          <span>🕐</span>
-                          {zhCourse?.time && <span className="font-cn">{zhCourse.time}</span>}
-                          {zhCourse?.time && c.time && <span className="text-gray-400 mx-1">·</span>}
-                          {c.time && <span>{c.time}</span>}
+                    </EditBlock>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {/* Ring-scrolling carousel: show VISIBLE courses, ring-wrap */}
+                <div className="relative">
+                  {de.courses.items.length > 4 && (
+                    <button
+                      onClick={() => setCourseOffset((o) => (o - 1 + de.courses.items.length) % de.courses.items.length)}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center shadow hover:bg-[var(--school-gray)] transition-colors"
+                      aria-label="Previous courses"
+                    >
+                      ◀
+                    </button>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 overflow-hidden">
+                    {Array.from({ length: Math.min(4, de.courses.items.length) }, (_, slot) => {
+                      const i = (courseOffset + slot) % de.courses.items.length;
+                      const c = de.courses.items[i];
+                      const zhCourse = zh.courses.items[i];
+                      return (
+                        <div
+                          key={`${courseOffset}-${slot}`}
+                          className="border-t-4 border-[var(--school-red)] bg-[var(--school-gray)] rounded-lg p-6 hover:shadow-lg transition-shadow"
+                        >
+                          <div className="font-cn text-xl font-bold text-[var(--school-dark)] mb-1">
+                            {c.level}
+                          </div>
+                          {zhCourse && (
+                            <div className="font-cn text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide mb-1">
+                              {zhCourse.levelLabel}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-400 mb-3">
+                            {c.levelLabel}
+                          </div>
+                          <div className="border-t border-gray-200 pt-3 mt-1">
+                            {(c.time || (zhCourse && zhCourse.time)) && (
+                              <div className="text-xs text-[var(--school-red)] font-semibold mb-2 flex items-center gap-1">
+                                <span>🕐</span>
+                                {zhCourse?.time && <span className="font-cn">{zhCourse.time}</span>}
+                                {zhCourse?.time && c.time && <span className="text-gray-400 mx-1">·</span>}
+                                {c.time && <span>{c.time}</span>}
+                              </div>
+                            )}
+                            <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                              <span>👤</span>
+                              {zhCourse && <span className="font-cn">{zhCourse.ages}</span>}
+                              {zhCourse && <span className="text-gray-400 mx-1">·</span>}
+                              <span>{c.ages}</span>
+                            </div>
+                            {zhCourse && (
+                              <p className="font-cn text-sm text-gray-600 leading-relaxed">{zhCourse.desc}</p>
+                            )}
+                            <p className="text-xs text-gray-500 leading-relaxed mt-1">{c.desc}</p>
+                          </div>
                         </div>
-                      )}
-                      <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-                        <span>👤</span>
-                        {zhCourse && <span className="font-cn">{zhCourse.ages}</span>}
-                        {zhCourse && <span className="text-gray-400 mx-1">·</span>}
-                        <span>{c.ages}</span>
-                      </div>
-                      {zhCourse && (
-                        <p className="font-cn text-sm text-gray-600 leading-relaxed">{zhCourse.desc}</p>
-                      )}
-                      <p className="text-xs text-gray-500 leading-relaxed mt-1">{c.desc}</p>
-                    </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                  {de.courses.items.length > 4 && (
+                    <button
+                      onClick={() => setCourseOffset((o) => (o + 1) % de.courses.items.length)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center shadow hover:bg-[var(--school-gray)] transition-colors"
+                      aria-label="Next courses"
+                    >
+                      ▶
+                    </button>
+                  )}
+                </div>
+                {/* Dot indicators */}
+                {de.courses.items.length > 4 && (
+                  <div className="flex justify-center gap-1.5 mt-4">
+                    {Array.from({ length: de.courses.items.length }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCourseOffset(i)}
+                        className={`w-2 h-2 rounded-full transition-colors ${i === courseOffset ? "bg-[var(--school-red)]" : "bg-gray-300 hover:bg-gray-400"}`}
+                        aria-label={`Go to course ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
             {isAdmin && (
               <button
@@ -635,142 +692,180 @@ export default function Home() {
             )}
 
             <div className="space-y-6">
-              {de.news.items.map((n, i) => {
-                const zhNews = zh.news.items[i];
-                return isAdmin ? (
-                  <EditBlock
-                    key={i}
-                    label={`News ${i + 1}`}
-                    onDelete={() => removeNews(i)}
-                    className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
-                  >
-                    <div className="space-y-3 pt-2">
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">Date</label>
-                        <EditField
-                          value={n.date}
-                          onChange={(v) => { updDeNews(i, "date", v); updZhNews(i, "date", v); }}
-                          className="text-xs font-semibold text-[var(--school-red)] tracking-widest w-full"
-                          placeholder="2025-09"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE Title</label>
-                        <EditField
-                          value={n.title}
-                          onChange={(v) => updDeNews(i, "title", v)}
-                          className="font-bold text-[var(--school-dark)] w-full"
-                          placeholder="German title…"
-                        />
-                      </div>
-                      {zhNews && (
+              {isAdmin ? (
+                de.news.items.map((n, i) => {
+                  const zhNews = zh.news.items[i];
+                  return (
+                    <EditBlock
+                      key={i}
+                      label={`News ${i + 1}`}
+                      onDelete={() => removeNews(i)}
+                      className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
+                    >
+                      <div className="space-y-3 pt-2">
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH Title</label>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">Date</label>
                           <EditField
-                            value={zhNews.title}
-                            onChange={(v) => updZhNews(i, "title", v)}
-                            className="font-cn text-sm text-gray-500 w-full"
-                            placeholder="中文标题…"
+                            value={n.date}
+                            onChange={(v) => { updDeNews(i, "date", v); updZhNews(i, "date", v); }}
+                            className="text-xs font-semibold text-[var(--school-red)] tracking-widest w-full"
+                            placeholder="2025-09"
                           />
                         </div>
-                      )}
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE Body</label>
-                        <EditArea
-                          value={n.body}
-                          onChange={(v) => updDeNews(i, "body", v)}
-                          className="text-sm text-gray-600 leading-relaxed"
-                          placeholder="German body text…"
-                        />
-                      </div>
-                      {zhNews && (
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH Body</label>
-                          <EditArea
-                            value={zhNews.body}
-                            onChange={(v) => updZhNews(i, "body", v)}
-                            className="font-cn text-xs text-gray-400 leading-relaxed"
-                            placeholder="中文内容…"
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE Title</label>
+                          <EditField
+                            value={n.title}
+                            onChange={(v) => updDeNews(i, "title", v)}
+                            className="font-bold text-[var(--school-dark)] w-full"
+                            placeholder="German title…"
                           />
                         </div>
-                      )}
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">🖼 Image URL (optional)</label>
-                        <EditField
-                          value={n.imageUrl ?? ""}
-                          onChange={(v) => { updDeNews(i, "imageUrl", v); updZhNews(i, "imageUrl", v); }}
-                          className="text-xs text-gray-500 w-full"
-                          placeholder="https://example.com/photo.jpg"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">Image Caption (optional)</label>
-                        <EditField
-                          value={n.imageCaption ?? ""}
-                          onChange={(v) => { updDeNews(i, "imageCaption", v); updZhNews(i, "imageCaption", v); }}
-                          className="text-xs text-gray-500 w-full"
-                          placeholder="Caption for the image…"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">Image Position</label>
-                        <select
-                          value={n.imagePosition ?? "before"}
-                          onChange={(e) => { updDeNews(i, "imagePosition", e.target.value); updZhNews(i, "imagePosition", e.target.value); }}
-                          className="w-full bg-amber-50/30 border-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 text-xs text-gray-600 rounded-sm px-2 py-1"
-                        >
-                          <option value="before">Before text</option>
-                          <option value="after">After text</option>
-                        </select>
-                      </div>
-                      {n.imageUrl && (
-                        <img
-                          src={n.imageUrl}
-                          alt="Preview"
-                          className="w-full h-32 object-cover rounded border border-gray-200"
-                        />
-                      )}
-                    </div>
-                  </EditBlock>
-                ) : (
-                  <article
-                    key={n.date + n.title}
-                    className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
-                  >
-                    {n.imageUrl && n.imagePosition !== "after" && (
-                      <figure className="mb-4">
-                        <img
-                          src={n.imageUrl}
-                          alt={n.imageCaption ?? n.title}
-                          className="w-full h-48 object-cover rounded"
-                        />
-                        {n.imageCaption && (
-                          <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{n.imageCaption}</figcaption>
+                        {zhNews && (
+                          <div>
+                            <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH Title</label>
+                            <EditField
+                              value={zhNews.title}
+                              onChange={(v) => updZhNews(i, "title", v)}
+                              className="font-cn text-sm text-gray-500 w-full"
+                              placeholder="中文标题…"
+                            />
+                          </div>
                         )}
-                      </figure>
-                    )}
-                    <time className="text-xs font-semibold text-[var(--school-red)] tracking-widest">
-                      {n.date}
-                    </time>
-                    {zhNews && <h3 className="font-cn font-bold text-[var(--school-dark)] mt-1">{zhNews.title}</h3>}
-                    <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>
-                    {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed">{zhNews.body}</p>}
-                    <p className="mt-1 text-xs text-gray-400 leading-relaxed">{n.body}</p>
-                    {n.imageUrl && n.imagePosition === "after" && (
-                      <figure className="mt-4">
-                        <img
-                          src={n.imageUrl}
-                          alt={n.imageCaption ?? n.title}
-                          className="w-full h-48 object-cover rounded"
-                        />
-                        {n.imageCaption && (
-                          <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{n.imageCaption}</figcaption>
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE Body</label>
+                          <EditArea
+                            value={n.body}
+                            onChange={(v) => updDeNews(i, "body", v)}
+                            className="text-sm text-gray-600 leading-relaxed"
+                            placeholder="German body text…"
+                          />
+                        </div>
+                        {zhNews && (
+                          <div>
+                            <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH Body</label>
+                            <EditArea
+                              value={zhNews.body}
+                              onChange={(v) => updZhNews(i, "body", v)}
+                              className="font-cn text-xs text-gray-400 leading-relaxed"
+                              placeholder="中文内容…"
+                            />
+                          </div>
                         )}
-                      </figure>
-                    )}
-                  </article>
-                );
-              })}
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">🖼 Image URL (optional)</label>
+                          <EditField
+                            value={n.imageUrl ?? ""}
+                            onChange={(v) => { updDeNews(i, "imageUrl", v); updZhNews(i, "imageUrl", v); }}
+                            className="text-xs text-gray-500 w-full"
+                            placeholder="https://example.com/photo.jpg"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">Image Caption (optional)</label>
+                          <EditField
+                            value={n.imageCaption ?? ""}
+                            onChange={(v) => { updDeNews(i, "imageCaption", v); updZhNews(i, "imageCaption", v); }}
+                            className="text-xs text-gray-500 w-full"
+                            placeholder="Caption for the image…"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">Image Position</label>
+                          <select
+                            value={n.imagePosition ?? "before"}
+                            onChange={(e) => { updDeNews(i, "imagePosition", e.target.value); updZhNews(i, "imagePosition", e.target.value); }}
+                            className="w-full bg-amber-50/30 border-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 text-xs text-gray-600 rounded-sm px-2 py-1"
+                          >
+                            <option value="before">Before text</option>
+                            <option value="after">After text</option>
+                          </select>
+                        </div>
+                        {n.imageUrl && (
+                          <img
+                            src={n.imageUrl}
+                            alt="Preview"
+                            className="w-full h-32 object-cover rounded border border-gray-200"
+                          />
+                        )}
+                      </div>
+                    </EditBlock>
+                  );
+                })
+              ) : (
+                <>
+                  {(() => {
+                    const totalNewsPages = Math.max(1, Math.ceil(de.news.items.length / NEWS_PER_PAGE));
+                    const pageItems = de.news.items.slice(newsPage * NEWS_PER_PAGE, (newsPage + 1) * NEWS_PER_PAGE);
+                    return (
+                      <>
+                        {pageItems.map((n, slot) => {
+                          const actualIdx = newsPage * NEWS_PER_PAGE + slot;
+                          const zhNews = zh.news.items[actualIdx];
+                          return (
+                            <Link
+                              key={n.date + n.title + actualIdx}
+                              href={`/news/${actualIdx}`}
+                              className="block group"
+                            >
+                              <article className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                                {n.imageUrl && n.imagePosition !== "after" && (
+                                  <figure className="mb-4">
+                                    <img
+                                      src={n.imageUrl}
+                                      alt={n.imageCaption ?? n.title}
+                                      className="w-full h-48 object-cover rounded"
+                                    />
+                                    {n.imageCaption && (
+                                      <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{n.imageCaption}</figcaption>
+                                    )}
+                                  </figure>
+                                )}
+                                <time className="text-xs font-semibold text-[var(--school-red)] tracking-widest">
+                                  {n.date}
+                                </time>
+                                {zhNews && <h3 className="font-cn font-bold text-[var(--school-dark)] mt-1 group-hover:text-[var(--school-red)] transition-colors">{zhNews.title}</h3>}
+                                <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>
+                                {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{zhNews.body}</p>}
+                                <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{n.body}</p>
+                                {n.imageUrl && n.imagePosition === "after" && (
+                                  <figure className="mt-4">
+                                    <img
+                                      src={n.imageUrl}
+                                      alt={n.imageCaption ?? n.title}
+                                      className="w-full h-48 object-cover rounded"
+                                    />
+                                    {n.imageCaption && (
+                                      <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{n.imageCaption}</figcaption>
+                                    )}
+                                  </figure>
+                                )}
+                              </article>
+                            </Link>
+                          );
+                        })}
+                        {totalNewsPages > 1 && (
+                          <div className="flex flex-wrap justify-center gap-2 pt-2">
+                            {Array.from({ length: totalNewsPages }, (_, p) => {
+                              const start = p * NEWS_PER_PAGE;
+                              const count = Math.min(NEWS_PER_PAGE, de.news.items.length - start);
+                              return (
+                                <button
+                                  key={p}
+                                  onClick={() => setNewsPage(p)}
+                                  className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${p === newsPage ? "bg-[var(--school-red)] text-white" : "bg-white border border-gray-200 text-gray-600 hover:border-[var(--school-red)] hover:text-[var(--school-red)]"}`}
+                                >
+                                  {p + 1} <span className="font-normal opacity-70">({count} Eintr{count === 1 ? "ag" : "äge"})</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </>
+              )}
             </div>
           </div>
         </section>

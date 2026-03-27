@@ -59,6 +59,7 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 const SESSION_KEY = "yixin-admin-session";
+const RECOVERY_SESSION_KEY = "yixin-recovery-session";
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
 const LOCAL_ADMINS_KEY = "yixin-admins";
 const MAX_DAILY_ATTEMPTS = 3;
@@ -198,8 +199,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // ignore
             }
           } else {
-            // Session user no longer exists — clear stale session
-            localStorage.removeItem(SESSION_KEY);
+            // Check if this was a recovery session — re-verify with the recovery endpoint
+            const wasRecovery = localStorage.getItem(RECOVERY_SESSION_KEY) === "1";
+            if (wasRecovery) {
+              try {
+                const recovRes = await fetch("/api/recovery", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ username: session }),
+                });
+                if (recovRes.ok) {
+                  setIsAdmin(true);
+                  setCurrentUser(session);
+                  setIsRecoverySession(true);
+                } else {
+                  localStorage.removeItem(SESSION_KEY);
+                  localStorage.removeItem(RECOVERY_SESSION_KEY);
+                }
+              } catch {
+                localStorage.removeItem(SESSION_KEY);
+                localStorage.removeItem(RECOVERY_SESSION_KEY);
+              }
+            } else {
+              localStorage.removeItem(SESSION_KEY);
+            }
           }
         }
       } catch {
@@ -268,6 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch {
             // ignore
           }
+          try { localStorage.setItem(RECOVERY_SESSION_KEY, "1"); } catch { /* ignore */ }
           return { success: true };
         }
       } catch {
@@ -291,6 +315,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
+    try { localStorage.removeItem(RECOVERY_SESSION_KEY); } catch { /* ignore */ }
     // Clear server-side session cookie
     try {
       await fetch("/api/auth", { method: "DELETE" });
