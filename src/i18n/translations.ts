@@ -79,6 +79,8 @@ export interface SiteContent {
     addressLines: string[];
     emailTitle: string;
     email: string;
+    phoneTitle: string;
+    phone: string;
   };
   footer: {
     navigationTitle: string;
@@ -175,6 +177,8 @@ const de: SiteContent = {
     addressLines: ["Heilbronn", "Baden-Württemberg, Deutschland"],
     emailTitle: "E-Mail",
     email: "info@yixin-heilbronn.de",
+    phoneTitle: "Telefon",
+    phone: "",
   },
   footer: {
     navigationTitle: "Navigation",
@@ -271,6 +275,8 @@ const zh: SiteContent = {
     addressLines: ["海尔布隆", "巴登-符腾堡州，德国"],
     emailTitle: "邮箱",
     email: "info@yixin-heilbronn.de",
+    phoneTitle: "电话",
+    phone: "",
   },
   footer: {
     navigationTitle: "导航",
@@ -367,6 +373,8 @@ const en: SiteContent = {
     addressLines: ["Heilbronn", "Baden-Württemberg, Germany"],
     emailTitle: "Email",
     email: "info@yixin-heilbronn.de",
+    phoneTitle: "Phone",
+    phone: "",
   },
   footer: {
     navigationTitle: "Navigation",

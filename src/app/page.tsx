@@ -978,7 +978,7 @@ export default function Home() {
               )}
             </h2>
 
-            <div className="grid sm:grid-cols-2 gap-6 text-left mt-8">
+            <div className="grid sm:grid-cols-3 gap-6 text-left mt-8">
               <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
                 <div className="text-3xl mb-3">📍</div>
                 {isAdmin ? (
@@ -1017,6 +1017,23 @@ export default function Home() {
                     <p className="text-sm text-gray-600">{de.contact.email}</p>
                   </>
                 )}
+              </div>
+
+              <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
+                <div className="text-3xl mb-3">📞</div>
+                {isAdmin ? (
+                  <div className="space-y-1">
+                    <EditField value={de.contact.phoneTitle} onChange={(v) => updDe("contact", { phoneTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Phone title…" />
+                    <EditField value={zh.contact.phoneTitle} onChange={(v) => updZh("contact", { phoneTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 电话标题…" />
+                    <EditField value={de.contact.phone} onChange={(v) => { updDe("contact", { phone: v }); updZh("contact", { phone: v }); }} className="text-sm text-gray-600 w-full" placeholder="+49 123 456789" />
+                  </div>
+                ) : de.contact.phone ? (
+                  <>
+                    <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.phoneTitle}</h3>
+                    <p className="text-xs text-gray-400 mb-2">{de.contact.phoneTitle}</p>
+                    <p className="text-sm text-gray-600">{de.contact.phone}</p>
+                  </>
+                ) : null}
               </div>
             </div>
           </div>
