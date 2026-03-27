@@ -5,7 +5,8 @@ import { useContent } from "@/contexts/ContentContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { defaultTranslations } from "@/i18n/translations";
-import type { Language, SiteContent, NewsItem, CourseItem } from "@/i18n/translations";
+import type { Language, SiteContent, NewsItem, NewsBodyBlock, CourseItem } from "@/i18n/translations";
+import { getNewsBodyBlocks } from "@/i18n/translations";
 
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
 
@@ -94,7 +95,7 @@ export default function AdminPage() {
   const [pwInput, setPwInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showLoginPw, setShowLoginPw] = useState(false);
-  const [loginBlocked, setLoginBlocked] = useState(false);
+  const [, setLoginBlocked] = useState(false);
 
   // Draft content for the currently edited language
   const [draft, setDraft] = useState<SiteContent>(() => defaultTranslations["de"]);
@@ -119,6 +120,11 @@ export default function AdminPage() {
 
   // Remove-admin feedback
   const [removeAdminMsg, setRemoveAdminMsg] = useState("");
+
+  // Update-email state
+  const [editingEmailUser, setEditingEmailUser] = useState<string | null>(null);
+  const [editEmailValue, setEditEmailValue] = useState("");
+  const [emailUpdateMsg, setEmailUpdateMsg] = useState("");
 
   // Forgot-password state (0=hidden, 1=request, 2=verify, 3=new-password, 4=done)
   const [forgotPwStep, setForgotPwStep] = useState(0);
@@ -274,6 +280,19 @@ export default function AdminPage() {
     }
   }
 
+  async function handleUpdateEmail(username: string) {
+    const result = await auth.updateEmail(username, editEmailValue);
+    if (result.success) {
+      setEmailUpdateMsg("✓ Email updated / 邮箱已更新 / E-Mail aktualisiert");
+      setEditingEmailUser(null);
+      setEditEmailValue("");
+      setAdminListKey((k) => k + 1);
+      setTimeout(() => setEmailUpdateMsg(""), 3000);
+    } else {
+      setEmailUpdateMsg(result.error ?? "错误 / Fehler");
+    }
+  }
+
   // Helpers to update nested draft fields
   function setField<K extends keyof SiteContent>(section: K, value: SiteContent[K]) {
     setDraft((d) => ({ ...d, [section]: value }));
@@ -321,10 +340,19 @@ export default function AdminPage() {
     }));
   }
 
-  function updateNews(idx: number, key: keyof NewsItem, val: string) {
+  function updateNews(idx: number, key: keyof Pick<NewsItem, "date" | "title" | "body">, val: string) {
     setDraft((d) => {
       const items = d.news.items.map((item, i) =>
         i === idx ? { ...item, [key]: val } : item
+      );
+      return { ...d, news: { ...d.news, items } };
+    });
+  }
+
+  function updateNewsBlocks(idx: number, blocks: NewsBodyBlock[]) {
+    setDraft((d) => {
+      const items = d.news.items.map((item, i) =>
+        i === idx ? { ...item, bodyBlocks: blocks } : item
       );
       return { ...d, news: { ...d.news, items } };
     });
@@ -335,7 +363,7 @@ export default function AdminPage() {
       ...d,
       news: {
         ...d.news,
-        items: [{ date: "", title: "", body: "" }, ...d.news.items],
+        items: [{ date: "", title: "", body: "", bodyBlocks: [{ type: "text", content: "" }] }, ...d.news.items],
       },
     }));
   }
@@ -409,19 +437,7 @@ export default function AdminPage() {
             {loginError && (
               <p className="text-xs text-red-600 text-center">{loginError}</p>
             )}
-            {loginBlocked && (
-              <button
-                type="button"
-                onClick={() => {
-                  try { localStorage.removeItem(LOGIN_FAILURES_KEY); } catch { /* ignore */ }
-                  setLoginError("");
-                  setLoginBlocked(false);
-                }}
-                className="w-full text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded py-1.5 hover:bg-amber-100 transition-colors"
-              >
-                🔓 解除封锁 / Entsperren / Unlock
-              </button>
-            )}
+
             <button
               type="submit"
               className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold py-2 rounded transition-colors"
@@ -864,7 +880,9 @@ export default function AdminPage() {
           >
             + Neuigkeit hinzufügen / Add news / 添加新闻
           </button>
-          {draft.news.items.map((item, idx) => (
+          {draft.news.items.map((item, idx) => {
+            const blocks = getNewsBodyBlocks(item).length > 0 ? getNewsBodyBlocks(item) : [{ type: "text" as const, content: "" }];
+            return (
             <div key={idx} className="border border-gray-200 rounded p-4 mb-3 bg-gray-50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">News {idx + 1}</span>
@@ -874,22 +892,114 @@ export default function AdminPage() {
               </div>
               <Field label="Date (e.g. 2025-09)" value={item.date} onChange={(v) => updateNews(idx, "date", v)} />
               <Field label="Title" value={item.title} onChange={(v) => updateNews(idx, "title", v)} />
-              <Field label="Image URL (optional)" value={item.imageUrl ?? ""} onChange={(v) => updateNews(idx, "imageUrl", v)} />
-              <Field label="Image Caption (optional)" value={item.imageCaption ?? ""} onChange={(v) => updateNews(idx, "imageCaption", v)} />
-              <div className="mb-3">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Image Position</label>
-                <select
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-                  value={item.imagePosition ?? "before"}
-                  onChange={(e) => updateNews(idx, "imagePosition", e.target.value)}
-                >
-                  <option value="before">Before text</option>
-                  <option value="after">After text</option>
-                </select>
+
+              {/* Body blocks */}
+              <div className="mt-3 mb-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Body Blocks / Inhaltsblöcke / 内容块</label>
+                {blocks.map((block, bIdx) => (
+                  <div key={bIdx} className="flex gap-2 mb-2 items-start">
+                    <div className="flex flex-col gap-1 mt-1">
+                      {bIdx > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newBlocks = [...blocks];
+                            [newBlocks[bIdx - 1], newBlocks[bIdx]] = [newBlocks[bIdx], newBlocks[bIdx - 1]];
+                            updateNewsBlocks(idx, newBlocks);
+                          }}
+                          className="text-xs text-gray-400 hover:text-gray-700"
+                          title="Move up"
+                        >▲</button>
+                      )}
+                      {bIdx < blocks.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newBlocks = [...blocks];
+                            [newBlocks[bIdx], newBlocks[bIdx + 1]] = [newBlocks[bIdx + 1], newBlocks[bIdx]];
+                            updateNewsBlocks(idx, newBlocks);
+                          }}
+                          className="text-xs text-gray-400 hover:text-gray-700"
+                          title="Move down"
+                        >▼</button>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      {block.type === "text" ? (
+                        <textarea
+                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] resize-y min-h-[60px]"
+                          value={block.content}
+                          placeholder="Text…"
+                          onChange={(e) => {
+                            const newBlocks = blocks.map((b, i) =>
+                              i === bIdx ? { ...b, content: e.target.value } : b
+                            ) as typeof blocks;
+                            updateNewsBlocks(idx, newBlocks);
+                          }}
+                        />
+                      ) : (
+                        <div className="border border-gray-200 rounded p-2 bg-white">
+                          <input
+                            type="url"
+                            className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm mb-1 focus:outline-none focus:border-[var(--school-red)]"
+                            value={block.url}
+                            placeholder="Image URL / Bild-URL"
+                            onChange={(e) => {
+                              const newBlocks = blocks.map((b, i) =>
+                                i === bIdx ? { ...b, url: e.target.value } : b
+                              ) as typeof blocks;
+                              updateNewsBlocks(idx, newBlocks);
+                            }}
+                          />
+                          <input
+                            type="text"
+                            className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                            value={block.caption ?? ""}
+                            placeholder="Caption (optional) / Bildunterschrift"
+                            onChange={(e) => {
+                              const newBlocks = blocks.map((b, i) =>
+                                i === bIdx ? { ...b, caption: e.target.value || undefined } : b
+                              ) as typeof blocks;
+                              updateNewsBlocks(idx, newBlocks);
+                            }}
+                          />
+                          {block.url && (
+                            <img src={block.url} alt={block.caption ?? ""} className="mt-1 max-h-32 object-cover rounded" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newBlocks = blocks.filter((_, i) => i !== bIdx);
+                        updateNewsBlocks(idx, newBlocks.length > 0 ? newBlocks : [{ type: "text", content: "" }]);
+                      }}
+                      className="text-xs text-red-400 hover:text-red-600 mt-2"
+                      title="Remove block"
+                    >✕</button>
+                  </div>
+                ))}
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => updateNewsBlocks(idx, [...blocks, { type: "text", content: "" }])}
+                    className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-[var(--school-red)] hover:text-[var(--school-red)] transition-colors"
+                  >
+                    + Text / 添加文本
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateNewsBlocks(idx, [...blocks, { type: "image", url: "" }])}
+                    className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-[var(--school-red)] hover:text-[var(--school-red)] transition-colors"
+                  >
+                    + Image / 添加图片
+                  </button>
+                </div>
               </div>
-              <Field label="Body" value={item.body} onChange={(v) => updateNews(idx, "body", v)} multiline />
             </div>
-          ))}
+            );
+          })}
         </SectionCard>
 
         {/* ── Contact ─────────────────────────────────────── */}
@@ -961,36 +1071,81 @@ export default function AdminPage() {
               {adminList.map((a) => (
                 <div
                   key={a.username}
-                  className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded px-3 py-2"
+                  className="bg-gray-50 border border-gray-200 rounded px-3 py-2"
                 >
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-[var(--school-dark)]">
-                        {a.username}
-                      </span>
-                      {a.username === auth.currentUser && (
-                        <span className="text-xs bg-[var(--school-red)] text-white px-1.5 py-0.5 rounded">
-                          当前 / you
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[var(--school-dark)]">
+                          {a.username}
                         </span>
-                      )}
+                        {a.username === auth.currentUser && (
+                          <span className="text-xs bg-[var(--school-red)] text-white px-1.5 py-0.5 rounded">
+                            当前 / you
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {a.email ? (
+                          <span className="text-xs text-gray-400">✉ {a.email}</span>
+                        ) : (
+                          <span className="text-xs text-gray-300 italic">No email / 无邮箱</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingEmailUser(a.username);
+                            setEditEmailValue(a.email ?? "");
+                            setEmailUpdateMsg("");
+                          }}
+                          className="text-xs text-[var(--school-red)] hover:opacity-80 underline"
+                        >
+                          ✏ Edit
+                        </button>
+                      </div>
                     </div>
-                    {a.email && (
-                      <span className="text-xs text-gray-400">✉ {a.email}</span>
+                    {a.username !== auth.currentUser && (
+                      <button
+                        onClick={() => handleRemoveAdmin(a.username)}
+                        className="text-xs text-red-500 hover:text-red-700 font-semibold transition-colors"
+                      >
+                        ✕ 删除 / Remove
+                      </button>
                     )}
                   </div>
-                  {a.username !== auth.currentUser && (
-                    <button
-                      onClick={() => handleRemoveAdmin(a.username)}
-                      className="text-xs text-red-500 hover:text-red-700 font-semibold transition-colors"
-                    >
-                      ✕ 删除 / Remove
-                    </button>
+                  {editingEmailUser === a.username && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="email"
+                        value={editEmailValue}
+                        onChange={(e) => setEditEmailValue(e.target.value)}
+                        placeholder="email@example.com"
+                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-[var(--school-red)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateEmail(a.username)}
+                        className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingEmailUser(null); setEditEmailValue(""); setEmailUpdateMsg(""); }}
+                        className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-600 text-xs font-semibold rounded transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
             </div>
             {removeAdminMsg && (
               <p className={`mt-2 text-xs ${removeAdminMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>{removeAdminMsg}</p>
+            )}
+            {emailUpdateMsg && (
+              <p className={`mt-2 text-xs ${emailUpdateMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>{emailUpdateMsg}</p>
             )}
           </div>
 

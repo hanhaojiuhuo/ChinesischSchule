@@ -4,7 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
-import type { NewsItem } from "@/i18n/translations";
+import type { NewsItem, NewsBodyBlock } from "@/i18n/translations";
+import { getNewsBodyBlocks } from "@/i18n/translations";
 
 export default function AdminNewsEditPage() {
   const params = useParams();
@@ -19,16 +20,13 @@ export default function AdminNewsEditPage() {
   const { isAdmin } = useAuth();
 
   const [deTitle, setDeTitle] = useState("");
-  const [deBody, setDeBody] = useState("");
+  const [deBlocks, setDeBlocks] = useState<NewsBodyBlock[]>([{ type: "text", content: "" }]);
   const [zhTitle, setZhTitle] = useState("");
-  const [zhBody, setZhBody] = useState("");
+  const [zhBlocks, setZhBlocks] = useState<NewsBodyBlock[]>([{ type: "text", content: "" }]);
   const [date, setDate] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageCaption, setImageCaption] = useState("");
-  const [imagePosition, setImagePosition] = useState<"before" | "after">("before");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<{ lang: "de" | "zh"; idx: number } | null>(null);
   const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,18 +46,25 @@ export default function AdminNewsEditPage() {
       const zhItem = zh.news.items[idx];
       if (item) {
         setDeTitle(item.title);
-        setDeBody(item.body);
         setDate(item.date);
-        setImageUrl(item.imageUrl ?? "");
-        setImageCaption(item.imageCaption ?? "");
-        setImagePosition(item.imagePosition ?? "before");
+        const blocks = getNewsBodyBlocks(item);
+        setDeBlocks(blocks.length > 0 ? blocks : [{ type: "text", content: "" }]);
       }
       if (zhItem) {
         setZhTitle(zhItem.title);
-        setZhBody(zhItem.body);
+        const blocks = getNewsBodyBlocks(zhItem);
+        setZhBlocks(blocks.length > 0 ? blocks : [{ type: "text", content: "" }]);
       }
     }
   }, [isNew, idx, getContent]);
+
+  /** Build the plain-text body from text blocks for backward compatibility */
+  function blocksToBody(blocks: NewsBodyBlock[]): string {
+    return blocks
+      .filter((b): b is Extract<NewsBodyBlock, { type: "text" }> => b.type === "text")
+      .map((b) => b.content)
+      .join("\n\n");
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -70,18 +75,14 @@ export default function AdminNewsEditPage() {
       const newItem: NewsItem = {
         date: finalDate,
         title: deTitle,
-        body: deBody,
-        imageUrl: imageUrl || undefined,
-        imageCaption: imageCaption || undefined,
-        imagePosition,
+        body: blocksToBody(deBlocks),
+        bodyBlocks: deBlocks,
       };
       const newZhItem: NewsItem = {
         date: finalDate,
         title: zhTitle,
-        body: zhBody,
-        imageUrl: imageUrl || undefined,
-        imageCaption: imageCaption || undefined,
-        imagePosition,
+        body: blocksToBody(zhBlocks),
+        bodyBlocks: zhBlocks,
       };
 
       const de = getContent("de");
@@ -115,8 +116,8 @@ export default function AdminNewsEditPage() {
     }
   }
 
-  async function handleUpload(file: File) {
-    setUploading(true);
+  async function handleUpload(file: File, lang: "de" | "zh", blockIdx: number) {
+    setUploadingIdx({ lang, idx: blockIdx });
     setUploadError("");
     try {
       const formData = new FormData();
@@ -124,15 +125,142 @@ export default function AdminNewsEditPage() {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (res.ok) {
-        setImageUrl(data.url);
+        const setBlocks = lang === "de" ? setDeBlocks : setZhBlocks;
+        setBlocks((prev) =>
+          prev.map((b, i) => (i === blockIdx && b.type === "image" ? { ...b, url: data.url } : b))
+        );
       } else {
         setUploadError(data.error ?? "Upload failed");
       }
     } catch {
       setUploadError("Upload failed / 上传失败");
     } finally {
-      setUploading(false);
+      setUploadingIdx(null);
     }
+  }
+
+  function renderBlockEditor(blocks: NewsBodyBlock[], setBlocks: React.Dispatch<React.SetStateAction<NewsBodyBlock[]>>, lang: "de" | "zh") {
+    return (
+      <div className="space-y-3">
+        {blocks.map((block, bIdx) => (
+          <div key={bIdx} className="flex gap-2 items-start">
+            <div className="flex flex-col gap-1 mt-1">
+              {bIdx > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newBlocks = [...blocks];
+                    [newBlocks[bIdx - 1], newBlocks[bIdx]] = [newBlocks[bIdx], newBlocks[bIdx - 1]];
+                    setBlocks(newBlocks);
+                  }}
+                  className="text-xs text-gray-400 hover:text-gray-700"
+                  title="Move up"
+                >▲</button>
+              )}
+              {bIdx < blocks.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newBlocks = [...blocks];
+                    [newBlocks[bIdx], newBlocks[bIdx + 1]] = [newBlocks[bIdx + 1], newBlocks[bIdx]];
+                    setBlocks(newBlocks);
+                  }}
+                  className="text-xs text-gray-400 hover:text-gray-700"
+                  title="Move down"
+                >▼</button>
+              )}
+            </div>
+            <div className="flex-1">
+              {block.type === "text" ? (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">📝 Text</label>
+                  <textarea
+                    value={block.content}
+                    onChange={(e) => {
+                      setBlocks((prev) =>
+                        prev.map((b, i) => (i === bIdx ? { ...b, content: e.target.value } : b))
+                      );
+                    }}
+                    rows={4}
+                    className={`w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] resize-y ${lang === "zh" ? "font-cn" : ""}`}
+                    placeholder={lang === "de" ? "Text eingeben…" : "输入文本…"}
+                  />
+                </div>
+              ) : (
+                <div className="border border-gray-200 rounded p-3 bg-gray-50">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">🖼 Image</label>
+                  <input
+                    type="url"
+                    value={block.url}
+                    onChange={(e) => {
+                      setBlocks((prev) =>
+                        prev.map((b, i) => (i === bIdx ? { ...b, url: e.target.value } : b))
+                      );
+                    }}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:border-[var(--school-red)]"
+                    placeholder="https://example.com/photo.jpg"
+                  />
+                  <div className="flex items-center gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadingIdx({ lang, idx: bIdx });
+                        fileInputRef.current?.click();
+                      }}
+                      disabled={uploadingIdx !== null}
+                      className="px-3 py-1.5 bg-[var(--school-dark)] hover:bg-gray-700 disabled:opacity-60 text-white text-xs font-semibold rounded transition-colors"
+                    >
+                      {uploadingIdx?.lang === lang && uploadingIdx?.idx === bIdx ? "⏳ Uploading…" : "📎 Upload"}
+                    </button>
+                    {block.url && <span className="text-xs text-green-600">✓</span>}
+                  </div>
+                  <input
+                    type="text"
+                    value={block.caption ?? ""}
+                    onChange={(e) => {
+                      setBlocks((prev) =>
+                        prev.map((b, i) => (i === bIdx ? { ...b, caption: e.target.value || undefined } : b))
+                      );
+                    }}
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    placeholder="Caption (optional) / Bildunterschrift"
+                  />
+                  {block.url && (
+                    <img src={block.url} alt={block.caption ?? ""} className="mt-2 max-h-40 object-cover rounded border border-gray-200" />
+                  )}
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const newBlocks = blocks.filter((_, i) => i !== bIdx);
+                setBlocks(newBlocks.length > 0 ? newBlocks : [{ type: "text", content: "" }]);
+              }}
+              className="text-xs text-red-400 hover:text-red-600 mt-2"
+              title="Remove block"
+            >✕</button>
+          </div>
+        ))}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setBlocks((prev) => [...prev, { type: "text", content: "" }])}
+            className="text-xs px-3 py-1.5 border border-dashed border-gray-300 rounded hover:border-[var(--school-red)] hover:text-[var(--school-red)] transition-colors"
+          >
+            + Text / 添加文本
+          </button>
+          <button
+            type="button"
+            onClick={() => setBlocks((prev) => [...prev, { type: "image", url: "" }])}
+            className="text-xs px-3 py-1.5 border border-dashed border-gray-300 rounded hover:border-[var(--school-red)] hover:text-[var(--school-red)] transition-colors"
+          >
+            + Image / 添加图片
+          </button>
+        </div>
+        {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+      </div>
+    );
   }
 
   if (!isAdmin) {
@@ -165,6 +293,21 @@ export default function AdminNewsEditPage() {
         </div>
       </div>
 
+      {/* Hidden file input for image uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && uploadingIdx) {
+            handleUpload(file, uploadingIdx.lang, uploadingIdx.idx);
+          }
+          e.target.value = "";
+        }}
+      />
+
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         {/* Date */}
         <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
@@ -181,10 +324,10 @@ export default function AdminNewsEditPage() {
           <p className="text-xs text-gray-400 mt-1">Leave empty to use today&apos;s date when saving. / Leer lassen, um das heutige Datum beim Speichern zu verwenden. / 保存时留空以使用今天的日期。</p>
         </div>
 
-        {/* DE Title + Body */}
+        {/* DE Title + Body Blocks */}
         <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
           <h3 className="font-semibold text-[var(--school-dark)] mb-3">🇩🇪 Deutsch</h3>
-          <div className="mb-3">
+          <div className="mb-4">
             <label className="block text-xs font-semibold text-gray-600 mb-1">Titel / Title</label>
             <input
               type="text"
@@ -194,22 +337,14 @@ export default function AdminNewsEditPage() {
               placeholder="Deutscher Titel…"
             />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Inhalt / Body</label>
-            <textarea
-              value={deBody}
-              onChange={(e) => setDeBody(e.target.value)}
-              rows={6}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] resize-y"
-              placeholder="Deutschen Text eingeben…"
-            />
-          </div>
+          <label className="block text-xs font-semibold text-gray-600 mb-2">Inhalt / Body (Blocks)</label>
+          {renderBlockEditor(deBlocks, setDeBlocks, "de")}
         </div>
 
-        {/* ZH Title + Body */}
+        {/* ZH Title + Body Blocks */}
         <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
           <h3 className="font-semibold text-[var(--school-dark)] mb-3">🇨🇳 中文</h3>
-          <div className="mb-3">
+          <div className="mb-4">
             <label className="block text-xs font-semibold text-gray-600 mb-1">标题 / Title</label>
             <input
               type="text"
@@ -219,89 +354,8 @@ export default function AdminNewsEditPage() {
               placeholder="中文标题…"
             />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">正文 / Body</label>
-            <textarea
-              value={zhBody}
-              onChange={(e) => setZhBody(e.target.value)}
-              rows={6}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-cn focus:outline-none focus:border-[var(--school-red)] resize-y"
-              placeholder="中文内容…"
-            />
-          </div>
-        </div>
-
-        {/* Image */}
-        <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
-          <h3 className="font-semibold text-[var(--school-dark)] mb-3">
-            🖼 Bild / Image / 图片 <span className="font-normal text-gray-400 text-xs">(optional)</span>
-          </h3>
-
-          <div className="mb-3">
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Bild-URL / Image URL</label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-              placeholder="https://example.com/photo.jpg"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Bild hochladen / Upload Image / 上传图片</label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="px-4 py-2 bg-[var(--school-dark)] hover:bg-gray-700 disabled:opacity-60 text-white text-xs font-semibold rounded transition-colors"
-              >
-                {uploading ? "⏳ Uploading…" : "📎 Datei auswählen / Choose File"}
-              </button>
-              {imageUrl && <span className="text-xs text-green-600">✓ Image uploaded</span>}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleUpload(file);
-              }}
-            />
-            {uploadError && <p className="text-xs text-red-600 mt-1">{uploadError}</p>}
-          </div>
-
-          {imageUrl && (
-            <div className="mb-3">
-              <img src={imageUrl} alt="Preview" className="w-full max-h-60 object-cover rounded border border-gray-200" />
-            </div>
-          )}
-
-          <div className="mb-3">
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Bildunterschrift / Caption / 图片说明</label>
-            <input
-              type="text"
-              value={imageCaption}
-              onChange={(e) => setImageCaption(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-              placeholder="Caption…"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Bildposition / Image Position / 图片位置</label>
-            <select
-              value={imagePosition}
-              onChange={(e) => setImagePosition(e.target.value as "before" | "after")}
-              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-            >
-              <option value="before">Vor dem Text / Before text / 文本前</option>
-              <option value="after">Nach dem Text / After text / 文本后</option>
-            </select>
-          </div>
+          <label className="block text-xs font-semibold text-gray-600 mb-2">正文 / Body (Blocks)</label>
+          {renderBlockEditor(zhBlocks, setZhBlocks, "zh")}
         </div>
 
         {/* Save button */}

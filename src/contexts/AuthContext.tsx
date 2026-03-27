@@ -39,6 +39,10 @@ interface AuthContextValue {
     oldPassword: string,
     newPassword: string
   ) => Promise<{ success: boolean; error?: string }>;
+  updateEmail: (
+    username: string,
+    newEmail: string
+  ) => Promise<{ success: boolean; error?: string }>;
   removeAdmin: (
     username: string
   ) => Promise<{ success: boolean; error?: string }>;
@@ -54,6 +58,7 @@ const AuthContext = createContext<AuthContextValue>({
   logout: async () => {},
   addAdmin: async () => ({ success: false }),
   changePassword: async () => ({ success: false }),
+  updateEmail: async () => ({ success: false }),
   removeAdmin: async () => ({ success: false }),
   getAdmins: async () => [],
 });
@@ -409,6 +414,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateEmail = useCallback(
+    async (
+      username: string,
+      newEmail: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      const admins = await fetchAdmins();
+      const idx = admins.findIndex((a) => a.username === username);
+      if (idx === -1) {
+        return {
+          success: false,
+          error: "用户不存在 / User not found / Benutzer nicht gefunden",
+        };
+      }
+      const trimmedEmail = newEmail.trim() || undefined;
+      const updated = admins.map((a, i) =>
+        i === idx ? { ...a, email: trimmedEmail } : a
+      );
+      const ok = await saveAdmins(updated);
+      if (!ok) {
+        return {
+          success: false,
+          error: "保存失败 / Failed to save / Speichern fehlgeschlagen",
+        };
+      }
+      return { success: true };
+    },
+    []
+  );
+
   const removeAdmin = useCallback(
     async (
       username: string
@@ -459,6 +493,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         addAdmin,
         changePassword,
+        updateEmail,
         removeAdmin,
         getAdmins,
       }}
