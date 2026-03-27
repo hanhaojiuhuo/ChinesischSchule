@@ -97,7 +97,8 @@ export default function AdminPage() {
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [, setLoginBlocked] = useState(false);
 
-  // Pre-fill username from last session
+  // Pre-fill username from last session (runs once on mount; userInput
+  // dependency intentionally omitted to avoid overwriting user edits)
   useEffect(() => {
     try {
       const lastUser = localStorage.getItem("yixin-admin-session");
