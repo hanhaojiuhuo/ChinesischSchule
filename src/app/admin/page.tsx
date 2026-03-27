@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useContent } from "@/contexts/ContentContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,22 +91,20 @@ export default function AdminPage() {
   const auth = useAuth();
 
   // Login form state
-  const [userInput, setUserInput] = useState("");
+  const [userInput, setUserInput] = useState("admin_yixin");
   const [pwInput, setPwInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [, setLoginBlocked] = useState(false);
 
-  // Pre-fill username from last session (runs once on mount; userInput
-  // dependency intentionally omitted to avoid overwriting user edits)
+  // Pre-fill username from last session (runs once on mount)
   useEffect(() => {
     try {
       const lastUser = localStorage.getItem("yixin-admin-session");
-      if (lastUser && !userInput) {
+      if (lastUser) {
         setUserInput(lastUser);
       }
     } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Draft content for the currently edited language
@@ -155,6 +153,11 @@ export default function AdminPage() {
 
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // News image upload state
+  const [newsUploadingIdx, setNewsUploadingIdx] = useState<{ newsIdx: number; blockIdx: number } | null>(null);
+  const [newsUploadError, setNewsUploadError] = useState("");
+  const newsFileInputRef = useRef<HTMLInputElement>(null);
 
   // Per-section save status
   type SaveStatus = "idle" | "saving" | "saved";
@@ -370,6 +373,35 @@ export default function AdminPage() {
       );
       return { ...d, news: { ...d.news, items } };
     });
+  }
+
+  async function handleNewsImageUpload(file: File, newsIdx: number, blockIdx: number) {
+    setNewsUploadingIdx({ newsIdx, blockIdx });
+    setNewsUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        setDraft((d) => {
+          const items = d.news.items.map((item, i) => {
+            if (i !== newsIdx) return item;
+            const blocks = (item.bodyBlocks ?? []).map((b, bi) =>
+              bi === blockIdx && b.type === "image" ? { ...b, url: data.url } : b
+            );
+            return { ...item, bodyBlocks: blocks };
+          });
+          return { ...d, news: { ...d.news, items } };
+        });
+      } else {
+        setNewsUploadError(data.error ?? "Upload failed");
+      }
+    } catch {
+      setNewsUploadError("Upload failed / 上传失败");
+    } finally {
+      setNewsUploadingIdx(null);
+    }
   }
 
   function addNews() {
@@ -947,6 +979,22 @@ export default function AdminPage() {
         </SectionCard>
 
         {/* ── News ────────────────────────────────────────── */}
+        {/* Hidden file input for news image uploads */}
+        <input
+          ref={newsFileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file && newsUploadingIdx) {
+              handleNewsImageUpload(file, newsUploadingIdx.newsIdx, newsUploadingIdx.blockIdx);
+            } else {
+              setNewsUploadingIdx(null);
+            }
+            e.target.value = "";
+          }}
+        />
         <SectionCard title="📰 News / Aktuelles / 学校新闻" onSave={() => handleSectionSave("news")} saveStatus={sectionStatus["news"]}>
           <Field
             label="Section title"
@@ -1018,18 +1066,38 @@ export default function AdminPage() {
                         />
                       ) : (
                         <div className="border border-gray-200 rounded p-2 bg-white">
-                          <input
-                            type="url"
-                            className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm mb-1 focus:outline-none focus:border-[var(--school-red)]"
-                            value={block.url}
-                            placeholder="Image URL / Bild-URL"
-                            onChange={(e) => {
-                              const newBlocks = blocks.map((b, i) =>
-                                i === bIdx ? { ...b, url: e.target.value } : b
-                              ) as typeof blocks;
-                              updateNewsBlocks(idx, newBlocks);
+                          <div
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const file = e.dataTransfer.files?.[0];
+                              if (file && file.type.startsWith("image/")) {
+                                handleNewsImageUpload(file, idx, bIdx);
+                              }
                             }}
-                          />
+                            onClick={() => {
+                              setNewsUploadingIdx({ newsIdx: idx, blockIdx: bIdx });
+                              newsFileInputRef.current?.click();
+                            }}
+                            className="border-2 border-dashed border-gray-300 hover:border-[var(--school-red)] rounded-lg p-3 text-center cursor-pointer transition-colors mb-1"
+                          >
+                            {newsUploadingIdx?.newsIdx === idx && newsUploadingIdx?.blockIdx === bIdx ? (
+                              <p className="text-sm text-gray-500">⏳ Uploading… / 上传中…</p>
+                            ) : block.url ? (
+                              <div>
+                                <img src={block.url} alt={block.caption ?? ""} className="mx-auto max-h-32 object-cover rounded border border-gray-200 mb-1" />
+                                <p className="text-xs text-gray-400">Click or drop to replace / 点击或拖拽替换图片</p>
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="text-xl mb-1">📎</p>
+                                <p className="text-sm text-gray-500">Drop image here or click to upload</p>
+                                <p className="text-xs text-gray-400">Bild hierher ziehen oder klicken / 拖拽图片到此处或点击上传</p>
+                              </div>
+                            )}
+                          </div>
                           <input
                             type="text"
                             className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--school-red)]"
@@ -1042,8 +1110,8 @@ export default function AdminPage() {
                               updateNewsBlocks(idx, newBlocks);
                             }}
                           />
-                          {block.url && (
-                            <img src={block.url} alt={block.caption ?? ""} className="mt-1 max-h-32 object-cover rounded" />
+                          {newsUploadError && newsUploadingIdx?.newsIdx === idx && (
+                            <p className="text-xs text-red-600 mt-1">{newsUploadError}</p>
                           )}
                         </div>
                       )}
