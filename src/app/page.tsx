@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
-import type { SiteContent, CourseItem, NewsItem, NewsImageBlock, NewsTextBlock } from "@/i18n/translations";
+import type { SiteContent, CourseItem, NewsItem, NewsTextBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
 import { defaultTranslations } from "@/i18n/translations";
 
@@ -771,7 +771,6 @@ export default function Home() {
                           const actualIdx = newsPage * NEWS_PER_PAGE + slot;
                           const zhNews = zh.news.items[actualIdx];
                           const blocks = getNewsBodyBlocks(n);
-                          const firstImage = blocks.find((b): b is NewsImageBlock => b.type === "image");
                           const firstText = blocks.find((b): b is NewsTextBlock => b.type === "text");
                           return (
                             <Link
@@ -780,18 +779,6 @@ export default function Home() {
                               className="block group"
                             >
                               <article className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                                {firstImage && (
-                                  <figure className="mb-4">
-                                    <img
-                                      src={firstImage.url}
-                                      alt={firstImage.caption ?? n.title}
-                                      className="w-full h-48 object-cover rounded"
-                                    />
-                                    {firstImage.caption && (
-                                      <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{firstImage.caption}</figcaption>
-                                    )}
-                                  </figure>
-                                )}
                                 <time className="text-xs font-semibold text-[var(--school-red)] tracking-widest">
                                   {n.date}
                                 </time>

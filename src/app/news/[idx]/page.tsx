@@ -76,7 +76,7 @@ export default function NewsDetailPage() {
                         <img
                           src={block.url}
                           alt={block.caption ?? news.title}
-                          className="w-full max-h-96 object-cover rounded"
+                          className="w-full h-auto rounded"
                         />
                         {block.caption && (
                           <figcaption className="text-xs text-gray-400 text-center mt-2 italic">{block.caption}</figcaption>
@@ -99,7 +99,7 @@ export default function NewsDetailPage() {
                       <img
                         src={block.url}
                         alt={block.caption ?? news.title}
-                        className="w-full max-h-96 object-cover rounded"
+                        className="w-full h-auto rounded"
                       />
                       {block.caption && (
                         <figcaption className="text-xs text-gray-400 text-center mt-2 italic">{block.caption}</figcaption>
