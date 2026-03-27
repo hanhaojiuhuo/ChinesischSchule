@@ -7,6 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { defaultTranslations } from "@/i18n/translations";
 import type { Language, SiteContent, NewsItem, CourseItem } from "@/i18n/translations";
 
+const LOGIN_FAILURES_KEY = "yixin-login-failures";
+
 /* ─── Small helpers ─────────────────────────────────────────── */
 function Field({
   label,
@@ -92,6 +94,7 @@ export default function AdminPage() {
   const [pwInput, setPwInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showLoginPw, setShowLoginPw] = useState(false);
+  const [loginBlocked, setLoginBlocked] = useState(false);
 
   // Draft content for the currently edited language
   const [draft, setDraft] = useState<SiteContent>(() => defaultTranslations["de"]);
@@ -152,9 +155,11 @@ export default function AdminPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoginError("");
+    setLoginBlocked(false);
     const result = await auth.login(userInput.trim(), pwInput);
     if (!result.success) {
       if (result.blocked) {
+        setLoginBlocked(true);
         setLoginError(
           "登录已被暂时封锁 / Login temporarily blocked / Anmeldung vorübergehend gesperrt"
         );
@@ -404,6 +409,19 @@ export default function AdminPage() {
             {loginError && (
               <p className="text-xs text-red-600 text-center">{loginError}</p>
             )}
+            {loginBlocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  try { localStorage.removeItem(LOGIN_FAILURES_KEY); } catch { /* ignore */ }
+                  setLoginError("");
+                  setLoginBlocked(false);
+                }}
+                className="w-full text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded py-1.5 hover:bg-amber-100 transition-colors"
+              >
+                🔓 解除封锁 / Entsperren / Unlock
+              </button>
+            )}
             <button
               type="submit"
               className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold py-2 rounded transition-colors"
@@ -590,6 +608,10 @@ export default function AdminPage() {
                         // Clear any stale local admin cache so next login
                         // fetches the updated list from the server.
                         try { localStorage.removeItem("yixin-admins"); } catch { /* ignore */ }
+                        // Clear login lockout so the user can log in immediately
+                        // with their new password.
+                        try { localStorage.removeItem(LOGIN_FAILURES_KEY); } catch { /* ignore */ }
+                        setLoginBlocked(false);
                         setForgotPwStep(4);
                       }
                     } catch {
