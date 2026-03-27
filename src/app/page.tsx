@@ -361,22 +361,6 @@ export default function Home() {
     setIsDirty(true);
   }
 
-  function updDeHoursLine(idx: number, val: string) {
-    setDraftDe((d) => ({
-      ...d,
-      contact: { ...d.contact, hoursLines: d.contact.hoursLines.map((l, i) => (i === idx ? val : l)) },
-    }));
-    setIsDirty(true);
-  }
-
-  function updZhHoursLine(idx: number, val: string) {
-    setDraftZh((d) => ({
-      ...d,
-      contact: { ...d.contact, hoursLines: d.contact.hoursLines.map((l, i) => (i === idx ? val : l)) },
-    }));
-    setIsDirty(true);
-  }
-
   /* ── Render ──────────────────────────────────────────────── */
   return (
     <>
