@@ -66,6 +66,10 @@ export default function Footer() {
       <div className="border-t border-gray-700 text-center py-4 text-xs text-gray-500">
         © {new Date().getFullYear()} 海尔布隆一心中文学校 · Yi Xin Chinesische Sprachschule
         Heilbronn
+        <span className="mx-2">·</span>
+        <a href="/privacy" className="hover:text-[var(--school-red)] transition-colors underline">
+          隐私政策 · Datenschutz
+        </a>
       </div>
     </footer>
   );
