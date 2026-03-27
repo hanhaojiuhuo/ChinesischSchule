@@ -587,6 +587,18 @@ export default function AdminPage() {
               <Field label="Date (e.g. 2025-09)" value={item.date} onChange={(v) => updateNews(idx, "date", v)} />
               <Field label="Title" value={item.title} onChange={(v) => updateNews(idx, "title", v)} />
               <Field label="Image URL (optional)" value={item.imageUrl ?? ""} onChange={(v) => updateNews(idx, "imageUrl", v)} />
+              <Field label="Image Caption (optional)" value={item.imageCaption ?? ""} onChange={(v) => updateNews(idx, "imageCaption", v)} />
+              <div className="mb-3">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Image Position</label>
+                <select
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                  value={item.imagePosition ?? "before"}
+                  onChange={(e) => updateNews(idx, "imagePosition", e.target.value)}
+                >
+                  <option value="before">Before text</option>
+                  <option value="after">After text</option>
+                </select>
+              </div>
               <Field label="Body" value={item.body} onChange={(v) => updateNews(idx, "body", v)} multiline />
             </div>
           ))}
@@ -596,10 +608,8 @@ export default function AdminPage() {
         <SectionCard title="📍 Contact / Kontakt / 联系我们">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Section title" value={draft.contact.sectionTitle} onChange={(v) => updateContact("sectionTitle", v)} />
-            <Field label="Subtitle" value={draft.contact.subtitle} onChange={(v) => updateContact("subtitle", v)} />
             <Field label="Address title" value={draft.contact.addressTitle} onChange={(v) => updateContact("addressTitle", v)} />
             <Field label="Email title" value={draft.contact.emailTitle} onChange={(v) => updateContact("emailTitle", v)} />
-            <Field label="Hours title" value={draft.contact.hoursTitle} onChange={(v) => updateContact("hoursTitle", v)} />
             <Field label="Email address" value={draft.contact.email} onChange={(v) => updateContact("email", v)} />
           </div>
           <div className="mt-2">
@@ -608,14 +618,6 @@ export default function AdminPage() {
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] min-h-[60px]"
               value={draft.contact.addressLines.join("\n")}
               onChange={(e) => updateContact("addressLines", e.target.value.split("\n"))}
-            />
-          </div>
-          <div className="mt-2">
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Hours lines (one per line)</label>
-            <textarea
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] min-h-[60px]"
-              value={draft.contact.hoursLines.join("\n")}
-              onChange={(e) => updateContact("hoursLines", e.target.value.split("\n"))}
             />
           </div>
         </SectionCard>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
@@ -82,112 +82,6 @@ function EditBlock({
         </button>
       )}
       {children}
-    </div>
-  );
-}
-
-/* Drag-and-drop image upload zone for news items */
-function ImageDropZone({
-  imageUrl,
-  onUrlChange,
-}: {
-  imageUrl: string;
-  onUrlChange: (url: string) => void;
-}) {
-  const [dragging, setDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const uploadFile = useCallback(
-    async (file: File) => {
-      if (!file.type.startsWith("image/")) {
-        setUploadError("Only image files are supported.");
-        return;
-      }
-      setUploading(true);
-      setUploadError("");
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        const data = await res.json();
-        if (res.ok && data.url) {
-          onUrlChange(data.url);
-        } else {
-          setUploadError(data.error ?? "Upload failed.");
-        }
-      } catch {
-        setUploadError("Upload failed.");
-      } finally {
-        setUploading(false);
-      }
-    },
-    [onUrlChange]
-  );
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) uploadFile(file);
-  }
-
-  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) uploadFile(file);
-  }
-
-  return (
-    <div>
-      <label className="text-xs text-amber-600 font-semibold block mb-0.5">
-        🖼 Bild / Image (optional — URL eingeben oder Datei hochladen)
-      </label>
-      {/* URL input */}
-      <input
-        type="text"
-        value={imageUrl}
-        onChange={(e) => onUrlChange(e.target.value)}
-        className="w-full bg-amber-50/30 border-b-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 focus:bg-amber-50/60 transition-colors text-xs text-gray-500 mb-2"
-        placeholder="https://example.com/photo.jpg"
-      />
-      {/* Drag-and-drop zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-          dragging
-            ? "border-amber-500 bg-amber-100"
-            : "border-gray-300 hover:border-amber-400 hover:bg-amber-50/30"
-        }`}
-      >
-        {uploading ? (
-          <p className="text-xs text-amber-700 font-semibold">⏳ Uploading…</p>
-        ) : (
-          <p className="text-xs text-gray-400">
-            📂 Bild hierher ziehen oder klicken · Drag image here or click to upload
-          </p>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileInput}
-        />
-      </div>
-      {uploadError && (
-        <p className="text-xs text-red-500 mt-1">{uploadError}</p>
-      )}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt="Preview"
-          className="mt-2 w-full h-32 object-cover rounded border border-gray-200"
-        />
-      )}
     </div>
   );
 }
@@ -383,13 +277,37 @@ export default function Home() {
 
           <div className="max-w-6xl mx-auto flex flex-col-reverse md:flex-row items-center gap-10">
             <div className="flex-1 animate-fade-in-up">
-              <p className="text-[var(--school-red)] font-semibold tracking-widest uppercase text-sm mb-2">
-                Yi Xin Chinesische Sprachschule Heilbronn
-              </p>
-              <h1 className="font-cn text-4xl sm:text-5xl font-bold leading-tight mb-4">
-                海尔布隆<br />
-                <span className="text-[var(--school-red)]">一心</span>中文学校
-              </h1>
+              {isAdmin ? (
+                <EditBlock label="School Name" className="p-3 space-y-2 bg-[var(--school-dark)] mb-3">
+                  <div>
+                    <label className="text-xs text-amber-300 font-semibold block mb-1">DE School Name</label>
+                    <EditField
+                      value={de.schoolName}
+                      onChange={(v) => { setDraftDe((d) => ({ ...d, schoolName: v })); setIsDirty(true); }}
+                      className="text-[var(--school-red)] font-semibold tracking-widest uppercase text-sm w-full"
+                      placeholder="School name (DE)…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-amber-300 font-semibold block mb-1">ZH School Name</label>
+                    <EditField
+                      value={zh.schoolName}
+                      onChange={(v) => { setDraftZh((d) => ({ ...d, schoolName: v })); setIsDirty(true); }}
+                      className="font-cn text-4xl sm:text-5xl font-bold text-white w-full"
+                      placeholder="学校名称（中文）…"
+                    />
+                  </div>
+                </EditBlock>
+              ) : (
+                <>
+                  <p className="text-[var(--school-red)] font-semibold tracking-widest uppercase text-sm mb-2">
+                    {de.schoolName}
+                  </p>
+                  <h1 className="font-cn text-4xl sm:text-5xl font-bold leading-tight mb-4">
+                    {zh.schoolName}
+                  </h1>
+                </>
+              )}
 
               {isAdmin ? (
                 <EditBlock label="Hero Text" className="p-4 space-y-3 bg-[var(--school-dark)]">
@@ -727,10 +645,6 @@ export default function Home() {
                     className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
                   >
                     <div className="space-y-3 pt-2">
-                      <ImageDropZone
-                        imageUrl={n.imageUrl ?? ""}
-                        onUrlChange={(v) => { updDeNews(i, "imageUrl", v); updZhNews(i, "imageUrl", v); }}
-                      />
                       <div>
                         <label className="text-xs text-amber-600 font-semibold block mb-0.5">Date</label>
                         <EditField
@@ -780,6 +694,42 @@ export default function Home() {
                           />
                         </div>
                       )}
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">🖼 Image URL (optional)</label>
+                        <EditField
+                          value={n.imageUrl ?? ""}
+                          onChange={(v) => { updDeNews(i, "imageUrl", v); updZhNews(i, "imageUrl", v); }}
+                          className="text-xs text-gray-500 w-full"
+                          placeholder="https://example.com/photo.jpg"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">Image Caption (optional)</label>
+                        <EditField
+                          value={n.imageCaption ?? ""}
+                          onChange={(v) => { updDeNews(i, "imageCaption", v); updZhNews(i, "imageCaption", v); }}
+                          className="text-xs text-gray-500 w-full"
+                          placeholder="Caption for the image…"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-amber-600 font-semibold block mb-0.5">Image Position</label>
+                        <select
+                          value={n.imagePosition ?? "before"}
+                          onChange={(e) => { updDeNews(i, "imagePosition", e.target.value); updZhNews(i, "imagePosition", e.target.value); }}
+                          className="w-full bg-amber-50/30 border-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 text-xs text-gray-600 rounded-sm px-2 py-1"
+                        >
+                          <option value="before">Before text</option>
+                          <option value="after">After text</option>
+                        </select>
+                      </div>
+                      {n.imageUrl && (
+                        <img
+                          src={n.imageUrl}
+                          alt="Preview"
+                          className="w-full h-32 object-cover rounded border border-gray-200"
+                        />
+                      )}
                     </div>
                   </EditBlock>
                 ) : (
@@ -787,12 +737,17 @@ export default function Home() {
                     key={n.date + n.title}
                     className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
                   >
-                    {n.imageUrl && (
-                      <img
-                        src={n.imageUrl}
-                        alt={n.title}
-                        className="w-full h-48 object-cover rounded mb-4"
-                      />
+                    {n.imageUrl && n.imagePosition !== "after" && (
+                      <figure className="mb-4">
+                        <img
+                          src={n.imageUrl}
+                          alt={n.imageCaption ?? n.title}
+                          className="w-full h-48 object-cover rounded"
+                        />
+                        {n.imageCaption && (
+                          <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{n.imageCaption}</figcaption>
+                        )}
+                      </figure>
                     )}
                     <time className="text-xs font-semibold text-[var(--school-red)] tracking-widest">
                       {n.date}
@@ -801,6 +756,18 @@ export default function Home() {
                     <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>
                     {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed">{zhNews.body}</p>}
                     <p className="mt-1 text-xs text-gray-400 leading-relaxed">{n.body}</p>
+                    {n.imageUrl && n.imagePosition === "after" && (
+                      <figure className="mt-4">
+                        <img
+                          src={n.imageUrl}
+                          alt={n.imageCaption ?? n.title}
+                          className="w-full h-48 object-cover rounded"
+                        />
+                        {n.imageCaption && (
+                          <figcaption className="text-xs text-gray-400 mt-1 text-center italic">{n.imageCaption}</figcaption>
+                        )}
+                      </figure>
+                    )}
                   </article>
                 );
               })}
@@ -956,29 +923,8 @@ export default function Home() {
                 </>
               )}
             </h2>
-            {isAdmin ? (
-              <div className="mb-8 space-y-1">
-                <EditField
-                  value={de.contact.subtitle}
-                  onChange={(v) => updDe("contact", { subtitle: v })}
-                  className="text-gray-500 w-full text-center"
-                  placeholder="DE subtitle…"
-                />
-                <EditField
-                  value={zh.contact.subtitle}
-                  onChange={(v) => updZh("contact", { subtitle: v })}
-                  className="font-cn text-gray-400 text-sm w-full text-center"
-                  placeholder="ZH 副标题…"
-                />
-              </div>
-            ) : (
-              <>
-                <p className="font-cn text-gray-500 mb-1">{zh.contact.subtitle}</p>
-                <p className="text-gray-400 text-sm mb-8">{de.contact.subtitle}</p>
-              </>
-            )}
 
-            <div className="grid sm:grid-cols-3 gap-6 text-left">
+            <div className="grid sm:grid-cols-2 gap-6 text-left mt-8">
               <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
                 <div className="text-3xl mb-3">📍</div>
                 {isAdmin ? (
@@ -1015,29 +961,6 @@ export default function Home() {
                     <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.emailTitle}</h3>
                     <p className="text-xs text-gray-400 mb-2">{de.contact.emailTitle}</p>
                     <p className="text-sm text-gray-600">{de.contact.email}</p>
-                  </>
-                )}
-              </div>
-
-              <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
-                <div className="text-3xl mb-3">🕐</div>
-                {isAdmin ? (
-                  <div className="space-y-1">
-                    <EditField value={de.contact.hoursTitle} onChange={(v) => updDe("contact", { hoursTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Hours title…" />
-                    <EditField value={zh.contact.hoursTitle} onChange={(v) => updZh("contact", { hoursTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 时间标题…" />
-                    {de.contact.hoursLines.map((l, i) => (
-                      <EditField key={`de-hrs-${i}`} value={l} onChange={(v) => updDeHoursLine(i, v)} className="text-sm text-gray-600 w-full" placeholder={`DE hours line ${i + 1}…`} />
-                    ))}
-                    {zh.contact.hoursLines.map((l, i) => (
-                      <EditField key={`zh-hrs-${i}`} value={l} onChange={(v) => updZhHoursLine(i, v)} className="font-cn text-xs text-gray-400 w-full" placeholder={`ZH 时间行 ${i + 1}…`} />
-                    ))}
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.hoursTitle}</h3>
-                    <p className="text-xs text-gray-400 mb-2">{de.contact.hoursTitle}</p>
-                    {zh.contact.hoursLines.map((l) => (<p key={l} className="font-cn text-sm text-gray-600">{l}</p>))}
-                    {de.contact.hoursLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
                   </>
                 )}
               </div>
