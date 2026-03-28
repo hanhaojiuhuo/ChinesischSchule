@@ -44,12 +44,21 @@ function hasApiCredentials(): boolean {
 /**
  * Read a single item from Vercel Edge Config.
  *
- * Tries the SDK first (fastest – uses the Edge network) when a connection
+ * Checks the in-memory write-through cache first so that values written by
+ * {@link writeEdgeConfigItem} on the same server instance are returned
+ * immediately (avoids Edge Config propagation delays and SDK caching issues).
+ *
+ * Then tries the SDK (fastest – uses the Edge network) when a connection
  * string is available (EDGE_CONFIG, or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN).
  * Falls back to the Vercel REST API (VERCEL_API_TOKEN + EDGE_CONFIG_ID).
  */
 export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
-  // 1. Try SDK (fastest)
+  // 1. Check in-memory write-through cache first (freshest data on this instance)
+  if (memoryStore.has(key)) {
+    return memoryStore.get(key) as T;
+  }
+
+  // 2. Try SDK (fastest for cold reads)
   const connectionString = getEdgeConfigConnectionString();
   if (connectionString) {
     try {
@@ -63,7 +72,7 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
     }
   }
 
-  // 2. Fallback: Vercel REST API
+  // 3. Fallback: Vercel REST API
   if (hasApiCredentials()) {
     try {
       const res = await fetch(
@@ -83,22 +92,31 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
     }
   }
 
-  // 3. Fallback: in-memory store (development without Edge Config)
-  if (memoryStore.has(key)) {
-    return memoryStore.get(key) as T;
-  }
-
   return null;
+}
+
+/**
+ * Returns true when Edge Config API credentials are available, meaning writes
+ * will be durably persisted (not just stored in-memory).
+ */
+export function hasEdgeConfigPersistence(): boolean {
+  return hasApiCredentials();
 }
 
 /**
  * Write (upsert) a single item to Vercel Edge Config via the Vercel REST API.
  * Requires VERCEL_API_TOKEN + EDGE_CONFIG_ID.
+ *
+ * The value is always written to the in-memory store first (as a write-through
+ * cache) so that subsequent reads on the same server instance see the latest
+ * data immediately — even before Edge Config propagation completes.
  */
 export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boolean> {
+  // Always update the in-memory store as a write-through cache so that reads
+  // on the same server instance return the freshly-written value immediately.
+  memoryStore.set(key, value);
+
   if (!hasApiCredentials()) {
-    // Fallback: in-memory store (development without Edge Config)
-    memoryStore.set(key, value);
     console.info(
       `[edge-config] Saved key "${key}" to in-memory store (Edge Config not configured).`
     );

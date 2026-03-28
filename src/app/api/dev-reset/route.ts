@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import {
   readAdmins,
   writeAdmins,
+  hasEdgeConfigPersistence,
   DEFAULT_ADMINS,
   type AdminUser,
 } from "@/lib/edge-config";
+
+const SESSION_COOKIE = "yixin-session";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 /**
  * GET – check whether developer mode (RECOVERY_MODE) is enabled.
@@ -78,6 +82,7 @@ export async function POST(request: Request) {
   }
 
   // Persist to Vercel Edge Config
+  const persisted = hasEdgeConfigPersistence();
   const saved = await writeAdmins(admins);
   if (!saved) {
     return NextResponse.json(
@@ -94,5 +99,17 @@ export async function POST(request: Request) {
       "Disable RECOVERY_MODE after use."
   );
 
-  return NextResponse.json({ success: true });
+  // Set a session cookie so the user is immediately logged in after the
+  // password reset — this avoids the need to go through /api/login (which
+  // might read stale data from Edge Config or be blocked by rate limiting
+  // from previous failed attempts).
+  const response = NextResponse.json({ success: true, persisted });
+  response.cookies.set(SESSION_COOKIE, username, {
+    httpOnly: true,
+    sameSite: "strict",
+    path: "/",
+    maxAge: COOKIE_MAX_AGE,
+    secure: process.env.NODE_ENV === "production",
+  });
+  return response;
 }
