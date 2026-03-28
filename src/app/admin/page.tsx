@@ -144,6 +144,7 @@ export default function AdminPage() {
   const [devModeNewPwConfirm, setDevModeNewPwConfirm] = useState("");
   const [devModeError, setDevModeError] = useState("");
   const [devModeSuccess, setDevModeSuccess] = useState(false);
+  const [devModePersisted, setDevModePersisted] = useState(true);
   const [devModeLoading, setDevModeLoading] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(() => {
     try {
@@ -862,8 +863,15 @@ export default function AdminPage() {
               {devModeSuccess ? (
                 <div className="text-center space-y-2">
                   <p className="text-sm text-green-700 font-semibold">
-                    ✅ 密码已保存到 Vercel！/ Password saved to Vercel! / Passwort in Vercel gespeichert!
+                    ✅ 密码已保存！/ Password saved! / Passwort gespeichert!
                   </p>
+                  {!devModePersisted && (
+                    <p className="text-xs text-amber-700 bg-amber-100 rounded p-2">
+                      ⚠️ ZH: Edge Config 未配置（缺少 VERCEL_API_TOKEN 和 EDGE_CONFIG_ID）。密码仅临时保存，重新部署后将丢失。<br />
+                      ⚠️ EN: Edge Config not configured (VERCEL_API_TOKEN and EDGE_CONFIG_ID missing). Password is saved temporarily and will be lost after redeployment.<br />
+                      ⚠️ DE: Edge Config nicht konfiguriert (VERCEL_API_TOKEN und EDGE_CONFIG_ID fehlen). Passwort ist nur temporär gespeichert und geht nach einem Redeployment verloren.
+                    </p>
+                  )}
                   <p className="text-xs text-gray-600">
                     DE: Sie können sich jetzt mit dem neuen Passwort anmelden. Vergessen Sie nicht, <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE</code> danach in Vercel zu deaktivieren.<br />
                     EN: You can now log in with the new password. Remember to disable <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE</code> in Vercel afterwards.<br />
@@ -872,14 +880,22 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      // Session cookie is already set by the dev-reset response
+                      // and localStorage session is saved. Reload to enter admin panel.
+                      window.location.reload();
+                    }}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 rounded transition-colors"
+                  >
+                    ✅ 进入管理面板 / Enter Admin Panel / Zum Admin-Panel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       setDevModeOpen(false);
                       setDevModeSuccess(false);
                       setDevModeNewPw("");
                       setDevModeNewPwConfirm("");
                       setDevModeError("");
-                      // Clear lockout so user can login immediately
-                      try { localStorage.removeItem(LOGIN_FAILURES_KEY); } catch { /* ignore */ }
-                      try { localStorage.removeItem("yixin-admins"); } catch { /* ignore */ }
                       setLoginBlocked(false);
                       setFailedAttempts(0);
                     }}
@@ -926,6 +942,34 @@ export default function AdminPage() {
                         }
                       } else {
                         setDevModeSuccess(true);
+                        setDevModePersisted(data.persisted !== false);
+                        // Save the new admin to localStorage so the client
+                        // has the latest credentials for AuthContext fallback.
+                        // NOTE: Passwords are stored in plaintext in localStorage
+                        // consistent with the existing AuthContext pattern
+                        // (fetchAdmins/saveAdmins). A future improvement could
+                        // hash them, but that requires a broader refactor.
+                        try {
+                          let existing: { username: string; password?: string }[] = [];
+                          try {
+                            const raw = localStorage.getItem("yixin-admins");
+                            const parsed = raw ? JSON.parse(raw) : [];
+                            if (Array.isArray(parsed)) existing = parsed;
+                          } catch { /* malformed data – start fresh */ }
+                          const filtered = existing.filter((a) => a.username !== uname);
+                          filtered.push({ username: uname, password: devModeNewPw });
+                          localStorage.setItem("yixin-admins", JSON.stringify(filtered));
+                        } catch { /* ignore */ }
+                        // The dev-reset response already set a session cookie.
+                        // Store the session in localStorage too, and mark it as
+                        // a recovery session so AuthContext.restoreSession can
+                        // validate it via /api/recovery while RECOVERY_MODE is
+                        // still enabled.
+                        try {
+                          localStorage.setItem("yixin-admin-session", uname);
+                          localStorage.setItem("yixin-recovery-session", "1");
+                          localStorage.removeItem(LOGIN_FAILURES_KEY);
+                        } catch { /* ignore */ }
                       }
                     } catch {
                       setDevModeError("Network error / Netzwerkfehler / 网络错误");
