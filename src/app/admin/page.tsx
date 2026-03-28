@@ -945,12 +945,18 @@ export default function AdminPage() {
                         setDevModePersisted(data.persisted !== false);
                         // Save the new admin to localStorage so the client
                         // has the latest credentials for AuthContext fallback.
+                        // NOTE: Passwords are stored in plaintext in localStorage
+                        // consistent with the existing AuthContext pattern
+                        // (fetchAdmins/saveAdmins). A future improvement could
+                        // hash them, but that requires a broader refactor.
                         try {
-                          const existingRaw = localStorage.getItem("yixin-admins");
-                          const existing = existingRaw ? JSON.parse(existingRaw) : [];
-                          const filtered = Array.isArray(existing)
-                            ? existing.filter((a: { username: string }) => a.username !== uname)
-                            : [];
+                          let existing: { username: string; password?: string }[] = [];
+                          try {
+                            const raw = localStorage.getItem("yixin-admins");
+                            const parsed = raw ? JSON.parse(raw) : [];
+                            if (Array.isArray(parsed)) existing = parsed;
+                          } catch { /* malformed data – start fresh */ }
+                          const filtered = existing.filter((a) => a.username !== uname);
                           filtered.push({ username: uname, password: devModeNewPw });
                           localStorage.setItem("yixin-admins", JSON.stringify(filtered));
                         } catch { /* ignore */ }
