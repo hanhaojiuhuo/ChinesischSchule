@@ -117,10 +117,10 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   memoryStore.set(key, value);
 
   if (!hasApiCredentials()) {
-    console.info(
-      `[edge-config] Saved key "${key}" to in-memory store (Edge Config not configured).`
+    console.warn(
+      `[edge-config] VERCEL_API_TOKEN or EDGE_CONFIG_ID missing – key "${key}" saved to in-memory store only (will be lost on restart).`
     );
-    return true;
+    return false;
   }
   try {
     const res = await fetch(
