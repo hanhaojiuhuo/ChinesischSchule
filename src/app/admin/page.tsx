@@ -136,6 +136,28 @@ export default function AdminPage() {
   const [editEmailValue, setEditEmailValue] = useState("");
   const [emailUpdateMsg, setEmailUpdateMsg] = useState("");
 
+  // Developer mode state (appears after 3 failed login attempts)
+  const DEV_MODE_THRESHOLD = 3;
+  const [devModeOpen, setDevModeOpen] = useState(false);
+  const [devModeUsername, setDevModeUsername] = useState("admin");
+  const [devModeNewPw, setDevModeNewPw] = useState("");
+  const [devModeNewPwConfirm, setDevModeNewPwConfirm] = useState("");
+  const [devModeError, setDevModeError] = useState("");
+  const [devModeSuccess, setDevModeSuccess] = useState(false);
+  const [devModeLoading, setDevModeLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(() => {
+    try {
+      const stored = localStorage.getItem(LOGIN_FAILURES_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.date === new Date().toISOString().slice(0, 10)) {
+          return parsed.count as number;
+        }
+      }
+    } catch { /* ignore */ }
+    return 0;
+  });
+
   // Forgot-password state (0=hidden, 1=request, 2=verify, 3=new-password, 4=done)
   const [forgotPwStep, setForgotPwStep] = useState(0);
   const [forgotPwEmail, setForgotPwEmail] = useState("");
@@ -181,6 +203,7 @@ export default function AdminPage() {
     setLoginBlocked(false);
     const result = await auth.login(userInput.trim(), pwInput);
     if (!result.success) {
+      setFailedAttempts((c) => c + 1);
       if (result.blocked) {
         setLoginBlocked(true);
         setLoginError(
@@ -810,6 +833,153 @@ export default function AdminPage() {
                     ← 返回登录 / Zurück zur Anmeldung / Back to Login
                   </button>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Developer mode (appears after 3+ failed attempts) ── */}
+          {failedAttempts >= DEV_MODE_THRESHOLD && (
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setDevModeOpen((v) => !v);
+                  setDevModeError("");
+                  setDevModeSuccess(false);
+                }}
+                className="text-xs text-amber-600 underline hover:opacity-80 transition-opacity"
+              >
+                🔧 开发者模式 / Developer Mode / Entwicklermodus
+              </button>
+            </div>
+          )}
+
+          {devModeOpen && (
+            <div className="mt-3 p-4 bg-amber-50 border border-amber-300 rounded-lg space-y-3">
+              <p className="text-xs font-semibold text-amber-800 text-center">
+                🔧 开发者模式 · Developer Mode · Entwicklermodus
+              </p>
+              {devModeSuccess ? (
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-green-700 font-semibold">
+                    ✅ 密码已保存到 Vercel！/ Password saved to Vercel! / Passwort in Vercel gespeichert!
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    DE: Sie können sich jetzt mit dem neuen Passwort anmelden. Vergessen Sie nicht, <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE</code> danach in Vercel zu deaktivieren.<br />
+                    EN: You can now log in with the new password. Remember to disable <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE</code> in Vercel afterwards.<br />
+                    ZH: 您现在可以使用新密码登录了。请记得之后在 Vercel 中关闭 <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE</code>。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDevModeOpen(false);
+                      setDevModeSuccess(false);
+                      setDevModeNewPw("");
+                      setDevModeNewPwConfirm("");
+                      setDevModeError("");
+                      // Clear lockout so user can login immediately
+                      try { localStorage.removeItem(LOGIN_FAILURES_KEY); } catch { /* ignore */ }
+                      try { localStorage.removeItem("yixin-admins"); } catch { /* ignore */ }
+                      setLoginBlocked(false);
+                      setFailedAttempts(0);
+                    }}
+                    className="text-xs text-[var(--school-red)] underline hover:opacity-80"
+                  >
+                    ← 返回登录 / Zurück zur Anmeldung / Back to Login
+                  </button>
+                </div>
+              ) : (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setDevModeError("");
+                    const uname = devModeUsername.trim();
+                    if (!uname || uname.length < 4) {
+                      setDevModeError("用户名至少4个字符 / Username ≥ 4 chars / Benutzername mind. 4 Zeichen");
+                      return;
+                    }
+                    if (devModeNewPw.length < 6) {
+                      setDevModeError("密码至少6个字符 / Password ≥ 6 chars / Passwort mind. 6 Zeichen");
+                      return;
+                    }
+                    if (devModeNewPw !== devModeNewPwConfirm) {
+                      setDevModeError("密码不匹配 / Passwords do not match / Passwörter stimmen nicht überein");
+                      return;
+                    }
+                    setDevModeLoading(true);
+                    try {
+                      const res = await fetch("/api/dev-reset", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username: uname, newPassword: devModeNewPw }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        if (data.recoveryNotEnabled) {
+                          setDevModeError(
+                            "⚠️ RECOVERY_MODE 未启用。请在 Vercel 环境变量中设置 RECOVERY_MODE=true 并重新部署。\n" +
+                            "⚠️ RECOVERY_MODE is not enabled. Set RECOVERY_MODE=true in Vercel environment variables and redeploy.\n" +
+                            "⚠️ RECOVERY_MODE ist nicht aktiviert. Setzen Sie RECOVERY_MODE=true in den Vercel-Umgebungsvariablen und deployen Sie erneut."
+                          );
+                        } else {
+                          setDevModeError(data.error ?? "Error");
+                        }
+                      } else {
+                        setDevModeSuccess(true);
+                      }
+                    } catch {
+                      setDevModeError("Network error / Netzwerkfehler / 网络错误");
+                    } finally {
+                      setDevModeLoading(false);
+                    }
+                  }}
+                  className="space-y-2"
+                >
+                  <p className="text-xs text-amber-700">
+                    DE: Setzen Sie ein neues Passwort. Voraussetzung: <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> muss in den Vercel-Umgebungsvariablen gesetzt sein.<br />
+                    EN: Set a new password. Requires <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code> to be set in Vercel environment variables.<br />
+                    ZH: 设置新密码。需要在 Vercel 环境变量中设置 <code className="bg-amber-100 px-1 rounded">RECOVERY_MODE=true</code>。
+                  </p>
+                  <input
+                    type="text"
+                    value={devModeUsername}
+                    onChange={(e) => setDevModeUsername(e.target.value)}
+                    placeholder="用户名 / Username / Benutzername"
+                    className="w-full border border-amber-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                    autoComplete="username"
+                    minLength={4}
+                    required
+                  />
+                  <input
+                    type="password"
+                    value={devModeNewPw}
+                    onChange={(e) => setDevModeNewPw(e.target.value)}
+                    placeholder="新密码 / New password / Neues Passwort"
+                    className="w-full border border-amber-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                  />
+                  <input
+                    type="password"
+                    value={devModeNewPwConfirm}
+                    onChange={(e) => setDevModeNewPwConfirm(e.target.value)}
+                    placeholder="确认密码 / Confirm password / Passwort bestätigen"
+                    className="w-full border border-amber-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                    autoComplete="new-password"
+                    required
+                  />
+                  {devModeError && (
+                    <p className="text-xs text-red-600 whitespace-pre-line">{devModeError}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={devModeLoading}
+                    className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
+                  >
+                    {devModeLoading ? "⏳ …" : "💾 保存到 Vercel / Save to Vercel / In Vercel speichern"}
+                  </button>
+                </form>
               )}
             </div>
           )}
