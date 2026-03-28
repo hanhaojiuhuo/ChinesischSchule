@@ -15,37 +15,74 @@ export const CONTENT_EDGE_CONFIG_KEY = "yixin-content-overrides";
 
 /* ── helpers ─────────────────────────────────────────────────────── */
 
+/**
+ * Build the Edge Config connection string.
+ * Uses EDGE_CONFIG env var when available (auto-set by Vercel when the store
+ * is linked to the project).  Otherwise constructs it from EDGE_CONFIG_ID +
+ * EDGE_CONFIG_TOKEN (suitable for local development / `.env.local`).
+ */
+export function getEdgeConfigConnectionString(): string | undefined {
+  if (process.env.EDGE_CONFIG) return process.env.EDGE_CONFIG;
+  const id = process.env.EDGE_CONFIG_ID;
+  const token = process.env.EDGE_CONFIG_TOKEN;
+  if (id && token) {
+    return `https://edge-config.vercel.com/${id}?token=${token}`;
+  }
+  return undefined;
+}
+
 function hasApiCredentials(): boolean {
   return !!(process.env.VERCEL_API_TOKEN && process.env.EDGE_CONFIG_ID);
 }
 
 /**
- * Read a single item from Vercel Edge Config via the Vercel REST API.
- * Works with only VERCEL_API_TOKEN + EDGE_CONFIG_ID (no SDK connection string needed).
+ * Read a single item from Vercel Edge Config.
+ *
+ * Tries the SDK first (fastest – uses the Edge network) when a connection
+ * string is available (EDGE_CONFIG, or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN).
+ * Falls back to the Vercel REST API (VERCEL_API_TOKEN + EDGE_CONFIG_ID).
  */
 export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
-  if (!hasApiCredentials()) return null;
-  try {
-    const res = await fetch(
-      `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/item/${key}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
-        },
-        cache: "no-store",
+  // 1. Try SDK (fastest)
+  const connectionString = getEdgeConfigConnectionString();
+  if (connectionString) {
+    try {
+      const client = createClient(connectionString);
+      const value = await client.get<T>(key);
+      if (value !== undefined && value !== null) {
+        return value;
       }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data as T;
-  } catch (err) {
-    console.warn(`[edge-config] Failed to read key "${key}" via API:`, err);
-    return null;
+    } catch (err) {
+      console.warn(`[edge-config] SDK read failed for key "${key}":`, err);
+    }
   }
+
+  // 2. Fallback: Vercel REST API
+  if (hasApiCredentials()) {
+    try {
+      const res = await fetch(
+        `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/item/${key}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+          },
+          cache: "no-store",
+        }
+      );
+      if (res.ok) {
+        return (await res.json()) as T;
+      }
+    } catch (err) {
+      console.warn(`[edge-config] API read failed for key "${key}":`, err);
+    }
+  }
+
+  return null;
 }
 
 /**
  * Write (upsert) a single item to Vercel Edge Config via the Vercel REST API.
+ * Requires VERCEL_API_TOKEN + EDGE_CONFIG_ID.
  */
 export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boolean> {
   if (!hasApiCredentials()) return false;
@@ -74,30 +111,14 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
 
 /**
  * Read the admin list from Vercel Edge Config.
- * Prefers the SDK (EDGE_CONFIG connection string) when available, then falls
- * back to reading via the Vercel REST API (VERCEL_API_TOKEN + EDGE_CONFIG_ID).
+ * Uses SDK (connection string) when available, then falls back to the REST API.
  * Returns DEFAULT_ADMINS when Edge Config is not configured or unavailable.
  */
 export async function readAdmins(): Promise<AdminUser[]> {
-  // 1. Try SDK (fastest – uses the Edge network)
-  try {
-    if (process.env.EDGE_CONFIG) {
-      const client = createClient(process.env.EDGE_CONFIG);
-      const admins = await client.get<AdminUser[]>(EDGE_CONFIG_KEY);
-      if (Array.isArray(admins) && admins.length > 0) {
-        return admins;
-      }
-    }
-  } catch (err) {
-    console.warn("[edge-config] SDK read failed, trying API fallback:", err);
-  }
-
-  // 2. Fallback: read via Vercel REST API
   const admins = await readEdgeConfigItem<AdminUser[]>(EDGE_CONFIG_KEY);
   if (Array.isArray(admins) && admins.length > 0) {
     return admins;
   }
-
   return DEFAULT_ADMINS;
 }
 
