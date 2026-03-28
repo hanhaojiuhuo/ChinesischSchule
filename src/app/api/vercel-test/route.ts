@@ -185,12 +185,12 @@ export async function GET() {
         };
       } else {
         const readData = await readRes.json();
-        const matches = readData.ts === testPayload.ts;
+        const matches = readData.test === true && readData.ts === testPayload.ts;
         results["blob_data_transfer"] = {
           ok: matches,
           detail: matches
             ? "write → read round-trip succeeded"
-            : `data mismatch: expected ts=${testPayload.ts}, got ts=${readData.ts}`,
+            : `data mismatch: expected {test:true,ts:${testPayload.ts}}, got {test:${readData.test},ts:${readData.ts}}`,
         };
       }
 
