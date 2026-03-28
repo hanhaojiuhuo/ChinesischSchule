@@ -295,6 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, remainingAttempts: remaining };
       } catch {
         // API unreachable – fall back to local credential check
+        console.warn("[AuthContext] /api/login unreachable, falling back to local verification.");
       }
 
       // Offline fallback: verify credentials locally
