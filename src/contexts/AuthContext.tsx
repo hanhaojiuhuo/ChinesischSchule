@@ -129,33 +129,33 @@ async function fetchAdmins(): Promise<AdminUser[]> {
     const res = await fetch("/api/admins");
     if (res.ok) {
       const apiAdmins = (await res.json()) as AdminUser[];
-      // If the API returned only the hardcoded default, prefer locally-saved
-      // admins (set when Vercel Edge Config is not configured).
-      const isDefault =
-        apiAdmins.length === 1 && apiAdmins[0].username === "admin";
-      if (isDefault) {
-        const local = loadLocalAdmins();
-        if (local) return local;
+      if (Array.isArray(apiAdmins) && apiAdmins.length > 0) {
+        // Server (Vercel Edge Config) is the source of truth.
+        // Update localStorage as an offline cache.
+        try {
+          localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(apiAdmins));
+        } catch {
+          // ignore
+        }
+        return apiAdmins;
       }
-      return apiAdmins;
     }
   } catch {
-    // ignore
+    // API unreachable — fall back to local cache
   }
-  // Fallback: local storage → hardcoded default
+  // Fallback: local cache → hardcoded default
   return loadLocalAdmins() ?? [{ username: "admin", password: "yixin" }];
 }
 
 async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
-  // Always persist to localStorage so admins are available on this device
-  // even when Vercel Edge Config is not configured.
+  // Always update localStorage as an offline cache.
   try {
     localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(admins));
   } catch {
-    console.warn("[AuthContext] Failed to save admin list to localStorage.");
+    console.warn("[AuthContext] Failed to update localStorage cache.");
   }
 
-  // Also save to the server (Vercel Edge Config) for cross-device access.
+  // Persist to the server (Vercel Edge Config) — this is the source of truth.
   try {
     const res = await fetch("/api/admins", {
       method: "POST",
@@ -164,17 +164,17 @@ async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
     });
     if (!res.ok) {
       console.warn(
-        `[AuthContext] Failed to save admin list to server (API returned ${res.status}). Saved locally only.`
+        `[AuthContext] Failed to save admin list to server (API returned ${res.status}).`
       );
+      return false;
     }
+    return true;
   } catch {
     console.warn(
-      "[AuthContext] Failed to save admin list to server (API unreachable). Saved locally only."
+      "[AuthContext] Failed to save admin list to server (API unreachable)."
     );
+    return false;
   }
-
-  // Return true — localStorage save is always the local fallback.
-  return true;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
