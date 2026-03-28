@@ -237,10 +237,9 @@ export async function POST(request: Request) {
       if (!saved) {
         return NextResponse.json(
           {
-            error:
-              "Password reset requires Vercel Edge Config to be configured (VERCEL_API_TOKEN / EDGE_CONFIG_ID missing)",
+            error: "Failed to save new password",
           },
-          { status: 503 }
+          { status: 500 }
         );
       }
 
