@@ -67,7 +67,7 @@ const SESSION_KEY = "yixin-admin-session";
 const RECOVERY_SESSION_KEY = "yixin-recovery-session";
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
 const LOCAL_ADMINS_KEY = "yixin-admins";
-const MAX_DAILY_ATTEMPTS = 3;
+const MAX_DAILY_ATTEMPTS = 10;
 
 function getTodayString(): string {
   return new Date().toISOString().slice(0, 10);
