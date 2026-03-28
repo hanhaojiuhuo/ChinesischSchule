@@ -16,6 +16,12 @@ export const CONTENT_EDGE_CONFIG_KEY = "yixin-content-overrides";
 /* ── helpers ─────────────────────────────────────────────────────── */
 
 /**
+ * In-memory fallback store used when Vercel Edge Config is not configured
+ * (e.g. local development).  Data is lost on server restart.
+ */
+const memoryStore = new Map<string, unknown>();
+
+/**
  * Build the Edge Config connection string.
  * Uses EDGE_CONFIG env var when available (auto-set by Vercel when the store
  * is linked to the project).  Otherwise constructs it from EDGE_CONFIG_ID +
@@ -77,6 +83,11 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
     }
   }
 
+  // 3. Fallback: in-memory store (development without Edge Config)
+  if (memoryStore.has(key)) {
+    return memoryStore.get(key) as T;
+  }
+
   return null;
 }
 
@@ -85,7 +96,14 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
  * Requires VERCEL_API_TOKEN + EDGE_CONFIG_ID.
  */
 export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boolean> {
-  if (!hasApiCredentials()) return false;
+  if (!hasApiCredentials()) {
+    // Fallback: in-memory store (development without Edge Config)
+    memoryStore.set(key, value);
+    console.info(
+      `[edge-config] Saved key "${key}" to in-memory store (Edge Config not configured).`
+    );
+    return true;
+  }
   try {
     const res = await fetch(
       `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/items`,

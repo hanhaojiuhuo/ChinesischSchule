@@ -248,10 +248,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       remainingAttempts?: number;
       blocked?: boolean;
     }> => {
+      // Quick client-side check (supplementary to server-side rate limiting)
       const failures = loadLoginFailures();
       if (failures.count >= MAX_DAILY_ATTEMPTS) {
         return { success: false, blocked: true, remainingAttempts: 0 };
       }
+
+      // Server-side credential verification + rate limiting
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          resetLoginFailures();
+          setIsAdmin(true);
+          setCurrentUser(username);
+          try {
+            localStorage.setItem(SESSION_KEY, username);
+          } catch {
+            // ignore
+          }
+          // Session cookie is already set by the /api/login response
+          return { success: true };
+        }
+
+        // Server reports blocked or remaining attempts
+        if (data.blocked) {
+          const updated = { count: MAX_DAILY_ATTEMPTS, date: getTodayString() };
+          persistLoginFailures(updated);
+          return { success: false, blocked: true, remainingAttempts: 0 };
+        }
+
+        const serverRemaining: number = data.remainingAttempts ?? 0;
+        const updated = {
+          count: failures.count + 1,
+          date: getTodayString(),
+        };
+        persistLoginFailures(updated);
+        const clientRemaining = MAX_DAILY_ATTEMPTS - updated.count;
+        const remaining = Math.min(serverRemaining, clientRemaining);
+
+        return { success: false, remainingAttempts: remaining };
+      } catch {
+        // API unreachable – fall back to local credential check
+      }
+
+      // Offline fallback: verify credentials locally
       const admins = await fetchAdmins();
       const found = admins.find(
         (a) => a.username === username && a.password === password
@@ -265,7 +311,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {
           // ignore
         }
-        // Set server-side session cookie for API route authentication
         try {
           await fetch("/api/auth", {
             method: "POST",
