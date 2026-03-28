@@ -26,8 +26,8 @@ export async function readAdmins(): Promise<AdminUser[]> {
     if (Array.isArray(admins) && admins.length > 0) {
       return admins;
     }
-  } catch {
-    // fall through to defaults
+  } catch (err) {
+    console.warn("[edge-config] Failed to read admins from Edge Config:", err);
   }
   return DEFAULT_ADMINS;
 }
@@ -57,7 +57,8 @@ export async function writeAdmins(admins: AdminUser[]): Promise<boolean> {
       }
     );
     return res.ok;
-  } catch {
+  } catch (err) {
+    console.warn("[edge-config] Failed to write admins to Edge Config:", err);
     return false;
   }
 }
