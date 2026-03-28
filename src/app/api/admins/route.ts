@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     if (!process.env.VERCEL_API_TOKEN || !process.env.EDGE_CONFIG_ID) {
       return NextResponse.json(
-        { error: "Vercel Edge Config not configured (VERCEL_API_TOKEN / EDGE_CONFIG_ID missing). Admin data cannot be persisted." },
+        { error: "Vercel Edge Config not configured (VERCEL_API_TOKEN and EDGE_CONFIG_ID required). Admin data cannot be persisted." },
         { status: 503 }
       );
     }
