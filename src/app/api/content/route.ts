@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     const saved = await writeContentOverrides(content as Record<string, unknown>);
     if (!saved) {
       return NextResponse.json(
-        { error: "No storage backend configured (BLOB_READ_WRITE_TOKEN or VERCEL_API_TOKEN + EDGE_CONFIG_ID required)." },
+        { error: "No storage backend configured (BLOB_READ_WRITE_TOKEN or EDGE_CONFIG_TOKEN + EDGE_CONFIG_ID required)." },
         { status: 503 }
       );
     }
