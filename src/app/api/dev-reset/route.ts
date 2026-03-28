@@ -1,16 +1,10 @@
-import { createClient } from "@vercel/edge-config";
 import { NextResponse } from "next/server";
-
-interface AdminUser {
-  username: string;
-  password: string;
-  email?: string;
-}
-
-const EDGE_CONFIG_KEY = "yixin-admins";
-const DEFAULT_ADMINS: AdminUser[] = [
-  { username: "admin", password: "yixin" },
-];
+import {
+  readAdmins,
+  writeAdmins,
+  DEFAULT_ADMINS,
+  type AdminUser,
+} from "@/lib/edge-config";
 
 /**
  * GET – check whether developer mode (RECOVERY_MODE) is enabled.
@@ -68,17 +62,11 @@ export async function POST(request: Request) {
   }
 
   // Read current admin list from Edge Config
-  let admins: AdminUser[] = [...DEFAULT_ADMINS];
+  let admins: AdminUser[];
   try {
-    if (process.env.EDGE_CONFIG) {
-      const client = createClient(process.env.EDGE_CONFIG);
-      const stored = await client.get<AdminUser[]>(EDGE_CONFIG_KEY);
-      if (Array.isArray(stored) && stored.length > 0) {
-        admins = stored;
-      }
-    }
+    admins = await readAdmins();
   } catch {
-    // use defaults
+    admins = [...DEFAULT_ADMINS];
   }
 
   // Update existing user or append new entry
@@ -90,37 +78,14 @@ export async function POST(request: Request) {
   }
 
   // Persist to Vercel Edge Config
-  if (!process.env.VERCEL_API_TOKEN || !process.env.EDGE_CONFIG_ID) {
+  const saved = await writeAdmins(admins);
+  if (!saved) {
     return NextResponse.json(
       {
         error:
           "Vercel Edge Config not configured (VERCEL_API_TOKEN and EDGE_CONFIG_ID required).",
       },
       { status: 503 }
-    );
-  }
-
-  const res = await fetch(
-    `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/items`,
-    {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        items: [
-          { operation: "upsert", key: EDGE_CONFIG_KEY, value: admins },
-        ],
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const text = await res.text();
-    return NextResponse.json(
-      { error: `Failed to save to Vercel: ${text}` },
-      { status: 500 }
     );
   }
 

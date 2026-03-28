@@ -1,19 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
-import { createClient } from "@vercel/edge-config";
 import { Resend } from "resend";
-
-interface AdminUser {
-  username: string;
-  password: string;
-  email?: string;
-}
-
-const DEFAULT_ADMINS: AdminUser[] = [
-  { username: "admin", password: "yixin" },
-];
-
-const EDGE_CONFIG_KEY = "yixin-admins";
+import { readAdmins, writeAdmins } from "@/lib/edge-config";
 
 /** Time-slot duration for HMAC-based code validity (10 minutes). */
 const CODE_SLOT_MS = 10 * 60 * 1000;
@@ -40,45 +28,6 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number; ret
   return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count, retryAfterMs: 0 };
 }
 
-async function readAdmins(): Promise<AdminUser[]> {
-  try {
-    if (!process.env.EDGE_CONFIG) {
-      return DEFAULT_ADMINS;
-    }
-    const client = createClient(process.env.EDGE_CONFIG);
-    const admins = await client.get<AdminUser[]>(EDGE_CONFIG_KEY);
-    if (Array.isArray(admins) && admins.length > 0) {
-      return admins;
-    }
-  } catch {
-    // fall through to defaults
-  }
-  return DEFAULT_ADMINS;
-}
-
-async function writeAdmins(admins: AdminUser[]): Promise<boolean> {
-  if (!process.env.VERCEL_API_TOKEN || !process.env.EDGE_CONFIG_ID) {
-    return false;
-  }
-  try {
-    const res = await fetch(
-      `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/items`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          items: [{ operation: "upsert", key: EDGE_CONFIG_KEY, value: admins }],
-        }),
-      }
-    );
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Generate a 6-digit HMAC-based code tied to a username and a 10-minute time
