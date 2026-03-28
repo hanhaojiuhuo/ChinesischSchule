@@ -1,4 +1,4 @@
-import { put, list, del } from "@vercel/blob";
+import { put, list } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { readContentOverrides, writeContentOverrides } from "@/lib/edge-config";
@@ -7,21 +7,23 @@ const BLOB_PATHNAME = "yixin-content-overrides.json";
 
 export async function GET() {
   try {
-    // 1. Try Vercel Blob when configured
+    // 1. Try Vercel Blob (primary — public store for site content)
     if (process.env.BLOB_READ_WRITE_TOKEN) {
+      // With addRandomSuffix: false there is at most one blob for this path.
       const { blobs } = await list({
         prefix: BLOB_PATHNAME,
+        limit: 1,
         token: process.env.BLOB_READ_WRITE_TOKEN,
       });
       if (blobs.length > 0) {
-        const latest = blobs.sort(
-          (a, b) =>
-            new Date(b.uploadedAt).getTime() -
-            new Date(a.uploadedAt).getTime()
-        )[0];
-        const res = await fetch(latest.url);
+        const res = await fetch(blobs[0].url, { cache: "no-store" });
         if (res.ok) {
-          return NextResponse.json(await res.json());
+          const data = await res.json();
+          return NextResponse.json(data, {
+            headers: {
+              "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+            },
+          });
         }
       }
     }
@@ -44,18 +46,12 @@ export async function POST(request: Request) {
   try {
     const content = await request.json();
 
-    // 1. Try Vercel Blob when configured
+    // 1. Try Vercel Blob (primary — overwrites in place with addRandomSuffix: false)
     if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const { blobs } = await list({
-        prefix: BLOB_PATHNAME,
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      });
-      for (const blob of blobs) {
-        await del(blob.url, { token: process.env.BLOB_READ_WRITE_TOKEN });
-      }
       await put(BLOB_PATHNAME, JSON.stringify(content), {
         access: "public",
         contentType: "application/json",
+        addRandomSuffix: false,
         token: process.env.BLOB_READ_WRITE_TOKEN,
       });
       return NextResponse.json({ success: true });

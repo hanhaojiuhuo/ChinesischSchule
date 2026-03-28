@@ -1,4 +1,4 @@
-import { list } from "@vercel/blob";
+import { list, put, del } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import {
   readEdgeConfigItem,
@@ -19,7 +19,8 @@ import {
  *     EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN are set).
  *  3. Tests Edge Config write/read/delete round-trip (when VERCEL_API_TOKEN is set).
  *  4. Reads the admin list and content overrides.
- *  5. Tests Vercel Blob connectivity (when BLOB_READ_WRITE_TOKEN is set).
+ *  5. Tests Vercel Blob connectivity (list).
+ *  6. Tests Vercel Blob write/read/delete round-trip (data transfer).
  *
  * Returns a JSON report with pass/fail status for each check.
  */
@@ -159,6 +160,56 @@ export async function GET() {
     results["blob_connectivity"] = {
       ok: false,
       detail: "skipped — BLOB_READ_WRITE_TOKEN not set (auto-set when deployed to Vercel)",
+    };
+  }
+
+  /* ── 6. Vercel Blob write/read/delete round-trip ─────────────── */
+  if (hasBlobToken) {
+    const TEST_BLOB_PATH = "__vercel_blob_test__.json";
+    const testPayload = { test: true, ts: Date.now() };
+    try {
+      // Write
+      const blob = await put(TEST_BLOB_PATH, JSON.stringify(testPayload), {
+        access: "public",
+        contentType: "application/json",
+        addRandomSuffix: false,
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
+
+      // Read back
+      const readRes = await fetch(blob.url, { cache: "no-store" });
+      if (!readRes.ok) {
+        results["blob_data_transfer"] = {
+          ok: false,
+          detail: `Blob read-back failed with status ${readRes.status}`,
+        };
+      } else {
+        const readData = await readRes.json();
+        const matches = readData.ts === testPayload.ts;
+        results["blob_data_transfer"] = {
+          ok: matches,
+          detail: matches
+            ? "write → read round-trip succeeded"
+            : `data mismatch: expected ts=${testPayload.ts}, got ts=${readData.ts}`,
+        };
+      }
+
+      // Clean up
+      try {
+        await del(blob.url, { token: process.env.BLOB_READ_WRITE_TOKEN });
+      } catch {
+        // best-effort cleanup
+      }
+    } catch (err) {
+      results["blob_data_transfer"] = {
+        ok: false,
+        detail: `Blob write/read round-trip failed: ${String(err)}`,
+      };
+    }
+  } else {
+    results["blob_data_transfer"] = {
+      ok: false,
+      detail: "skipped — BLOB_READ_WRITE_TOKEN not set",
     };
   }
 
