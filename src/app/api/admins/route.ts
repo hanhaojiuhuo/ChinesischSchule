@@ -46,8 +46,10 @@ export async function POST(request: Request) {
     const admins = (await request.json()) as AdminUser[];
 
     if (!process.env.VERCEL_API_TOKEN || !process.env.EDGE_CONFIG_ID) {
-      // Cloud not configured — return success (no persistent storage in this mode)
-      return NextResponse.json({ success: true });
+      return NextResponse.json(
+        { error: "Vercel Edge Config not configured (VERCEL_API_TOKEN and EDGE_CONFIG_ID required). Admin data cannot be persisted." },
+        { status: 503 }
+      );
     }
 
     const res = await fetch(
