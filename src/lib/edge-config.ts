@@ -120,7 +120,10 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
     console.warn(
       `[edge-config] VERCEL_API_TOKEN or EDGE_CONFIG_ID missing – key "${key}" saved to in-memory store only (will be lost on restart).`
     );
-    return false;
+    // Return true because the data IS saved (to memory) and is usable for the
+    // current server session.  Callers that need to distinguish durable
+    // persistence from in-memory-only storage should use hasEdgeConfigPersistence().
+    return true;
   }
   try {
     const res = await fetch(

@@ -3,6 +3,7 @@ import { getSessionUser } from "@/lib/session";
 import {
   readAdmins,
   writeAdmins,
+  hasEdgeConfigPersistence,
   type AdminUser,
 } from "@/lib/edge-config";
 
@@ -26,12 +27,12 @@ export async function POST(request: Request) {
     const saved = await writeAdmins(admins);
     if (!saved) {
       return NextResponse.json(
-        { error: "Vercel Edge Config not configured (VERCEL_API_TOKEN and EDGE_CONFIG_ID required). Admin data cannot be persisted." },
-        { status: 503 }
+        { error: "Failed to save admin data." },
+        { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, persisted: hasEdgeConfigPersistence() });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

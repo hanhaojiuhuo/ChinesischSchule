@@ -87,10 +87,9 @@ export async function POST(request: Request) {
   if (!saved) {
     return NextResponse.json(
       {
-        error:
-          "Vercel Edge Config not configured (VERCEL_API_TOKEN and EDGE_CONFIG_ID required).",
+        error: "Failed to save admin data.",
       },
-      { status: 503 }
+      { status: 500 }
     );
   }
 
