@@ -51,6 +51,12 @@ let _lastPersistError: string | null = null;
 let _discoveredEdgeConfigId: string | null | undefined;
 
 /**
+ * Cached Edge Config connection string discovered via the Vercel REST API.
+ * `undefined` = not yet attempted, `null` = attempted but not found.
+ */
+let _discoveredConnectionString: string | null | undefined;
+
+/**
  * Returns the error message from the most recent {@link writeEdgeConfigItem}
  * call, or `null` if the last write was durably persisted.
  */
@@ -59,10 +65,14 @@ export function getLastPersistError(): string | null {
 }
 
 /**
- * Build the Edge Config connection string.
+ * Build the Edge Config connection string (synchronous).
+ *
  * Uses EDGE_CONFIG env var when available (auto-set by Vercel when the store
  * is linked to the project).  Otherwise constructs it from EDGE_CONFIG_ID +
  * EDGE_CONFIG_TOKEN (suitable for local development / `.env.local`).
+ *
+ * Also returns any previously discovered connection string (see
+ * {@link resolveConnectionString}).
  */
 export function getEdgeConfigConnectionString(): string | undefined {
   if (process.env.EDGE_CONFIG) return process.env.EDGE_CONFIG;
@@ -71,6 +81,8 @@ export function getEdgeConfigConnectionString(): string | undefined {
   if (id && token) {
     return `https://edge-config.vercel.com/${id}?token=${token}`;
   }
+  // Return previously discovered connection string if available
+  if (_discoveredConnectionString) return _discoveredConnectionString;
   return undefined;
 }
 
@@ -204,6 +216,134 @@ async function discoverEdgeConfigId(): Promise<string | null> {
 }
 
 /**
+ * Auto-discover the Edge Config connection string by fetching read tokens
+ * via the Vercel REST API.
+ *
+ * When `EDGE_CONFIG_ID` (or auto-discovered ID) and `VERCEL_API_TOKEN` are
+ * available but the `EDGE_CONFIG` connection string is not set, this function
+ * retrieves an existing read token from the store and constructs a connection
+ * string.  This enables the faster SDK read path.
+ *
+ * The result is cached for the lifetime of the server instance.
+ */
+async function discoverConnectionString(
+  edgeConfigId: string
+): Promise<string | null> {
+  if (_discoveredConnectionString !== undefined)
+    return _discoveredConnectionString;
+
+  const apiToken = process.env.VERCEL_API_TOKEN;
+  if (!apiToken) {
+    _discoveredConnectionString = null;
+    return null;
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.vercel.com/v1/edge-config/${edgeConfigId}/tokens${getTeamIdParam()}`,
+      {
+        headers: { Authorization: `Bearer ${apiToken}` },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) {
+      console.warn(
+        `[edge-config] Connection string discovery: API returned ${res.status} ` +
+          `for Edge Config ID "${edgeConfigId}". Cannot fetch read tokens.`
+      );
+      _discoveredConnectionString = null;
+      return null;
+    }
+    const data: unknown = await res.json();
+    const tokens = Array.isArray(data) ? data : [];
+    if (tokens.length === 0) {
+      console.warn(
+        `[edge-config] Connection string discovery: no tokens found for ` +
+          `Edge Config ID "${edgeConfigId}". The store may need a read token ` +
+          "created via the Vercel dashboard."
+      );
+      _discoveredConnectionString = null;
+      return null;
+    }
+    const readToken =
+      typeof tokens[0].token === "string" ? tokens[0].token : null;
+    if (!readToken) {
+      console.warn(
+        "[edge-config] Connection string discovery: first token has no valid value."
+      );
+      _discoveredConnectionString = null;
+      return null;
+    }
+    _discoveredConnectionString = `https://edge-config.vercel.com/${edgeConfigId}?token=${readToken}`;
+    console.log(
+      `[edge-config] Auto-discovered Edge Config connection string for ID: ${edgeConfigId}`
+    );
+    return _discoveredConnectionString;
+  } catch (err) {
+    console.warn(
+      "[edge-config] Connection string discovery failed:",
+      err
+    );
+    _discoveredConnectionString = null;
+    return null;
+  }
+}
+
+/**
+ * Async version of {@link getEdgeConfigConnectionString} that includes
+ * auto-discovery of the read token via the Vercel REST API.
+ *
+ * Use this in async contexts (e.g. {@link readEdgeConfigItem}) so that
+ * SDK reads work even when only `EDGE_CONFIG_ID` + `VERCEL_API_TOKEN`
+ * are configured (without the full `EDGE_CONFIG` connection string).
+ */
+export async function resolveConnectionString(): Promise<string | undefined> {
+  // Fast path: sync resolution already has a connection string
+  const sync = getEdgeConfigConnectionString();
+  if (sync) return sync;
+
+  // Slow path: try to discover the connection string
+  // We need an Edge Config ID to fetch tokens
+  const id =
+    process.env.EDGE_CONFIG_ID ?? (await discoverEdgeConfigId());
+  if (!id) return undefined;
+
+  const discovered = await discoverConnectionString(id);
+  return discovered ?? undefined;
+}
+
+/**
+ * Validate that an Edge Config store exists and is accessible.
+ * Returns the store object on success, null on failure.
+ */
+async function validateEdgeConfigStore(
+  edgeConfigId: string,
+  apiToken: string
+): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(
+      `https://api.vercel.com/v1/edge-config/${edgeConfigId}${getTeamIdParam()}`,
+      {
+        headers: { Authorization: `Bearer ${apiToken}` },
+        cache: "no-store",
+      }
+    );
+    if (res.ok) {
+      return (await res.json()) as Record<string, unknown>;
+    }
+    const body = await res.text().catch(() => "");
+    console.warn(
+      `[edge-config] Store validation: GET /v1/edge-config/${edgeConfigId} ` +
+        `returned ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}`
+    );
+    return null;
+  } catch (err) {
+    console.warn("[edge-config] Store validation failed:", err);
+    return null;
+  }
+}
+
+/**
  * Async version of {@link getApiCredentials} that includes auto-discovery of
  * the Edge Config ID via the Vercel REST API when `VERCEL_API_TOKEN` is set
  * but `EDGE_CONFIG` / `EDGE_CONFIG_ID` are not configured.
@@ -236,8 +376,9 @@ export async function resolveApiCredentials(): Promise<{
  * immediately (avoids Edge Config propagation delays and SDK caching issues).
  *
  * Then tries the SDK (fastest – uses the Edge network) when a connection
- * string is available (EDGE_CONFIG, or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN).
- * Falls back to the Vercel REST API (EDGE_CONFIG_TOKEN + EDGE_CONFIG_ID).
+ * string is available (EDGE_CONFIG, EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN, or
+ * auto-discovered via VERCEL_API_TOKEN).
+ * Falls back to the Vercel REST API (VERCEL_API_TOKEN + EDGE_CONFIG_ID).
  */
 export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
   // 1. Check in-memory write-through cache first (freshest data on this instance)
@@ -245,8 +386,9 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
     return memoryStore.get(key) as T;
   }
 
-  // 2. Try SDK (fastest for cold reads)
-  const connectionString = getEdgeConfigConnectionString();
+  // 2. Try SDK (fastest for cold reads) — includes auto-discovery of
+  //    connection string when EDGE_CONFIG_ID + VERCEL_API_TOKEN are set.
+  const connectionString = await resolveConnectionString();
   if (connectionString) {
     try {
       const client = createClient(connectionString);
@@ -379,27 +521,45 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   let res = await attemptWrite(creds.id, creds.token);
 
   // On 404, the Edge Config ID may be stale (e.g. store was re-created).
-  // Invalidate the cached discovery result and retry with a fresh lookup.
-  // Only retry via auto-discovery when the ID was obtained through discovery
-  // (not from explicit EDGE_CONFIG / EDGE_CONFIG_ID env vars).
+  // Validate the store exists and retry or provide actionable diagnostics.
   if (res && res.status === 404) {
     const syncCreds = getApiCredentials();
     const idFromSync = syncCreds?.id;
     const idFromDiscovery = _discoveredEdgeConfigId;
 
     if (idFromSync && idFromSync === creds.id) {
-      // ID came from explicit env vars — auto-discovery retry won't help.
+      // ID came from explicit env vars — validate the store exists before
+      // giving up, so we can provide actionable error messages.
       console.warn(
         `[edge-config] Write returned 404 for Edge Config ID "${creds.id}" ` +
-          `(from env vars, teamParam: "${teamParam}"). ` +
-          "Verify EDGE_CONFIG / EDGE_CONFIG_ID is correct and the store exists."
+          `(from env vars, teamParam: "${teamParam}"). Validating store…`
       );
+      const store = await validateEdgeConfigStore(creds.id, creds.token);
+      if (!store) {
+        console.warn(
+          `[edge-config] Store validation FAILED for "${creds.id}". ` +
+            "The Edge Config store does not exist, VERCEL_API_TOKEN lacks " +
+            "access, or VERCEL_TEAM_ID is incorrect. Check: " +
+            "1) EDGE_CONFIG_ID matches a real store, " +
+            "2) VERCEL_API_TOKEN has access to that store, " +
+            "3) VERCEL_TEAM_ID matches the team owning the store."
+        );
+      } else {
+        // Store exists but write returned 404 — unexpected.
+        // Try once more (transient issue).
+        console.warn(
+          `[edge-config] Store "${creds.id}" exists (slug: "${store.slug ?? "?"}") ` +
+            "but write returned 404. Retrying…"
+        );
+        res = await attemptWrite(creds.id, creds.token);
+      }
     } else if (idFromDiscovery !== undefined) {
       console.warn(
         `[edge-config] Write returned 404 for auto-discovered Edge Config ID "${creds.id}" ` +
           `(teamParam: "${teamParam}"). Retrying with fresh auto-discovery…`
       );
       _discoveredEdgeConfigId = undefined; // reset cache
+      _discoveredConnectionString = undefined; // reset connection string cache too
       const freshCreds = await resolveApiCredentials();
       if (freshCreds) {
         creds = freshCreds;
