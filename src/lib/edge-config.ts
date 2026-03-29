@@ -52,8 +52,40 @@ export function getEdgeConfigConnectionString(): string | undefined {
   return undefined;
 }
 
-function hasApiCredentials(): boolean {
-  return !!(process.env.EDGE_CONFIG_TOKEN && process.env.EDGE_CONFIG_ID);
+/**
+ * Parse an Edge Config connection string to extract the config ID and token.
+ * Format: https://edge-config.vercel.com/{id}?token={token}
+ */
+function parseConnectionString(
+  connectionString: string
+): { id: string; token: string } | null {
+  try {
+    const url = new URL(connectionString);
+    const id = url.pathname.split("/").filter(Boolean).pop();
+    const token = url.searchParams.get("token");
+    if (id && token) return { id, token };
+  } catch {
+    // invalid URL
+  }
+  return null;
+}
+
+/**
+ * Resolve the Edge Config ID and token needed for Vercel REST API operations.
+ *
+ * Priority:
+ *  1. Explicit EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN env vars (backward compat)
+ *  2. Parsed from the EDGE_CONFIG connection string
+ */
+export function getApiCredentials(): { id: string; token: string } | null {
+  const id = process.env.EDGE_CONFIG_ID;
+  const token = process.env.EDGE_CONFIG_TOKEN;
+  if (id && token) return { id, token };
+
+  const connStr = getEdgeConfigConnectionString();
+  if (connStr) return parseConnectionString(connStr);
+
+  return null;
 }
 
 /**
@@ -88,13 +120,14 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
   }
 
   // 3. Fallback: Vercel REST API
-  if (hasApiCredentials()) {
+  const creds = getApiCredentials();
+  if (creds) {
     try {
       const res = await fetch(
-        `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/item/${key}`,
+        `https://api.vercel.com/v1/edge-config/${creds.id}/item/${key}`,
         {
           headers: {
-            Authorization: `Bearer ${process.env.EDGE_CONFIG_TOKEN}`,
+            Authorization: `Bearer ${creds.token}`,
           },
           cache: "no-store",
         }
@@ -115,7 +148,7 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
  * will be durably persisted (not just stored in-memory).
  */
 export function hasEdgeConfigPersistence(): boolean {
-  return hasApiCredentials();
+  return !!getApiCredentials();
 }
 
 /**
@@ -136,9 +169,10 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   memoryStore.set(key, value);
   _lastPersistError = null;
 
-  if (!hasApiCredentials()) {
+  const creds = getApiCredentials();
+  if (!creds) {
     _lastPersistError =
-      "EDGE_CONFIG_TOKEN or EDGE_CONFIG_ID missing – data saved to in-memory store only (will be lost on restart).";
+      "Edge Config credentials missing (set EDGE_CONFIG or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN) – data saved to in-memory store only (will be lost on restart).";
     console.warn(
       `[edge-config] ${_lastPersistError} Key: "${key}".`
     );
@@ -146,11 +180,11 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   }
   try {
     const res = await fetch(
-      `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/items`,
+      `https://api.vercel.com/v1/edge-config/${creds.id}/items`,
       {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${process.env.EDGE_CONFIG_TOKEN}`,
+          Authorization: `Bearer ${creds.token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
