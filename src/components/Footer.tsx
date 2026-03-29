@@ -8,12 +8,14 @@ export default function Footer() {
   const de = getContent("de");
   const zh = getContent("zh");
 
-  const navLinks: [string, string, string][] = [
-    [de.nav.home, zh.nav.home, "#home"],
-    [de.nav.courses, zh.nav.courses, "#courses"],
-    [de.nav.news, zh.nav.news, "#news"],
-    [de.nav.about, zh.nav.about, "#about"],
-    [de.nav.contact, zh.nav.contact, "#contact"],
+  const en = getContent("en");
+
+  const navLinks: [string, string, string, string][] = [
+    [de.nav.home, zh.nav.home, en.nav.home, "#home"],
+    [de.nav.courses, zh.nav.courses, en.nav.courses, "#courses"],
+    [de.nav.news, zh.nav.news, en.nav.news, "#news"],
+    [de.nav.about, zh.nav.about, en.nav.about, "#about"],
+    [de.nav.contact, zh.nav.contact, en.nav.contact, "#contact"],
   ];
 
   return (
@@ -29,13 +31,13 @@ export default function Footer() {
         {/* Quick links */}
         <div>
           <h3 className="font-bold text-[var(--school-red)] mb-3 tracking-wide uppercase text-sm">
-            <span className="font-cn">{zh.footer.navigationTitle}</span> · {de.footer.navigationTitle}
+            <span className="font-cn">{zh.footer.navigationTitle}</span> · {de.footer.navigationTitle} · {en.footer.navigationTitle}
           </h3>
           <ul className="space-y-2 text-sm text-gray-300">
-            {navLinks.map(([deLabel, zhLabel, href]) => (
+            {navLinks.map(([deLabel, zhLabel, enLabel, href]) => (
               <li key={href}>
                 <a href={href} className="hover:text-[var(--school-red)] transition-colors">
-                  <span className="font-cn">{zhLabel}</span> · {deLabel}
+                  <span className="font-cn">{zhLabel}</span> · {deLabel} · {enLabel}
                 </a>
               </li>
             ))}
@@ -45,7 +47,7 @@ export default function Footer() {
         {/* Contact */}
         <div>
           <h3 className="font-bold text-[var(--school-red)] mb-3 tracking-wide uppercase text-sm">
-            <span className="font-cn">{zh.footer.contactTitle}</span> · {de.footer.contactTitle}
+            <span className="font-cn">{zh.footer.contactTitle}</span> · {de.footer.contactTitle} · {en.footer.contactTitle}
           </h3>
           <address className="not-italic text-sm text-gray-300 space-y-1">
             {de.contact.addressLines.map((line) => (
@@ -75,10 +77,10 @@ export default function Footer() {
 
       <div className="border-t border-gray-700 text-center py-4 text-xs text-gray-500">
         © {new Date().getFullYear()} 海尔布隆一心中文学校 · Yi Xin Chinesische Sprachschule
-        Heilbronn
+        Heilbronn · Yi Xin Chinese Language School
         <span className="mx-2">·</span>
         <a href="/privacy" className="hover:text-[var(--school-red)] transition-colors underline">
-          隐私政策 · Datenschutz
+          隐私政策 · Datenschutz · Privacy Policy
         </a>
       </div>
     </footer>

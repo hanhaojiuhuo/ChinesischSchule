@@ -13,6 +13,31 @@ import { getNewsBodyBlocks } from "@/i18n/translations";
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
 
 /* ─── Small helpers ─────────────────────────────────────────── */
+
+function EyeToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+      title={show ? "隐藏密码 / Hide password" : "显示密码 / Show password"}
+    >
+      {show ? (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
 function Field({
   label,
   value,
@@ -20,6 +45,8 @@ function Field({
   multiline = false,
   type = "text",
   autoComplete,
+  showPassword,
+  onTogglePassword,
 }: {
   label: string;
   value: string;
@@ -27,7 +54,11 @@ function Field({
   multiline?: boolean;
   type?: string;
   autoComplete?: string;
+  showPassword?: boolean;
+  onTogglePassword?: () => void;
 }) {
+  const isPassword = type === "password";
+  const effectiveType = isPassword && showPassword ? "text" : type;
   return (
     <div className="mb-3">
       <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
@@ -37,9 +68,20 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
+      ) : isPassword && onTogglePassword ? (
+        <div className="relative">
+          <input
+            type={effectiveType}
+            autoComplete={autoComplete}
+            className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <EyeToggle show={!!showPassword} onToggle={onTogglePassword} />
+        </div>
       ) : (
         <input
-          type={type}
+          type={effectiveType}
           autoComplete={autoComplete}
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
           value={value}
@@ -93,7 +135,7 @@ export default function AdminPage() {
   const auth = useAuth();
 
   // Login form state
-  const [userInput, setUserInput] = useState("admin");
+  const [userInput, setUserInput] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showLoginPw, setShowLoginPw] = useState(false);
@@ -119,6 +161,9 @@ export default function AdminPage() {
   const [newPw, setNewPw] = useState("");
   const [newPwConfirm, setNewPwConfirm] = useState("");
   const [pwChangeMsg, setPwChangeMsg] = useState("");
+  const [showChangePwOld, setShowChangePwOld] = useState(false);
+  const [showChangePwNew, setShowChangePwNew] = useState(false);
+  const [showChangePwConfirm, setShowChangePwConfirm] = useState(false);
 
   // Add-admin state
   const [showAddAdmin, setShowAddAdmin] = useState(false);
@@ -149,6 +194,8 @@ export default function AdminPage() {
   const [devModePersisted, setDevModePersisted] = useState(true);
   const [devModePersistError, setDevModePersistError] = useState("");
   const [devModeLoading, setDevModeLoading] = useState(false);
+  const [showDevModePw, setShowDevModePw] = useState(false);
+  const [showDevModeConfirm, setShowDevModeConfirm] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(() => {
     try {
       const stored = localStorage.getItem(LOGIN_FAILURES_KEY);
@@ -172,6 +219,8 @@ export default function AdminPage() {
   const [forgotPwLoading, setForgotPwLoading] = useState(false);
   const [forgotPwResendCount, setForgotPwResendCount] = useState(0);
   const [forgotPwRateLimited, setForgotPwRateLimited] = useState(false);
+  const [showForgotPwNew, setShowForgotPwNew] = useState(false);
+  const [showForgotPwConfirm, setShowForgotPwConfirm] = useState(false);
 
   // Admin list (loaded async from API)
   const [adminList, setAdminList] = useState<import("@/contexts/AuthContext").AdminUser[]>([]);
@@ -491,25 +540,7 @@ export default function AdminPage() {
                   className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
                   placeholder="••••••••"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowLoginPw((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                  title={showLoginPw ? "隐藏密码 / Hide password" : "显示密码 / Show password"}
-                >
-                  {showLoginPw ? (
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  )}
-                </button>
+                <EyeToggle show={showLoginPw} onToggle={() => setShowLoginPw((v) => !v)} />
               </div>
             </div>
             {loginError && (
@@ -784,25 +815,31 @@ export default function AdminPage() {
                     EN: Set your new password (minimum 6 characters).<br />
                     ZH: 请设置新密码（至少6个字符）。
                   </p>
-                  <input
-                    type="password"
-                    value={forgotPwNewPw}
-                    onChange={(e) => setForgotPwNewPw(e.target.value)}
-                    placeholder="新密码 / Neues Passwort / New password"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-                    autoComplete="new-password"
-                    minLength={6}
-                    required
-                  />
-                  <input
-                    type="password"
-                    value={forgotPwNewPwConfirm}
-                    onChange={(e) => setForgotPwNewPwConfirm(e.target.value)}
-                    placeholder="确认密码 / Passwort bestätigen / Confirm password"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-                    autoComplete="new-password"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showForgotPwNew ? "text" : "password"}
+                      value={forgotPwNewPw}
+                      onChange={(e) => setForgotPwNewPw(e.target.value)}
+                      placeholder="新密码 / Neues Passwort / New password"
+                      className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                      autoComplete="new-password"
+                      minLength={6}
+                      required
+                    />
+                    <EyeToggle show={showForgotPwNew} onToggle={() => setShowForgotPwNew((v) => !v)} />
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showForgotPwConfirm ? "text" : "password"}
+                      value={forgotPwNewPwConfirm}
+                      onChange={(e) => setForgotPwNewPwConfirm(e.target.value)}
+                      placeholder="确认密码 / Passwort bestätigen / Confirm password"
+                      className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                      autoComplete="new-password"
+                      required
+                    />
+                    <EyeToggle show={showForgotPwConfirm} onToggle={() => setShowForgotPwConfirm((v) => !v)} />
+                  </div>
                   {forgotPwError && <p className="text-xs text-red-600">{forgotPwError}</p>}
                   <button
                     type="submit"
@@ -1011,25 +1048,31 @@ export default function AdminPage() {
                     minLength={4}
                     required
                   />
-                  <input
-                    type="password"
-                    value={devModeNewPw}
-                    onChange={(e) => setDevModeNewPw(e.target.value)}
-                    placeholder="新密码 / New password / Neues Passwort"
-                    className="w-full border border-amber-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-                    autoComplete="new-password"
-                    minLength={6}
-                    required
-                  />
-                  <input
-                    type="password"
-                    value={devModeNewPwConfirm}
-                    onChange={(e) => setDevModeNewPwConfirm(e.target.value)}
-                    placeholder="确认密码 / Confirm password / Passwort bestätigen"
-                    className="w-full border border-amber-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-                    autoComplete="new-password"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showDevModePw ? "text" : "password"}
+                      value={devModeNewPw}
+                      onChange={(e) => setDevModeNewPw(e.target.value)}
+                      placeholder="新密码 / New password / Neues Passwort"
+                      className="w-full border border-amber-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-amber-500"
+                      autoComplete="new-password"
+                      minLength={6}
+                      required
+                    />
+                    <EyeToggle show={showDevModePw} onToggle={() => setShowDevModePw((v) => !v)} />
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showDevModeConfirm ? "text" : "password"}
+                      value={devModeNewPwConfirm}
+                      onChange={(e) => setDevModeNewPwConfirm(e.target.value)}
+                      placeholder="确认密码 / Confirm password / Passwort bestätigen"
+                      className="w-full border border-amber-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-amber-500"
+                      autoComplete="new-password"
+                      required
+                    />
+                    <EyeToggle show={showDevModeConfirm} onToggle={() => setShowDevModeConfirm((v) => !v)} />
+                  </div>
                   {devModeError && (
                     <p className="text-xs text-red-600 whitespace-pre-line">{devModeError}</p>
                   )}
@@ -1416,9 +1459,9 @@ export default function AdminPage() {
             </button>
           ) : (
             <form onSubmit={handleChangePw} className="max-w-sm space-y-3">
-              <Field label="当前密码 / Current password / Aktuelles Passwort" value={oldPw} onChange={setOldPw} type="password" autoComplete="current-password" />
-              <Field label="新密码（至少6位）/ New password (min 6 chars) / Neues Passwort" value={newPw} onChange={setNewPw} type="password" autoComplete="new-password" />
-              <Field label="确认新密码 / Confirm new password / Neues Passwort bestätigen" value={newPwConfirm} onChange={setNewPwConfirm} type="password" autoComplete="new-password" />
+              <Field label="当前密码 / Current password / Aktuelles Passwort" value={oldPw} onChange={setOldPw} type="password" autoComplete="current-password" showPassword={showChangePwOld} onTogglePassword={() => setShowChangePwOld((v) => !v)} />
+              <Field label="新密码（至少6位）/ New password (min 6 chars) / Neues Passwort" value={newPw} onChange={setNewPw} type="password" autoComplete="new-password" showPassword={showChangePwNew} onTogglePassword={() => setShowChangePwNew((v) => !v)} />
+              <Field label="确认新密码 / Confirm new password / Neues Passwort bestätigen" value={newPwConfirm} onChange={setNewPwConfirm} type="password" autoComplete="new-password" showPassword={showChangePwConfirm} onTogglePassword={() => setShowChangePwConfirm((v) => !v)} />
               {pwChangeMsg && (
                 <p className={`text-xs whitespace-pre-line ${pwChangeMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>
                   {pwChangeMsg}
