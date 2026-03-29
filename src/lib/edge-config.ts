@@ -265,8 +265,14 @@ async function discoverConnectionString(
       _discoveredConnectionString = null;
       return null;
     }
+    // Edge Config tokens are all read-only (SDK-level access). Pick the first
+    // one that has a valid `token` string. All tokens returned by this endpoint
+    // are suitable for constructing a connection string.
+    const firstToken = tokens[0];
     const readToken =
-      typeof tokens[0].token === "string" ? tokens[0].token : null;
+      firstToken && typeof firstToken.token === "string"
+        ? firstToken.token
+        : null;
     if (!readToken) {
       console.warn(
         "[edge-config] Connection string discovery: first token has no valid value."

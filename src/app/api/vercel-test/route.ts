@@ -112,7 +112,7 @@ export async function GET() {
   results["vercel_team_id"] = {
     ok: true, // not a hard requirement – personal accounts don't need it
     detail: hasTeamId
-      ? `team context set (VERCEL_TEAM_ID=${hasVercelTeamId ? "set" : "not set"}, VERCEL_ORG_ID=${process.env.VERCEL_ORG_ID ? "set" : "not set"}) — API calls scoped to team`
+      ? `team context active via ${hasVercelTeamId ? "VERCEL_TEAM_ID" : "VERCEL_ORG_ID"} — API calls scoped to team`
       : "no VERCEL_TEAM_ID or VERCEL_ORG_ID — API calls use personal scope (set VERCEL_TEAM_ID if your project belongs to a team)",
   };
 
