@@ -1,4 +1,5 @@
 import { createClient } from "@vercel/edge-config";
+import { put, list } from "@vercel/blob";
 
 export interface AdminUser {
   username: string;
@@ -12,6 +13,9 @@ export const DEFAULT_ADMINS: AdminUser[] = [
 
 export const EDGE_CONFIG_KEY = "yixin-admins";
 export const CONTENT_EDGE_CONFIG_KEY = "yixin-content-overrides";
+
+/** Blob path used as durable fallback storage for admin credentials. */
+const ADMIN_BLOB_PATHNAME = "yixin-admins.json";
 
 /* ── helpers ─────────────────────────────────────────────────────── */
 
@@ -245,28 +249,119 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   }
 }
 
+/* ── Blob fallback for admin data ─────────────────────────────────── */
+
+/**
+ * Read admin list from Vercel Blob (durable fallback).
+ * Returns null when Blob is not configured or has no admin data.
+ */
+async function readAdminsFromBlob(): Promise<AdminUser[] | null> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  try {
+    const { blobs } = await list({
+      prefix: ADMIN_BLOB_PATHNAME,
+      limit: 1,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+    if (blobs.length > 0) {
+      const res = await fetch(blobs[0].url, { cache: "no-store" });
+      if (!res.ok) return null;
+      // Guard against unexpectedly large responses (max 1 MB)
+      const contentLength = res.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > 1_048_576) {
+        console.warn("[edge-config] Blob admin data too large, skipping.");
+        return null;
+      }
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data as AdminUser[];
+    }
+  } catch (err) {
+    console.warn("[edge-config] Blob read fallback failed:", err);
+  }
+  return null;
+}
+
+/**
+ * Write admin list to Vercel Blob (durable fallback).
+ * Returns true on success, false on failure or when Blob is not configured.
+ */
+async function writeAdminsToBlob(admins: AdminUser[]): Promise<boolean> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return false;
+  try {
+    await put(ADMIN_BLOB_PATHNAME, JSON.stringify(admins), {
+      access: "public",
+      contentType: "application/json",
+      addRandomSuffix: false,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+    return true;
+  } catch (err) {
+    console.warn("[edge-config] Blob write fallback failed:", err);
+    return false;
+  }
+}
+
 /* ── admin helpers ───────────────────────────────────────────────── */
 
 /**
- * Read the admin list from Vercel Edge Config.
- * Uses SDK (connection string) when available, then falls back to the REST API.
- * Returns DEFAULT_ADMINS when Edge Config is not configured or unavailable.
+ * Read the admin list.
+ *
+ * Priority:
+ *  1. Edge Config (in-memory cache → SDK → REST API)
+ *  2. Vercel Blob (durable fallback — works even without VERCEL_API_TOKEN)
+ *  3. DEFAULT_ADMINS (hardcoded)
  */
 export async function readAdmins(): Promise<AdminUser[]> {
+  // 1. Try Edge Config (includes in-memory write-through cache)
   const admins = await readEdgeConfigItem<AdminUser[]>(EDGE_CONFIG_KEY);
   if (Array.isArray(admins) && admins.length > 0) {
     return admins;
   }
+
+  // 2. Try Vercel Blob as durable fallback
+  const blobAdmins = await readAdminsFromBlob();
+  if (blobAdmins) {
+    return blobAdmins;
+  }
+
+  // 3. Hardcoded default
   return DEFAULT_ADMINS;
 }
 
 /**
- * Write the admin list to Vercel Edge Config via the Vercel API.
- * Always returns true (data is saved to in-memory store at minimum).
- * Call {@link getLastPersistError} to check if durable persistence succeeded.
+ * Write the admin list to all available durable storage backends.
+ *
+ * Writes to:
+ *  1. Edge Config (in-memory store + REST API if VERCEL_API_TOKEN is set)
+ *  2. Vercel Blob (durable fallback — uses BLOB_READ_WRITE_TOKEN, auto-set
+ *     by Vercel when a Blob store is linked to the project)
+ *
+ * Always returns true (data is at least in the in-memory store).
+ * Call {@link getLastPersistError} to check if ANY durable persistence
+ * succeeded.  The error is cleared when Blob write succeeds as fallback.
  */
 export async function writeAdmins(admins: AdminUser[]): Promise<boolean> {
-  return writeEdgeConfigItem(EDGE_CONFIG_KEY, admins);
+  // 1. Write to Edge Config (in-memory cache + optional API write)
+  await writeEdgeConfigItem(EDGE_CONFIG_KEY, admins);
+  const edgeConfigError = getLastPersistError();
+
+  // 2. ALSO write to Vercel Blob as durable fallback
+  const blobOk = await writeAdminsToBlob(admins);
+
+  // If Edge Config durable write failed but Blob write succeeded,
+  // the data IS durably stored — clear the persist error so callers
+  // know the save was successful.
+  if (edgeConfigError && blobOk) {
+    _lastPersistError = null;
+  }
+
+  // If BOTH durable backends failed, ensure the error reflects that
+  if (edgeConfigError && !blobOk) {
+    _lastPersistError =
+      `${edgeConfigError} Blob fallback also unavailable – ensure BLOB_READ_WRITE_TOKEN is configured.`;
+  }
+
+  return true;
 }
 
 /* ── content override helpers ────────────────────────────────────── */
