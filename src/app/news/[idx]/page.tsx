@@ -11,8 +11,9 @@ import Footer from "@/components/Footer";
 export default function NewsDetailPage() {
   const params = useParams();
   const idx = parseInt(params.idx as string, 10);
-  const { getContent } = useContent();
+  const { getContent, showEnglish } = useContent();
   const { isAdmin } = useAuth();
+  const showEn = showEnglish.news !== false;
 
   const de = getContent("de");
   const zh = getContent("zh");
@@ -65,8 +66,8 @@ export default function NewsDetailPage() {
                 {news.date}
               </time>
               {zhNews && <h1 className="font-cn text-2xl font-bold text-[var(--school-dark)] mt-2 mb-1">{zhNews.title}</h1>}
-              <h2 className="text-lg text-gray-500 mb-1">{news.title}</h2>
-              {enNews && <h2 className="text-base text-gray-400 mb-6">{enNews.title}</h2>}
+              {news.title.trim() && <h2 className="text-lg text-gray-500 mb-1">{news.title}</h2>}
+              {showEn && enNews && enNews.title.trim() && <h2 className="text-base text-gray-400 mb-6">{enNews.title}</h2>}
 
               {/* Chinese blocks */}
               {zhBlocks.length > 0 && (
@@ -125,7 +126,7 @@ export default function NewsDetailPage() {
               )}
 
               {/* English blocks */}
-              {enBlocks.length > 0 && (
+              {showEn && enBlocks.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   {enBlocks.map((block, i) =>
                     block.type === "text" ? (

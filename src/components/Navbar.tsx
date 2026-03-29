@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SchoolLogo from "./SchoolLogo";
+import { useContent } from "@/contexts/ContentContext";
 
 const navLinks = [
   { de: "Home", zh: "首页", en: "Home", href: "#home" },
@@ -13,6 +14,8 @@ const navLinks = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const { showEnglish } = useContent();
+  const showEn = showEnglish.nav !== false;
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b-2 border-[var(--school-red)] shadow-sm">
@@ -39,7 +42,7 @@ export default function Navbar() {
               className="px-2.5 py-2 text-sm font-medium text-[var(--school-dark)] rounded hover:bg-[var(--school-red-light)] hover:text-[var(--school-red)] transition-colors"
             >
               <span className="font-cn">{link.zh}</span>
-              <span className="text-xs text-gray-400 ml-1">· {link.de} · {link.en}</span>
+              <span className="text-xs text-gray-400 ml-1">· {link.de}{showEn && ` · ${link.en}`}</span>
             </a>
           ))}
         </nav>
@@ -96,7 +99,7 @@ export default function Navbar() {
               onClick={() => setOpen(false)}
               className="block px-6 py-3 text-sm font-medium text-[var(--school-dark)] hover:bg-[var(--school-red-light)] hover:text-[var(--school-red)] border-b border-[var(--school-border)] transition-colors"
             >
-              <span className="font-cn">{link.zh}</span> · {link.de} · {link.en}
+              <span className="font-cn">{link.zh}</span> · {link.de}{showEn && ` · ${link.en}`}
             </a>
           ))}
           <a
