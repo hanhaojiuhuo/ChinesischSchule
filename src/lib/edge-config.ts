@@ -312,11 +312,28 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   memoryStore.set(key, value);
   _lastPersistError = null;
 
+  // The Vercel Edge Config REST API requires a Vercel account-level API token
+  // (VERCEL_API_TOKEN) for write operations.  The read-only token embedded in
+  // the EDGE_CONFIG connection string CANNOT be used for writes — attempting to
+  // do so results in 404 / 401 errors from the REST API.  Guard early so we
+  // don't make a doomed request.
+  if (!process.env.VERCEL_API_TOKEN) {
+    _lastPersistError =
+      "VERCEL_API_TOKEN not set – cannot write to Edge Config via REST API. " +
+      "The EDGE_CONFIG connection-string token is read-only. " +
+      "Data saved to in-memory store only (will be lost on restart).";
+    console.warn(
+      `[edge-config] ${_lastPersistError} Key: "${key}".`
+    );
+    return true;
+  }
+
   const creds = await resolveApiCredentials();
   if (!creds) {
     _lastPersistError =
-      "Edge Config API credentials missing – set VERCEL_API_TOKEN (Vercel account token) plus EDGE_CONFIG or EDGE_CONFIG_ID. " +
-      "The Edge Config connection-string token is read-only and cannot write. " +
+      "Edge Config ID could not be resolved – VERCEL_API_TOKEN is set but no " +
+      "EDGE_CONFIG or EDGE_CONFIG_ID found. Ensure an Edge Config store is " +
+      "linked to this Vercel project. " +
       "Data saved to in-memory store only (will be lost on restart).";
     console.warn(
       `[edge-config] ${_lastPersistError} Key: "${key}".`
@@ -361,7 +378,10 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
  * Returns null when Blob is not configured or has no admin data.
  */
 async function readAdminsFromBlob(): Promise<AdminUser[] | null> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.warn("[edge-config] BLOB_READ_WRITE_TOKEN not set – Blob read skipped.");
+    return null;
+  }
   try {
     const { blobs } = await list({
       prefix: ADMIN_BLOB_PATHNAME,
@@ -370,7 +390,12 @@ async function readAdminsFromBlob(): Promise<AdminUser[] | null> {
     });
     if (blobs.length > 0) {
       const res = await fetch(blobs[0].url, { cache: "no-store" });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        console.warn(
+          `[edge-config] Blob read returned HTTP ${res.status} for ${blobs[0].url}`
+        );
+        return null;
+      }
       // Guard against unexpectedly large responses (max 1 MB)
       const contentLength = res.headers.get("content-length");
       if (contentLength && parseInt(contentLength, 10) > 1_048_576) {
@@ -378,7 +403,12 @@ async function readAdminsFromBlob(): Promise<AdminUser[] | null> {
         return null;
       }
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) return data as AdminUser[];
+      if (Array.isArray(data) && data.length > 0) {
+        console.log(
+          `[edge-config] Loaded ${(data as AdminUser[]).length} admin(s) from Blob.`
+        );
+        return data as AdminUser[];
+      }
     }
   } catch (err) {
     console.warn("[edge-config] Blob read fallback failed:", err);
@@ -391,7 +421,10 @@ async function readAdminsFromBlob(): Promise<AdminUser[] | null> {
  * Returns true on success, false on failure or when Blob is not configured.
  */
 async function writeAdminsToBlob(admins: AdminUser[]): Promise<boolean> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return false;
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.warn("[edge-config] BLOB_READ_WRITE_TOKEN not set – Blob write skipped.");
+    return false;
+  }
   try {
     await put(ADMIN_BLOB_PATHNAME, JSON.stringify(admins), {
       access: "public",
@@ -399,6 +432,9 @@ async function writeAdminsToBlob(admins: AdminUser[]): Promise<boolean> {
       addRandomSuffix: false,
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
+    console.log(
+      `[edge-config] Admin data (${admins.length} admin(s)) written to Blob successfully.`
+    );
     return true;
   } catch (err) {
     console.warn("[edge-config] Blob write fallback failed:", err);
@@ -458,12 +494,18 @@ export async function writeAdmins(admins: AdminUser[]): Promise<boolean> {
   // know the save was successful.
   if (edgeConfigError && blobOk) {
     _lastPersistError = null;
+    console.log(
+      "[edge-config] Edge Config write unavailable, but admin data " +
+        "persisted to Vercel Blob successfully."
+    );
   }
 
   // If BOTH durable backends failed, ensure the error reflects that
   if (edgeConfigError && !blobOk) {
     _lastPersistError =
-      `${edgeConfigError} Blob fallback also unavailable – ensure BLOB_READ_WRITE_TOKEN is configured.`;
+      `${edgeConfigError} Blob fallback also unavailable – ` +
+      "ensure BLOB_READ_WRITE_TOKEN is configured and a Blob store " +
+      "is linked to this Vercel project.";
   }
 
   return true;
