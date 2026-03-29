@@ -126,7 +126,7 @@ export async function GET() {
           : `expected "${testValue}", got "${readBack}"`,
       };
 
-      // Clean up using the same credentials (which include VERCEL_API_TOKEN)
+      // Clean up test data (uses API credentials resolved with VERCEL_API_TOKEN priority)
       try {
         await fetch(
           `https://api.vercel.com/v1/edge-config/${apiCreds.id}/items`,
