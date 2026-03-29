@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   readAdmins,
   writeAdmins,
-  hasEdgeConfigPersistence,
+  getLastPersistError,
   DEFAULT_ADMINS,
   type AdminUser,
 } from "@/lib/edge-config";
@@ -81,15 +81,14 @@ export async function POST(request: Request) {
     admins.push({ username, password: newPassword });
   }
 
-  // Persist to Vercel Edge Config
-  const persisted = hasEdgeConfigPersistence();
-  const saved = await writeAdmins(admins);
-  if (!saved) {
-    return NextResponse.json(
-      {
-        error: "Failed to save admin data.",
-      },
-      { status: 500 }
+  // Persist to Vercel Edge Config (also saves to in-memory store)
+  await writeAdmins(admins);
+  const persistError = getLastPersistError();
+  const persisted = !persistError;
+
+  if (persistError) {
+    console.warn(
+      `[Dev-Reset] Edge Config persistence failed: ${persistError}`
     );
   }
 
@@ -102,7 +101,11 @@ export async function POST(request: Request) {
   // password reset — this avoids the need to go through /api/login (which
   // might read stale data from Edge Config or be blocked by rate limiting
   // from previous failed attempts).
-  const response = NextResponse.json({ success: true, persisted });
+  const response = NextResponse.json({
+    success: true,
+    persisted,
+    persistError: persistError ?? undefined,
+  });
   response.cookies.set(SESSION_COOKIE, username, {
     httpOnly: true,
     sameSite: "strict",

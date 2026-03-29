@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { Resend } from "resend";
-import { readAdmins, writeAdmins } from "@/lib/edge-config";
+import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
 
 /** Time-slot duration for HMAC-based code validity (10 minutes). */
 const CODE_SLOT_MS = 10 * 60 * 1000;
@@ -233,13 +233,11 @@ export async function POST(request: Request) {
         i === idx ? { ...a, password: newPassword } : a
       );
 
-      const saved = await writeAdmins(updated);
-      if (!saved) {
-        return NextResponse.json(
-          {
-            error: "Failed to save new password",
-          },
-          { status: 500 }
+      await writeAdmins(updated);
+      const persistError = getLastPersistError();
+      if (persistError) {
+        console.warn(
+          `[password-reset] Edge Config persistence failed: ${persistError}`
         );
       }
 

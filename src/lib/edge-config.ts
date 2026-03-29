@@ -22,6 +22,21 @@ export const CONTENT_EDGE_CONFIG_KEY = "yixin-content-overrides";
 const memoryStore = new Map<string, unknown>();
 
 /**
+ * Stores the error message from the most recent Edge Config API write attempt.
+ * `null` when the last write succeeded or no write has been attempted.
+ * Callers can read this immediately after a write to surface detailed errors.
+ */
+let _lastPersistError: string | null = null;
+
+/**
+ * Returns the error message from the most recent {@link writeEdgeConfigItem}
+ * call, or `null` if the last write was durably persisted.
+ */
+export function getLastPersistError(): string | null {
+  return _lastPersistError;
+}
+
+/**
  * Build the Edge Config connection string.
  * Uses EDGE_CONFIG env var when available (auto-set by Vercel when the store
  * is linked to the project).  Otherwise constructs it from EDGE_CONFIG_ID +
@@ -110,19 +125,23 @@ export function hasEdgeConfigPersistence(): boolean {
  * The value is always written to the in-memory store first (as a write-through
  * cache) so that subsequent reads on the same server instance see the latest
  * data immediately — even before Edge Config propagation completes.
+ *
+ * Always returns `true` because the data is saved to the in-memory store and
+ * is usable for the current server session.  Call {@link getLastPersistError}
+ * immediately after to check whether the durable Edge Config write succeeded.
  */
 export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boolean> {
   // Always update the in-memory store as a write-through cache so that reads
   // on the same server instance return the freshly-written value immediately.
   memoryStore.set(key, value);
+  _lastPersistError = null;
 
   if (!hasApiCredentials()) {
+    _lastPersistError =
+      "EDGE_CONFIG_TOKEN or EDGE_CONFIG_ID missing – data saved to in-memory store only (will be lost on restart).";
     console.warn(
-      `[edge-config] EDGE_CONFIG_TOKEN or EDGE_CONFIG_ID missing – key "${key}" saved to in-memory store only (will be lost on restart).`
+      `[edge-config] ${_lastPersistError} Key: "${key}".`
     );
-    // Return true because the data IS saved (to memory) and is usable for the
-    // current server session.  Callers that need to distinguish durable
-    // persistence from in-memory-only storage should use hasEdgeConfigPersistence().
     return true;
   }
   try {
@@ -139,10 +158,20 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
         }),
       }
     );
-    return res.ok;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      _lastPersistError =
+        `Edge Config API returned ${res.status}${body ? `: ${body.slice(0, 300)}` : ""} – data saved to in-memory store only.`;
+      console.warn(
+        `[edge-config] API write failed for key "${key}": ${_lastPersistError}`
+      );
+    }
+    return true;
   } catch (err) {
+    _lastPersistError =
+      `Edge Config API error: ${String(err).slice(0, 300)} – data saved to in-memory store only.`;
     console.warn(`[edge-config] Failed to write key "${key}" via API:`, err);
-    return false;
+    return true;
   }
 }
 
@@ -163,7 +192,8 @@ export async function readAdmins(): Promise<AdminUser[]> {
 
 /**
  * Write the admin list to Vercel Edge Config via the Vercel API.
- * Returns true on success, false when Edge Config is not configured or the write fails.
+ * Always returns true (data is saved to in-memory store at minimum).
+ * Call {@link getLastPersistError} to check if durable persistence succeeded.
  */
 export async function writeAdmins(admins: AdminUser[]): Promise<boolean> {
   return writeEdgeConfigItem(EDGE_CONFIG_KEY, admins);
