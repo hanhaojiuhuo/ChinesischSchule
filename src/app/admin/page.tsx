@@ -867,9 +867,9 @@ export default function AdminPage() {
                   </p>
                   {!devModePersisted && (
                     <p className="text-xs text-amber-700 bg-amber-100 rounded p-2">
-                      ⚠️ ZH: Edge Config 未配置（缺少 VERCEL_API_TOKEN 和 EDGE_CONFIG_ID）。密码仅临时保存，重新部署后将丢失。<br />
-                      ⚠️ EN: Edge Config not configured (VERCEL_API_TOKEN and EDGE_CONFIG_ID missing). Password is saved temporarily and will be lost after redeployment.<br />
-                      ⚠️ DE: Edge Config nicht konfiguriert (VERCEL_API_TOKEN und EDGE_CONFIG_ID fehlen). Passwort ist nur temporär gespeichert und geht nach einem Redeployment verloren.
+                      ⚠️ ZH: Edge Config 未配置（缺少 EDGE_CONFIG_TOKEN 和 EDGE_CONFIG_ID）。密码仅临时保存，重新部署后将丢失。<br />
+                      ⚠️ EN: Edge Config not configured (EDGE_CONFIG_TOKEN and EDGE_CONFIG_ID missing). Password is saved temporarily and will be lost after redeployment.<br />
+                      ⚠️ DE: Edge Config nicht konfiguriert (EDGE_CONFIG_TOKEN und EDGE_CONFIG_ID fehlen). Passwort ist nur temporär gespeichert und geht nach einem Redeployment verloren.
                     </p>
                   )}
                   <p className="text-xs text-gray-600">

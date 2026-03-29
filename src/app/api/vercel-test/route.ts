@@ -17,7 +17,7 @@ import {
  *  1. Checks that required env vars are present.
  *  2. Tests Edge Config read (via SDK when EDGE_CONFIG or
  *     EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN are set).
- *  3. Tests Edge Config write/read/delete round-trip (when VERCEL_API_TOKEN is set).
+ *  3. Tests Edge Config write/read/delete round-trip (when EDGE_CONFIG_TOKEN is set).
  *  4. Reads the admin list and content overrides.
  *  5. Tests Vercel Blob connectivity (list).
  *  6. Tests Vercel Blob write/read/delete round-trip (data transfer).
@@ -31,7 +31,6 @@ export async function GET() {
   const hasEdgeConfig = !!process.env.EDGE_CONFIG;
   const hasEdgeConfigId = !!process.env.EDGE_CONFIG_ID;
   const hasEdgeConfigToken = !!process.env.EDGE_CONFIG_TOKEN;
-  const hasApiToken = !!process.env.VERCEL_API_TOKEN;
   const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
   const connectionString = getEdgeConfigConnectionString();
 
@@ -46,10 +45,6 @@ export async function GET() {
   results["env_EDGE_CONFIG_TOKEN"] = {
     ok: hasEdgeConfigToken,
     detail: hasEdgeConfigToken ? "set" : "not set",
-  };
-  results["env_VERCEL_API_TOKEN"] = {
-    ok: hasApiToken,
-    detail: hasApiToken ? "set" : "not set (required for write operations)",
   };
   results["env_BLOB_READ_WRITE_TOKEN"] = {
     ok: hasBlobToken,
@@ -81,7 +76,7 @@ export async function GET() {
   }
 
   /* ── 3. Edge Config API write/read round-trip ────────────────── */
-  if (hasApiToken && hasEdgeConfigId) {
+  if (hasEdgeConfigToken && hasEdgeConfigId) {
     const TEST_KEY = "__vercel_connectivity_test__";
     const testValue = `test-${Date.now()}`;
 
@@ -108,7 +103,7 @@ export async function GET() {
           {
             method: "PATCH",
             headers: {
-              Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+              Authorization: `Bearer ${process.env.EDGE_CONFIG_TOKEN}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
@@ -123,7 +118,7 @@ export async function GET() {
   } else {
     results["edge_config_api_write"] = {
       ok: false,
-      detail: "skipped — VERCEL_API_TOKEN or EDGE_CONFIG_ID missing (write operations unavailable)",
+      detail: "skipped — EDGE_CONFIG_TOKEN or EDGE_CONFIG_ID missing (write operations unavailable)",
     };
   }
 

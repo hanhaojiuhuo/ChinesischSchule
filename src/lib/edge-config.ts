@@ -38,7 +38,7 @@ export function getEdgeConfigConnectionString(): string | undefined {
 }
 
 function hasApiCredentials(): boolean {
-  return !!(process.env.VERCEL_API_TOKEN && process.env.EDGE_CONFIG_ID);
+  return !!(process.env.EDGE_CONFIG_TOKEN && process.env.EDGE_CONFIG_ID);
 }
 
 /**
@@ -50,7 +50,7 @@ function hasApiCredentials(): boolean {
  *
  * Then tries the SDK (fastest – uses the Edge network) when a connection
  * string is available (EDGE_CONFIG, or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN).
- * Falls back to the Vercel REST API (VERCEL_API_TOKEN + EDGE_CONFIG_ID).
+ * Falls back to the Vercel REST API (EDGE_CONFIG_TOKEN + EDGE_CONFIG_ID).
  */
 export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
   // 1. Check in-memory write-through cache first (freshest data on this instance)
@@ -79,7 +79,7 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
         `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/item/${key}`,
         {
           headers: {
-            Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+            Authorization: `Bearer ${process.env.EDGE_CONFIG_TOKEN}`,
           },
           cache: "no-store",
         }
@@ -105,7 +105,7 @@ export function hasEdgeConfigPersistence(): boolean {
 
 /**
  * Write (upsert) a single item to Vercel Edge Config via the Vercel REST API.
- * Requires VERCEL_API_TOKEN + EDGE_CONFIG_ID.
+ * Requires EDGE_CONFIG_TOKEN + EDGE_CONFIG_ID.
  *
  * The value is always written to the in-memory store first (as a write-through
  * cache) so that subsequent reads on the same server instance see the latest
@@ -118,7 +118,7 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
 
   if (!hasApiCredentials()) {
     console.warn(
-      `[edge-config] VERCEL_API_TOKEN or EDGE_CONFIG_ID missing – key "${key}" saved to in-memory store only (will be lost on restart).`
+      `[edge-config] EDGE_CONFIG_TOKEN or EDGE_CONFIG_ID missing – key "${key}" saved to in-memory store only (will be lost on restart).`
     );
     // Return true because the data IS saved (to memory) and is usable for the
     // current server session.  Callers that need to distinguish durable
@@ -131,7 +131,7 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
       {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+          Authorization: `Bearer ${process.env.EDGE_CONFIG_TOKEN}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
