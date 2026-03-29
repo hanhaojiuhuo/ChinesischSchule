@@ -7,6 +7,8 @@ import {
   readContentOverrides,
   getEdgeConfigConnectionString,
   getApiCredentials,
+  getLastPersistError,
+  hasEdgeConfigPersistence,
   EDGE_CONFIG_KEY,
   CONTENT_EDGE_CONFIG_KEY,
 } from "@/lib/edge-config";
@@ -32,9 +34,11 @@ export async function GET() {
   const hasEdgeConfig = !!process.env.EDGE_CONFIG;
   const hasEdgeConfigId = !!process.env.EDGE_CONFIG_ID;
   const hasEdgeConfigToken = !!process.env.EDGE_CONFIG_TOKEN;
+  const hasVercelApiToken = !!process.env.VERCEL_API_TOKEN;
   const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
   const connectionString = getEdgeConfigConnectionString();
   const apiCreds = getApiCredentials();
+  const canPersistWrites = hasEdgeConfigPersistence();
 
   results["env_EDGE_CONFIG"] = {
     ok: hasEdgeConfig,
@@ -48,12 +52,18 @@ export async function GET() {
         ? "parsed from EDGE_CONFIG connection string"
         : "MISSING",
   };
+  results["env_VERCEL_API_TOKEN"] = {
+    ok: hasVercelApiToken,
+    detail: hasVercelApiToken
+      ? "set (required for Edge Config writes)"
+      : "NOT SET — Edge Config writes will fail! Create a token at https://vercel.com/account/tokens and add it as VERCEL_API_TOKEN.",
+  };
   results["env_EDGE_CONFIG_TOKEN"] = {
     ok: hasEdgeConfigToken || !!apiCreds,
     detail: hasEdgeConfigToken
       ? "set"
       : apiCreds
-        ? "parsed from EDGE_CONFIG connection string"
+        ? "parsed from EDGE_CONFIG connection string (read-only)"
         : "not set",
   };
   results["env_BLOB_READ_WRITE_TOKEN"] = {
@@ -65,6 +75,12 @@ export async function GET() {
     detail: connectionString
       ? "available (SDK reads enabled)"
       : "UNAVAILABLE — set EDGE_CONFIG, or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN",
+  };
+  results["edge_config_write_persistence"] = {
+    ok: canPersistWrites,
+    detail: canPersistWrites
+      ? "VERCEL_API_TOKEN set — Edge Config writes will be durably persisted"
+      : "VERCEL_API_TOKEN missing — writes go to in-memory store only (lost on restart). Set VERCEL_API_TOKEN to enable durable persistence.",
   };
 
   /* ── 2. Edge Config SDK read ─────────────────────────────────── */
@@ -90,13 +106,17 @@ export async function GET() {
     const TEST_KEY = "__vercel_connectivity_test__";
     const testValue = `test-${Date.now()}`;
 
-    const writeOk = await writeEdgeConfigItem(TEST_KEY, testValue);
+    await writeEdgeConfigItem(TEST_KEY, testValue);
+    const persistError = getLastPersistError();
+    const durableWriteOk = !persistError;
     results["edge_config_api_write"] = {
-      ok: writeOk,
-      detail: writeOk ? "write succeeded" : "write FAILED",
+      ok: durableWriteOk,
+      detail: durableWriteOk
+        ? "durable write succeeded (data persisted to Edge Config)"
+        : `durable write FAILED: ${persistError}`,
     };
 
-    if (writeOk) {
+    if (durableWriteOk) {
       const readBack = await readEdgeConfigItem<string>(TEST_KEY);
       const readOk = readBack === testValue;
       results["edge_config_api_read"] = {
@@ -106,7 +126,7 @@ export async function GET() {
           : `expected "${testValue}", got "${readBack}"`,
       };
 
-      // Clean up
+      // Clean up using the same credentials (which include VERCEL_API_TOKEN)
       try {
         await fetch(
           `https://api.vercel.com/v1/edge-config/${apiCreds.id}/items`,
@@ -128,7 +148,7 @@ export async function GET() {
   } else {
     results["edge_config_api_write"] = {
       ok: false,
-      detail: "skipped — no Edge Config credentials available (set EDGE_CONFIG or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN)",
+      detail: "skipped — no Edge Config credentials available (set EDGE_CONFIG + VERCEL_API_TOKEN)",
     };
   }
 

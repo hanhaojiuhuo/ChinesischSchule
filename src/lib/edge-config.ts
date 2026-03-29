@@ -73,19 +73,47 @@ function parseConnectionString(
 /**
  * Resolve the Edge Config ID and token needed for Vercel REST API operations.
  *
- * Priority:
- *  1. Explicit EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN env vars (backward compat)
- *  2. Parsed from the EDGE_CONFIG connection string
+ * **Important:** The Vercel REST API (`api.vercel.com`) requires a *Vercel API
+ * token* for write operations (PATCH/POST/DELETE).  The read-only token
+ * embedded in the Edge Config connection string (`EDGE_CONFIG`) is only valid
+ * for SDK reads — it **cannot** be used to update Edge Config items via the
+ * REST API.
+ *
+ * Token priority (first non-empty wins):
+ *  1. `VERCEL_API_TOKEN` – Vercel account-level token (recommended for writes)
+ *  2. `EDGE_CONFIG_TOKEN` – explicit env var (backward compat)
+ *  3. Token parsed from `EDGE_CONFIG` connection string (read-only fallback)
+ *
+ * Edge Config ID priority:
+ *  1. `EDGE_CONFIG_ID` – explicit env var
+ *  2. Parsed from `EDGE_CONFIG` connection string
  */
 export function getApiCredentials(): { id: string; token: string } | null {
-  const id = process.env.EDGE_CONFIG_ID;
-  const token = process.env.EDGE_CONFIG_TOKEN;
-  if (id && token) return { id, token };
+  // 1. Resolve Edge Config ID
+  let id = process.env.EDGE_CONFIG_ID;
+  let connToken: string | undefined;
 
   const connStr = getEdgeConfigConnectionString();
-  if (connStr) return parseConnectionString(connStr);
+  if (connStr) {
+    const parsed = parseConnectionString(connStr);
+    if (parsed) {
+      if (!id) id = parsed.id;
+      connToken = parsed.token;
+    }
+  }
 
-  return null;
+  if (!id) return null;
+
+  // 2. Resolve API token – prefer VERCEL_API_TOKEN (required for REST API
+  //    writes) over the Edge Config connection-string token (read-only).
+  const token =
+    process.env.VERCEL_API_TOKEN ||
+    process.env.EDGE_CONFIG_TOKEN ||
+    connToken;
+
+  if (!token) return null;
+
+  return { id, token };
 }
 
 /**
@@ -144,16 +172,22 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
 }
 
 /**
- * Returns true when Edge Config API credentials are available, meaning writes
- * will be durably persisted (not just stored in-memory).
+ * Returns true when a Vercel API token is available that can durably persist
+ * writes to Edge Config.  When this returns false, writes will only go to the
+ * in-memory store and will be lost on server restart.
+ *
+ * Note: having `getApiCredentials()` return non-null does NOT guarantee write
+ * success — the token might be a read-only Edge Config connection token.
+ * This helper specifically checks for `VERCEL_API_TOKEN`.
  */
 export function hasEdgeConfigPersistence(): boolean {
-  return !!getApiCredentials();
+  return !!process.env.VERCEL_API_TOKEN && !!getApiCredentials();
 }
 
 /**
  * Write (upsert) a single item to Vercel Edge Config via the Vercel REST API.
- * Requires EDGE_CONFIG_TOKEN + EDGE_CONFIG_ID.
+ * Requires a Vercel API token (`VERCEL_API_TOKEN`) plus an Edge Config ID
+ * (`EDGE_CONFIG_ID` or parsed from `EDGE_CONFIG` connection string).
  *
  * The value is always written to the in-memory store first (as a write-through
  * cache) so that subsequent reads on the same server instance see the latest
@@ -172,7 +206,9 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   const creds = getApiCredentials();
   if (!creds) {
     _lastPersistError =
-      "Edge Config credentials missing (set EDGE_CONFIG or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN) – data saved to in-memory store only (will be lost on restart).";
+      "Edge Config API credentials missing – set VERCEL_API_TOKEN (Vercel account token) plus EDGE_CONFIG or EDGE_CONFIG_ID. " +
+      "The Edge Config connection-string token is read-only and cannot write. " +
+      "Data saved to in-memory store only (will be lost on restart).";
     console.warn(
       `[edge-config] ${_lastPersistError} Key: "${key}".`
     );
