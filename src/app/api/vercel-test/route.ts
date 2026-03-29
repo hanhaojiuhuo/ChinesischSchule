@@ -11,6 +11,7 @@ import {
   getLastPersistError,
   hasEdgeConfigPersistence,
   checkEdgeConfigPersistence,
+  getTeamIdParam,
   EDGE_CONFIG_KEY,
   CONTENT_EDGE_CONFIG_KEY,
 } from "@/lib/edge-config";
@@ -107,6 +108,14 @@ export async function GET() {
           ? "VERCEL_API_TOKEN set but auto-discovery found no Edge Config stores — create one in the Vercel dashboard"
           : "No EDGE_CONFIG, EDGE_CONFIG_ID, or VERCEL_API_TOKEN — cannot resolve Edge Config store",
   };
+  const teamParam = getTeamIdParam();
+  const hasTeamId = !!teamParam;
+  results["vercel_team_id"] = {
+    ok: true, // not a hard requirement – personal accounts don't need it
+    detail: hasTeamId
+      ? `team context set (${teamParam}) — API calls scoped to team`
+      : "no VERCEL_TEAM_ID or VERCEL_ORG_ID — API calls use personal scope (set VERCEL_TEAM_ID if your project belongs to a team)",
+  };
 
   /* ── 2. Edge Config SDK read ─────────────────────────────────── */
   if (connectionString) {
@@ -154,7 +163,7 @@ export async function GET() {
       // Clean up test data (uses API credentials resolved with VERCEL_API_TOKEN priority)
       try {
         await fetch(
-          `https://api.vercel.com/v1/edge-config/${apiCreds.id}/items`,
+          `https://api.vercel.com/v1/edge-config/${apiCreds.id}/items${getTeamIdParam()}`,
           {
             method: "PATCH",
             headers: {

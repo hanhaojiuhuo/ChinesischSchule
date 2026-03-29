@@ -20,6 +20,22 @@ const ADMIN_BLOB_PATHNAME = "yixin-admins.json";
 /* ── helpers ─────────────────────────────────────────────────────── */
 
 /**
+ * Build the `?teamId=…` query string for Vercel REST API calls.
+ *
+ * When a Vercel project belongs to a **team**, some API endpoints require a
+ * `teamId` query parameter so the request is scoped to the correct
+ * organisation.  Without it, calls may return 404 or empty results.
+ *
+ * Checks (in order): `VERCEL_TEAM_ID` (explicit), `VERCEL_ORG_ID`
+ * (sometimes auto-set by Vercel in CI/build contexts).
+ * Returns an empty string for personal-account projects.
+ */
+export function getTeamIdParam(): string {
+  const teamId = process.env.VERCEL_TEAM_ID || process.env.VERCEL_ORG_ID;
+  return teamId ? `?teamId=${encodeURIComponent(teamId)}` : "";
+}
+
+/**
  * In-memory fallback store used when Vercel Edge Config is not configured
  * (e.g. local development).  Data is lost on server restart.
  */
@@ -141,7 +157,7 @@ async function discoverEdgeConfigId(): Promise<string | null> {
   }
 
   try {
-    const res = await fetch("https://api.vercel.com/v1/edge-config", {
+    const res = await fetch(`https://api.vercel.com/v1/edge-config${getTeamIdParam()}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -252,7 +268,7 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
   if (creds) {
     try {
       const res = await fetch(
-        `https://api.vercel.com/v1/edge-config/${creds.id}/item/${key}`,
+        `https://api.vercel.com/v1/edge-config/${creds.id}/item/${key}${getTeamIdParam()}`,
         {
           headers: {
             Authorization: `Bearer ${creds.token}`,
@@ -340,7 +356,7 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   }
   try {
     const res = await fetch(
-      `https://api.vercel.com/v1/edge-config/${creds.id}/items`,
+      `https://api.vercel.com/v1/edge-config/${creds.id}/items${getTeamIdParam()}`,
       {
         method: "PATCH",
         headers: {
