@@ -6,6 +6,7 @@ import {
   readAdmins,
   readContentOverrides,
   getEdgeConfigConnectionString,
+  getApiCredentials,
   EDGE_CONFIG_KEY,
   CONTENT_EDGE_CONFIG_KEY,
 } from "@/lib/edge-config";
@@ -33,18 +34,27 @@ export async function GET() {
   const hasEdgeConfigToken = !!process.env.EDGE_CONFIG_TOKEN;
   const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
   const connectionString = getEdgeConfigConnectionString();
+  const apiCreds = getApiCredentials();
 
   results["env_EDGE_CONFIG"] = {
     ok: hasEdgeConfig,
     detail: hasEdgeConfig ? "set" : "not set (auto-set when deployed to Vercel)",
   };
   results["env_EDGE_CONFIG_ID"] = {
-    ok: hasEdgeConfigId,
-    detail: hasEdgeConfigId ? "set" : "MISSING",
+    ok: hasEdgeConfigId || !!apiCreds,
+    detail: hasEdgeConfigId
+      ? "set"
+      : apiCreds
+        ? "parsed from EDGE_CONFIG connection string"
+        : "MISSING",
   };
   results["env_EDGE_CONFIG_TOKEN"] = {
-    ok: hasEdgeConfigToken,
-    detail: hasEdgeConfigToken ? "set" : "not set",
+    ok: hasEdgeConfigToken || !!apiCreds,
+    detail: hasEdgeConfigToken
+      ? "set"
+      : apiCreds
+        ? "parsed from EDGE_CONFIG connection string"
+        : "not set",
   };
   results["env_BLOB_READ_WRITE_TOKEN"] = {
     ok: hasBlobToken,
@@ -76,7 +86,7 @@ export async function GET() {
   }
 
   /* ── 3. Edge Config API write/read round-trip ────────────────── */
-  if (hasEdgeConfigToken && hasEdgeConfigId) {
+  if (apiCreds) {
     const TEST_KEY = "__vercel_connectivity_test__";
     const testValue = `test-${Date.now()}`;
 
@@ -99,11 +109,11 @@ export async function GET() {
       // Clean up
       try {
         await fetch(
-          `https://api.vercel.com/v1/edge-config/${process.env.EDGE_CONFIG_ID}/items`,
+          `https://api.vercel.com/v1/edge-config/${apiCreds.id}/items`,
           {
             method: "PATCH",
             headers: {
-              Authorization: `Bearer ${process.env.EDGE_CONFIG_TOKEN}`,
+              Authorization: `Bearer ${apiCreds.token}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
@@ -118,7 +128,7 @@ export async function GET() {
   } else {
     results["edge_config_api_write"] = {
       ok: false,
-      detail: "skipped — EDGE_CONFIG_TOKEN or EDGE_CONFIG_ID missing (write operations unavailable)",
+      detail: "skipped — no Edge Config credentials available (set EDGE_CONFIG or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN)",
     };
   }
 
