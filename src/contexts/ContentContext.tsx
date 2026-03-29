@@ -39,15 +39,21 @@ async function fetchOverrides(): Promise<ContentOverrides> {
   return {};
 }
 
-async function persistOverrides(overrides: ContentOverrides): Promise<void> {
+async function persistOverrides(overrides: ContentOverrides): Promise<boolean> {
   try {
-    await fetch("/api/content", {
+    const res = await fetch("/api/content", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(overrides),
     });
-  } catch {
-    // ignore
+    if (!res.ok) {
+      console.warn("[ContentContext] persistOverrides failed:", res.status, await res.text().catch(() => ""));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("[ContentContext] persistOverrides error:", err);
+    return false;
   }
 }
 
