@@ -7,8 +7,10 @@ import {
   readContentOverrides,
   getEdgeConfigConnectionString,
   getApiCredentials,
+  resolveApiCredentials,
   getLastPersistError,
   hasEdgeConfigPersistence,
+  checkEdgeConfigPersistence,
   EDGE_CONFIG_KEY,
   CONTENT_EDGE_CONFIG_KEY,
 } from "@/lib/edge-config";
@@ -37,8 +39,11 @@ export async function GET() {
   const hasVercelApiToken = !!process.env.VERCEL_API_TOKEN;
   const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
   const connectionString = getEdgeConfigConnectionString();
-  const apiCreds = getApiCredentials();
-  const canPersistWrites = hasEdgeConfigPersistence();
+  const syncApiCreds = getApiCredentials();
+  const apiCreds = syncApiCreds ?? (await resolveApiCredentials());
+  const canPersistWrites = syncApiCreds
+    ? hasEdgeConfigPersistence()
+    : await checkEdgeConfigPersistence();
 
   results["env_EDGE_CONFIG"] = {
     ok: hasEdgeConfig,
@@ -48,9 +53,11 @@ export async function GET() {
     ok: hasEdgeConfigId || !!apiCreds,
     detail: hasEdgeConfigId
       ? "set"
-      : apiCreds
+      : apiCreds && syncApiCreds
         ? "parsed from EDGE_CONFIG connection string"
-        : "MISSING",
+        : apiCreds
+          ? `auto-discovered via VERCEL_API_TOKEN: ${apiCreds.id}`
+          : "MISSING",
   };
   results["env_VERCEL_API_TOKEN"] = {
     ok: hasVercelApiToken,
@@ -87,6 +94,17 @@ export async function GET() {
     detail: hasBlobToken
       ? "BLOB_READ_WRITE_TOKEN set — admin data will be durably saved to Vercel Blob (even without VERCEL_API_TOKEN)"
       : "BLOB_READ_WRITE_TOKEN not set — no Blob fallback for admin data. Admin changes may be lost on restart unless VERCEL_API_TOKEN is set.",
+  };
+  const usedAutoDiscovery = !syncApiCreds && !!apiCreds;
+  results["edge_config_auto_discovery"] = {
+    ok: !!apiCreds,
+    detail: syncApiCreds
+      ? "Edge Config ID resolved from EDGE_CONFIG or EDGE_CONFIG_ID (no auto-discovery needed)"
+      : usedAutoDiscovery
+        ? `Edge Config ID auto-discovered via VERCEL_API_TOKEN: ${apiCreds!.id}`
+        : hasVercelApiToken
+          ? "VERCEL_API_TOKEN set but auto-discovery found no Edge Config stores — create one in the Vercel dashboard"
+          : "No EDGE_CONFIG, EDGE_CONFIG_ID, or VERCEL_API_TOKEN — cannot resolve Edge Config store",
   };
 
   /* ── 2. Edge Config SDK read ─────────────────────────────────── */

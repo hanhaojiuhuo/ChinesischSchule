@@ -33,6 +33,12 @@ const memoryStore = new Map<string, unknown>();
 let _lastPersistError: string | null = null;
 
 /**
+ * Cached Edge Config ID discovered via the Vercel REST API.
+ * `undefined` = not yet attempted, `null` = attempted but none found.
+ */
+let _discoveredEdgeConfigId: string | null | undefined;
+
+/**
  * Returns the error message from the most recent {@link writeEdgeConfigItem}
  * call, or `null` if the last write was durably persisted.
  */
@@ -121,6 +127,87 @@ export function getApiCredentials(): { id: string; token: string } | null {
 }
 
 /**
+ * Auto-discover the Edge Config ID by listing stores via the Vercel REST API.
+ * Requires `VERCEL_API_TOKEN`.  The result is cached for the lifetime of the
+ * server instance so the API is called at most once.
+ */
+async function discoverEdgeConfigId(): Promise<string | null> {
+  if (_discoveredEdgeConfigId !== undefined) return _discoveredEdgeConfigId;
+
+  const token = process.env.VERCEL_API_TOKEN;
+  if (!token) {
+    _discoveredEdgeConfigId = null;
+    return null;
+  }
+
+  try {
+    const res = await fetch("https://api.vercel.com/v1/edge-config", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.warn(
+        `[edge-config] Auto-discovery: API returned ${res.status} – ` +
+          "cannot list Edge Config stores. Check VERCEL_API_TOKEN."
+      );
+      _discoveredEdgeConfigId = null;
+      return null;
+    }
+    const data: unknown = await res.json();
+    const stores = Array.isArray(data) ? data : [];
+    if (stores.length === 0) {
+      console.warn(
+        "[edge-config] Auto-discovery: no Edge Config stores found. " +
+          "Create one in the Vercel dashboard and link it to this project."
+      );
+      _discoveredEdgeConfigId = null;
+      return null;
+    }
+    if (stores.length > 1) {
+      console.warn(
+        `[edge-config] Auto-discovery: ${stores.length} Edge Config stores found. ` +
+          `Using first: ${stores[0].id} ("${stores[0].slug ?? "?"}"). ` +
+          "Set EDGE_CONFIG_ID explicitly to choose a different store."
+      );
+    }
+    _discoveredEdgeConfigId = stores[0].id as string;
+    console.log(
+      `[edge-config] Auto-discovered Edge Config ID: ${_discoveredEdgeConfigId}`
+    );
+    return _discoveredEdgeConfigId;
+  } catch (err) {
+    console.warn("[edge-config] Auto-discovery failed:", err);
+    _discoveredEdgeConfigId = null;
+    return null;
+  }
+}
+
+/**
+ * Async version of {@link getApiCredentials} that includes auto-discovery of
+ * the Edge Config ID via the Vercel REST API when `VERCEL_API_TOKEN` is set
+ * but `EDGE_CONFIG` / `EDGE_CONFIG_ID` are not configured.
+ *
+ * Use this in async contexts (read/write functions) for maximum resilience.
+ */
+export async function resolveApiCredentials(): Promise<{
+  id: string;
+  token: string;
+} | null> {
+  // Fast path: sync resolution already has everything
+  const sync = getApiCredentials();
+  if (sync) return sync;
+
+  // Slow path: VERCEL_API_TOKEN is set but Edge Config ID is unknown
+  const token = process.env.VERCEL_API_TOKEN;
+  if (!token) return null;
+
+  const id = await discoverEdgeConfigId();
+  if (!id) return null;
+
+  return { id, token };
+}
+
+/**
  * Read a single item from Vercel Edge Config.
  *
  * Checks the in-memory write-through cache first so that values written by
@@ -151,8 +238,8 @@ export async function readEdgeConfigItem<T>(key: string): Promise<T | null> {
     }
   }
 
-  // 3. Fallback: Vercel REST API
-  const creds = getApiCredentials();
+  // 3. Fallback: Vercel REST API (includes auto-discovery of Edge Config ID)
+  const creds = await resolveApiCredentials();
   if (creds) {
     try {
       const res = await fetch(
@@ -189,6 +276,15 @@ export function hasEdgeConfigPersistence(): boolean {
 }
 
 /**
+ * Async version of {@link hasEdgeConfigPersistence} that includes auto-discovery
+ * of the Edge Config ID via the Vercel REST API.
+ */
+export async function checkEdgeConfigPersistence(): Promise<boolean> {
+  if (!process.env.VERCEL_API_TOKEN) return false;
+  return !!(await resolveApiCredentials());
+}
+
+/**
  * Write (upsert) a single item to Vercel Edge Config via the Vercel REST API.
  * Requires a Vercel API token (`VERCEL_API_TOKEN`) plus an Edge Config ID
  * (`EDGE_CONFIG_ID` or parsed from `EDGE_CONFIG` connection string).
@@ -207,7 +303,7 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   memoryStore.set(key, value);
   _lastPersistError = null;
 
-  const creds = getApiCredentials();
+  const creds = await resolveApiCredentials();
   if (!creds) {
     _lastPersistError =
       "Edge Config API credentials missing – set VERCEL_API_TOKEN (Vercel account token) plus EDGE_CONFIG or EDGE_CONFIG_ID. " +
