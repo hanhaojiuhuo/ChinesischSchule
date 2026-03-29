@@ -320,8 +320,7 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
   if (!process.env.VERCEL_API_TOKEN) {
     _lastPersistError =
       "VERCEL_API_TOKEN not set – cannot write to Edge Config via REST API. " +
-      "The EDGE_CONFIG connection-string token is read-only. " +
-      "Data saved to in-memory store only (will be lost on restart).";
+      "The EDGE_CONFIG connection-string token is read-only.";
     console.warn(
       `[edge-config] ${_lastPersistError} Key: "${key}".`
     );
@@ -333,8 +332,7 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
     _lastPersistError =
       "Edge Config ID could not be resolved – VERCEL_API_TOKEN is set but no " +
       "EDGE_CONFIG or EDGE_CONFIG_ID found. Ensure an Edge Config store is " +
-      "linked to this Vercel project. " +
-      "Data saved to in-memory store only (will be lost on restart).";
+      "linked to this Vercel project.";
     console.warn(
       `[edge-config] ${_lastPersistError} Key: "${key}".`
     );
