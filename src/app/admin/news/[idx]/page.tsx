@@ -7,6 +7,13 @@ import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { NewsItem, NewsBodyBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
+import {
+  countWords,
+  MAX_WORDS_NEWS,
+  MAX_WORDS_DEFAULT,
+  validateImageFile,
+  IMAGE_ACCEPT,
+} from "@/lib/validation";
 
 export default function AdminNewsEditPage() {
   const params = useParams();
@@ -341,7 +348,7 @@ export default function AdminNewsEditPage() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/gif,image/tiff,image/svg+xml,.raw,.cr2,.nef,.arw,.dng"
+        accept={IMAGE_ACCEPT}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

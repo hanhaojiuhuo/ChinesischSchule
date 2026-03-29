@@ -9,44 +9,15 @@ import Link from "next/link";
 import { defaultTranslations } from "@/i18n/translations";
 import type { Language, SiteContent, NewsItem, NewsBodyBlock, CourseItem } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
+import {
+  countWords,
+  MAX_WORDS_NEWS,
+  MAX_WORDS_DEFAULT,
+  validateImageFile,
+  IMAGE_ACCEPT,
+} from "@/lib/validation";
 
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
-
-/* ─── Word-count helpers ────────────────────────────────────── */
-
-function countWords(text: string): number {
-  if (!text.trim()) return 0;
-  // Count both CJK characters and space-separated words
-  const cjk = text.match(/[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}]/gu);
-  const stripped = text.replace(/[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}]/gu, " ");
-  const latin = stripped.trim().split(/\s+/).filter(Boolean);
-  return (cjk?.length ?? 0) + latin.length;
-}
-
-const MAX_WORDS_NEWS = 1000;
-const MAX_WORDS_DEFAULT = 200;
-
-/* ─── Image validation constants ───────────────────────────── */
-
-const ALLOWED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/tiff",
-  "image/svg+xml",
-];
-const ALLOWED_IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|tiff?|svg|raw|cr2|nef|arw|dng)$/i;
-const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3 MB
-
-function validateImageFile(file: File): string | null {
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type) && !ALLOWED_IMAGE_EXTENSIONS.test(file.name)) {
-    return "Only JPEG, PNG, GIF, TIFF, SVG, and RAW images are allowed. / Nur JPEG, PNG, GIF, TIFF, SVG und RAW erlaubt. / 仅支持 JPEG、PNG、GIF、TIFF、SVG、RAW 格式。";
-  }
-  if (file.size > MAX_IMAGE_SIZE) {
-    return "File size must be under 3 MB. / Dateigröße muss unter 3 MB liegen. / 文件大小不能超过 3 MB。";
-  }
-  return null;
-}
 
 /* ─── Small helpers ─────────────────────────────────────────── */
 
@@ -1312,7 +1283,7 @@ export default function AdminPage() {
         <input
           ref={newsFileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/gif,image/tiff,image/svg+xml,.raw,.cr2,.nef,.arw,.dng"
+          accept={IMAGE_ACCEPT}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
