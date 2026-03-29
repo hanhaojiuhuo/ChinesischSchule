@@ -8,6 +8,7 @@ import {
   getEdgeConfigConnectionString,
   getApiCredentials,
   resolveApiCredentials,
+  resolveConnectionString,
   getLastPersistError,
   hasEdgeConfigPersistence,
   checkEdgeConfigPersistence,
@@ -38,8 +39,10 @@ export async function GET() {
   const hasEdgeConfigId = !!process.env.EDGE_CONFIG_ID;
   const hasEdgeConfigToken = !!process.env.EDGE_CONFIG_TOKEN;
   const hasVercelApiToken = !!process.env.VERCEL_API_TOKEN;
+  const hasVercelTeamId = !!process.env.VERCEL_TEAM_ID;
   const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
-  const connectionString = getEdgeConfigConnectionString();
+  const syncConnectionString = getEdgeConfigConnectionString();
+  const asyncConnectionString = await resolveConnectionString();
   const syncApiCreds = getApiCredentials();
   const apiCreds = syncApiCreds ?? (await resolveApiCredentials());
   const canPersistWrites = syncApiCreds
@@ -53,7 +56,7 @@ export async function GET() {
   results["env_EDGE_CONFIG_ID"] = {
     ok: hasEdgeConfigId || !!apiCreds,
     detail: hasEdgeConfigId
-      ? "set"
+      ? `set (value: ${process.env.EDGE_CONFIG_ID?.slice(0, 12)}…)`
       : apiCreds && syncApiCreds
         ? "parsed from EDGE_CONFIG connection string"
         : apiCreds
@@ -79,22 +82,18 @@ export async function GET() {
     detail: hasBlobToken ? "set" : "not set (required for Blob uploads)",
   };
   results["edge_config_connection_string"] = {
-    ok: !!connectionString,
-    detail: connectionString
-      ? "available (SDK reads enabled)"
-      : "UNAVAILABLE — set EDGE_CONFIG, or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN",
+    ok: !!asyncConnectionString,
+    detail: syncConnectionString
+      ? "available from env vars (SDK reads enabled)"
+      : asyncConnectionString
+        ? "auto-discovered via VERCEL_API_TOKEN (SDK reads enabled)"
+        : "UNAVAILABLE — set EDGE_CONFIG, or EDGE_CONFIG_ID + EDGE_CONFIG_TOKEN, or EDGE_CONFIG_ID + VERCEL_API_TOKEN (auto-discovers read token)",
   };
   results["edge_config_write_persistence"] = {
     ok: canPersistWrites,
     detail: canPersistWrites
       ? "VERCEL_API_TOKEN set — Edge Config writes will be durably persisted"
-      : "VERCEL_API_TOKEN missing — Edge Config writes go to in-memory store only. Admin data will use Vercel Blob as durable fallback if BLOB_READ_WRITE_TOKEN is set.",
-  };
-  results["admin_blob_fallback"] = {
-    ok: hasBlobToken,
-    detail: hasBlobToken
-      ? "BLOB_READ_WRITE_TOKEN set — admin data will be durably saved to Vercel Blob (even without VERCEL_API_TOKEN)"
-      : "BLOB_READ_WRITE_TOKEN not set — no Blob fallback for admin data. Admin changes may be lost on restart unless VERCEL_API_TOKEN is set.",
+      : "VERCEL_API_TOKEN missing — Edge Config writes go to in-memory store only. Set VERCEL_API_TOKEN to persist admin data durably.",
   };
   const usedAutoDiscovery = !syncApiCreds && !!apiCreds;
   const autoDiscoveredId = usedAutoDiscovery ? apiCreds.id : undefined;
@@ -113,17 +112,18 @@ export async function GET() {
   results["vercel_team_id"] = {
     ok: true, // not a hard requirement – personal accounts don't need it
     detail: hasTeamId
-      ? `team context set (${teamParam}) — API calls scoped to team`
+      ? `team context active via ${hasVercelTeamId ? "VERCEL_TEAM_ID" : "VERCEL_ORG_ID"} — API calls scoped to team`
       : "no VERCEL_TEAM_ID or VERCEL_ORG_ID — API calls use personal scope (set VERCEL_TEAM_ID if your project belongs to a team)",
   };
 
   /* ── 2. Edge Config SDK read ─────────────────────────────────── */
-  if (connectionString) {
+  if (asyncConnectionString) {
     try {
       const admins = await readAdmins();
       results["edge_config_sdk_read"] = {
         ok: Array.isArray(admins) && admins.length > 0,
-        detail: `${admins.length} admin(s) found via SDK (key: ${EDGE_CONFIG_KEY})`,
+        detail: `${admins.length} admin(s) found (key: ${EDGE_CONFIG_KEY})` +
+          (syncConnectionString ? " via env var connection string" : " via auto-discovered connection string"),
       };
     } catch (err) {
       results["edge_config_sdk_read"] = { ok: false, detail: String(err) };
@@ -131,7 +131,7 @@ export async function GET() {
   } else {
     results["edge_config_sdk_read"] = {
       ok: false,
-      detail: "skipped — no connection string available",
+      detail: "skipped — no connection string available (set EDGE_CONFIG, or provide EDGE_CONFIG_ID + VERCEL_API_TOKEN for auto-discovery)",
     };
   }
 
