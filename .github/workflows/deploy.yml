@@ -2,7 +2,7 @@
 # Vercel automatically deploys on push — no GitHub Actions workflow is needed.
 # See: https://vercel.com/docs/deployments/git
 
-name: placeholder
+name: Deprecated - See Vercel
 
 on:
   workflow_dispatch:
