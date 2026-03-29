@@ -1,4 +1,8 @@
-name: Deploy Next.js to GitHub Pages
+# This project is deployed on Vercel.
+# Vercel automatically deploys on push — no GitHub Actions workflow is needed.
+# See: https://vercel.com/docs/deployments/git
+
+name: placeholder
 
 on:
   workflow_dispatch:
