@@ -88,13 +88,7 @@ export async function GET() {
     ok: canPersistWrites,
     detail: canPersistWrites
       ? "VERCEL_API_TOKEN set — Edge Config writes will be durably persisted"
-      : "VERCEL_API_TOKEN missing — Edge Config writes go to in-memory store only. Admin data will use Vercel Blob as durable fallback if BLOB_READ_WRITE_TOKEN is set.",
-  };
-  results["admin_blob_fallback"] = {
-    ok: hasBlobToken,
-    detail: hasBlobToken
-      ? "BLOB_READ_WRITE_TOKEN set — admin data will be durably saved to Vercel Blob (even without VERCEL_API_TOKEN)"
-      : "BLOB_READ_WRITE_TOKEN not set — no Blob fallback for admin data. Admin changes may be lost on restart unless VERCEL_API_TOKEN is set.",
+      : "VERCEL_API_TOKEN missing — Edge Config writes go to in-memory store only. Set VERCEL_API_TOKEN to persist admin data durably.",
   };
   const usedAutoDiscovery = !syncApiCreds && !!apiCreds;
   const autoDiscoveredId = usedAutoDiscovery ? apiCreds.id : undefined;
