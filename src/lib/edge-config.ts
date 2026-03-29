@@ -265,10 +265,15 @@ async function readAdminsFromBlob(): Promise<AdminUser[] | null> {
     });
     if (blobs.length > 0) {
       const res = await fetch(blobs[0].url, { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data as AdminUser[];
+      if (!res.ok) return null;
+      // Guard against unexpectedly large responses (max 1 MB)
+      const contentLength = res.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > 1_048_576) {
+        console.warn("[edge-config] Blob admin data too large, skipping.");
+        return null;
       }
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data as AdminUser[];
     }
   } catch (err) {
     console.warn("[edge-config] Blob read fallback failed:", err);
@@ -353,7 +358,7 @@ export async function writeAdmins(admins: AdminUser[]): Promise<boolean> {
   // If BOTH durable backends failed, ensure the error reflects that
   if (edgeConfigError && !blobOk) {
     _lastPersistError =
-      `${edgeConfigError} Blob fallback also failed (BLOB_READ_WRITE_TOKEN ${process.env.BLOB_READ_WRITE_TOKEN ? "set but write errored" : "not set"}).`;
+      `${edgeConfigError} Blob fallback also unavailable – ensure BLOB_READ_WRITE_TOKEN is configured.`;
   }
 
   return true;
