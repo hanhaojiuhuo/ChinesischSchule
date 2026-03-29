@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { NewsItem, NewsBodyBlock } from "@/i18n/translations";
@@ -230,7 +231,7 @@ export default function AdminNewsEditPage() {
                       <p className="text-sm text-gray-500">⏳ Uploading… / 上传中…</p>
                     ) : block.url ? (
                       <div>
-                        <img src={block.url} alt={block.caption ?? ""} className="mx-auto max-h-40 object-cover rounded border border-gray-200 mb-2" />
+                        <Image src={block.url} alt={block.caption ?? ""} width={400} height={160} unoptimized className="mx-auto max-h-40 object-cover rounded border border-gray-200 mb-2" />
                         <p className="text-xs text-gray-400">Click or drop to replace / Klicken oder Bild hierher ziehen / 点击或拖拽替换图片</p>
                       </div>
                     ) : (

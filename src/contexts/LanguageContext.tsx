@@ -4,7 +4,6 @@ import React, {
   createContext,
   useContext,
   useState,
-  useEffect,
   useCallback,
 } from "react";
 import type { Language } from "@/i18n/translations";
@@ -19,19 +18,19 @@ const LanguageContext = createContext<LanguageContextValue>({
   setLanguage: () => {},
 });
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("de");
+function getInitialLanguage(): Language {
+  if (typeof window === "undefined") return "de";
+  try {
+    const stored = localStorage.getItem("yixin-language") as Language | null;
+    if (stored && ["de", "zh", "en"].includes(stored)) return stored;
+  } catch {
+    // localStorage not available
+  }
+  return "de";
+}
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("yixin-language") as Language | null;
-      if (stored && ["de", "zh", "en"].includes(stored)) {
-        setLanguageState(stored);
-      }
-    } catch {
-      // localStorage not available
-    }
-  }, []);
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(getInitialLanguage);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);

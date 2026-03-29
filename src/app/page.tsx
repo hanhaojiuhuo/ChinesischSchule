@@ -123,7 +123,6 @@ export default function Home() {
   // Reset news page when content changes
   useEffect(() => {
     setNewsPage(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getContent]);
 
   const de = draftDe;
