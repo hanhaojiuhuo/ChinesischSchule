@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useContent } from "@/contexts/ContentContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import Image from "next/image";
 import { defaultTranslations } from "@/i18n/translations";
 import type { Language, SiteContent, NewsItem, NewsBodyBlock, CourseItem } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
@@ -1316,7 +1317,7 @@ export default function AdminPage() {
                               <p className="text-sm text-gray-500">⏳ Uploading… / 上传中…</p>
                             ) : block.url ? (
                               <div>
-                                <img src={block.url} alt={block.caption ?? ""} className="mx-auto max-h-32 object-cover rounded border border-gray-200 mb-1" />
+                                <Image src={block.url} alt={block.caption ?? ""} width={400} height={128} unoptimized className="mx-auto max-h-32 object-cover rounded border border-gray-200 mb-1" />
                                 <p className="text-xs text-gray-400">Click or drop to replace / 点击或拖拽替换图片</p>
                               </div>
                             ) : (

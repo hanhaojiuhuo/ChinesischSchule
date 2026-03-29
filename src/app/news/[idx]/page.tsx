@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getNewsBodyBlocks } from "@/i18n/translations";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -73,9 +74,12 @@ export default function NewsDetailPage() {
                       </div>
                     ) : (
                       <figure key={i} className="mb-4">
-                        <img
+                        <Image
                           src={block.url}
                           alt={block.caption ?? news.title}
+                          width={800}
+                          height={400}
+                          unoptimized
                           className="w-full h-auto rounded"
                         />
                         {block.caption && (
@@ -96,9 +100,12 @@ export default function NewsDetailPage() {
                     </div>
                   ) : (
                     <figure key={i} className="mb-4">
-                      <img
+                      <Image
                         src={block.url}
                         alt={block.caption ?? news.title}
+                        width={800}
+                        height={400}
+                        unoptimized
                         className="w-full h-auto rounded"
                       />
                       {block.caption && (
