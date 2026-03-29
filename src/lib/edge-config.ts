@@ -380,16 +380,37 @@ export async function writeEdgeConfigItem<T>(key: string, value: T): Promise<boo
 
   // On 404, the Edge Config ID may be stale (e.g. store was re-created).
   // Invalidate the cached discovery result and retry with a fresh lookup.
-  if (res && res.status === 404 && _discoveredEdgeConfigId !== undefined) {
-    console.warn(
-      `[edge-config] Write returned 404 for Edge Config ID "${creds.id}" ` +
-        `(teamParam: "${teamParam}"). Retrying with fresh auto-discovery…`
-    );
-    _discoveredEdgeConfigId = undefined; // reset cache so discoverEdgeConfigId() re-fetches
-    const freshCreds = await resolveApiCredentials();
-    if (freshCreds && freshCreds.id !== creds.id) {
-      creds = freshCreds;
-      res = await attemptWrite(creds.id, creds.token);
+  // Only retry via auto-discovery when the ID was obtained through discovery
+  // (not from explicit EDGE_CONFIG / EDGE_CONFIG_ID env vars).
+  if (res && res.status === 404) {
+    const syncCreds = getApiCredentials();
+    const idFromSync = syncCreds?.id;
+    const idFromDiscovery = _discoveredEdgeConfigId;
+
+    if (idFromSync && idFromSync === creds.id) {
+      // ID came from explicit env vars — auto-discovery retry won't help.
+      console.warn(
+        `[edge-config] Write returned 404 for Edge Config ID "${creds.id}" ` +
+          `(from env vars, teamParam: "${teamParam}"). ` +
+          "Verify EDGE_CONFIG / EDGE_CONFIG_ID is correct and the store exists."
+      );
+    } else if (idFromDiscovery !== undefined) {
+      console.warn(
+        `[edge-config] Write returned 404 for auto-discovered Edge Config ID "${creds.id}" ` +
+          `(teamParam: "${teamParam}"). Retrying with fresh auto-discovery…`
+      );
+      _discoveredEdgeConfigId = undefined; // reset cache
+      const freshCreds = await resolveApiCredentials();
+      if (freshCreds) {
+        creds = freshCreds;
+        res = await attemptWrite(creds.id, creds.token);
+        if (res && res.status === 404) {
+          console.warn(
+            `[edge-config] Retry also returned 404 for Edge Config ID "${creds.id}". ` +
+              "Verify the Edge Config store exists and VERCEL_API_TOKEN has access."
+          );
+        }
+      }
     }
   }
 
