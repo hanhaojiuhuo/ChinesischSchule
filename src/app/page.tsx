@@ -90,7 +90,7 @@ function EditBlock({
 
 /* ─── Page ─────────────────────────────────────────────────── */
 export default function Home() {
-  const { getContent, saveContent } = useContent();
+  const { getContent, saveContent, showEnglish, updateShowEnglish } = useContent();
   const { isAdmin, currentUser, logout } = useAuth();
 
   const [draftDe, setDraftDe] = useState<SiteContent>(() => defaultTranslations["de"]);
@@ -271,6 +271,22 @@ export default function Home() {
     setIsDirty(true);
   }
 
+  const showEn = (section: string) => showEnglish[section] !== false;
+
+  function EnToggle({ section }: { section: string }) {
+    return (
+      <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={showEnglish[section] !== false}
+          onChange={(e) => updateShowEnglish(section, e.target.checked)}
+          className="accent-amber-500 w-3.5 h-3.5"
+        />
+        <span className="text-amber-600 font-semibold">Show English / 显示英文</span>
+      </label>
+    );
+  }
+
   /* ── Render ──────────────────────────────────────────────── */
   return (
     <>
@@ -295,6 +311,7 @@ export default function Home() {
             <div className="flex-1 animate-fade-in-up">
               {isAdmin ? (
                 <EditBlock label="School Name" className="p-3 space-y-2 bg-[var(--school-dark)] mb-3">
+                  <EnToggle section="hero" />
                   <div>
                     <label className="text-xs text-amber-300 font-semibold block mb-1">DE School Name</label>
                     <EditField
@@ -316,15 +333,19 @@ export default function Home() {
                 </EditBlock>
               ) : (
                 <>
-                  <p className="text-[var(--school-red)] font-semibold tracking-widest uppercase text-sm mb-2">
-                    {de.schoolName}
-                  </p>
+                  {de.schoolName.trim() && (
+                    <p className="text-[var(--school-red)] font-semibold tracking-widest uppercase text-sm mb-2">
+                      {de.schoolName}
+                    </p>
+                  )}
                   <h1 className="font-cn text-4xl sm:text-5xl font-bold leading-tight mb-1">
                     {zh.schoolName}
                   </h1>
-                  <p className="text-gray-400 text-sm mb-4">
-                    {en.schoolName}
-                  </p>
+                  {showEn("hero") && en.schoolName.trim() && (
+                    <p className="text-gray-400 text-sm mb-4">
+                      {en.schoolName}
+                    </p>
+                  )}
                 </>
               )}
 
@@ -392,28 +413,32 @@ export default function Home() {
                   <p className="font-cn text-gray-300 text-lg mb-1 max-w-md">
                     {zh.hero.tagline}
                   </p>
-                  <p className="text-gray-400 text-sm mb-1 max-w-md">
-                    {de.hero.tagline}
-                  </p>
-                  <p className="text-gray-500 text-xs mb-6 max-w-md">
-                    {en.hero.tagline}
-                  </p>
+                  {de.hero.tagline.trim() && (
+                    <p className="text-gray-400 text-sm mb-1 max-w-md">
+                      {de.hero.tagline}
+                    </p>
+                  )}
+                  {showEn("hero") && en.hero.tagline.trim() && (
+                    <p className="text-gray-500 text-xs mb-6 max-w-md">
+                      {en.hero.tagline}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-3">
                     <a
                       href="#courses"
                       className="px-5 py-3 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold rounded transition-colors text-sm"
                     >
                       <span className="font-cn">{zh.hero.discoverCourses}</span>
-                      <span className="mx-1 opacity-70">·</span>{de.hero.discoverCourses}
-                      <span className="mx-1 opacity-70">·</span>{en.hero.discoverCourses}
+                      {de.hero.discoverCourses.trim() && (<><span className="mx-1 opacity-70">·</span>{de.hero.discoverCourses}</>)}
+                      {showEn("hero") && en.hero.discoverCourses.trim() && (<><span className="mx-1 opacity-70">·</span>{en.hero.discoverCourses}</>)}
                     </a>
                     <a
                       href="#contact"
                       className="px-5 py-3 border border-white/30 hover:border-white text-white font-semibold rounded transition-colors text-sm"
                     >
                       <span className="font-cn">{zh.hero.contactUs}</span>
-                      <span className="mx-1 opacity-70">·</span>{de.hero.contactUs}
-                      <span className="mx-1 opacity-70">·</span>{en.hero.contactUs}
+                      {de.hero.contactUs.trim() && (<><span className="mx-1 opacity-70">·</span>{de.hero.contactUs}</>)}
+                      {showEn("hero") && en.hero.contactUs.trim() && (<><span className="mx-1 opacity-70">·</span>{en.hero.contactUs}</>)}
                     </a>
                   </div>
                 </>
@@ -453,11 +478,12 @@ export default function Home() {
                       className="text-lg font-normal text-gray-400"
                       placeholder="ZH 标题…"
                     />
+                    <EnToggle section="courses" />
                   </>
                 ) : (
                   <>
                     {zh.courses.sectionTitle}
-                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.courses.sectionTitle} · {en.courses.sectionTitle}</span>
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.courses.sectionTitle}{showEn("courses") && en.courses.sectionTitle.trim() && ` · ${en.courses.sectionTitle}`}</span>
                   </>
                 )}
               </h2>
@@ -601,10 +627,12 @@ export default function Home() {
                               {zhCourse.levelLabel}
                             </div>
                           )}
-                          <div className="text-xs text-gray-400 mb-0.5">
-                            {c.levelLabel}
-                          </div>
-                          {enCourse && (
+                          {c.levelLabel.trim() && (
+                            <div className="text-xs text-gray-400 mb-0.5">
+                              {c.levelLabel}
+                            </div>
+                          )}
+                          {showEn("courses") && enCourse && enCourse.levelLabel.trim() && (
                             <div className="text-xs text-gray-400 mb-3">
                               {enCourse.levelLabel}
                             </div>
@@ -616,8 +644,8 @@ export default function Home() {
                                 {zhCourse?.time && <span className="font-cn">{zhCourse.time}</span>}
                                 {zhCourse?.time && c.time && <span className="text-gray-400">·</span>}
                                 {c.time && <span>{c.time}</span>}
-                                {enCourse?.time && <span className="text-gray-400">·</span>}
-                                {enCourse?.time && <span>{enCourse.time}</span>}
+                                {showEn("courses") && enCourse?.time && <span className="text-gray-400">·</span>}
+                                {showEn("courses") && enCourse?.time && <span>{enCourse.time}</span>}
                               </div>
                             )}
                             <div className="text-xs text-gray-500 mb-2 flex items-center gap-1 flex-wrap">
@@ -625,14 +653,14 @@ export default function Home() {
                               {zhCourse && <span className="font-cn">{zhCourse.ages}</span>}
                               {zhCourse && <span className="text-gray-400">·</span>}
                               <span>{c.ages}</span>
-                              {enCourse && <span className="text-gray-400">·</span>}
-                              {enCourse && <span>{enCourse.ages}</span>}
+                              {showEn("courses") && enCourse && <span className="text-gray-400">·</span>}
+                              {showEn("courses") && enCourse && <span>{enCourse.ages}</span>}
                             </div>
                             {zhCourse && (
                               <p className="font-cn text-sm text-gray-600 leading-relaxed">{zhCourse.desc}</p>
                             )}
-                            <p className="text-xs text-gray-500 leading-relaxed mt-1">{c.desc}</p>
-                            {enCourse && (
+                            {c.desc.trim() && <p className="text-xs text-gray-500 leading-relaxed mt-1">{c.desc}</p>}
+                            {showEn("courses") && enCourse && enCourse.desc.trim() && (
                               <p className="text-xs text-gray-400 leading-relaxed mt-1">{enCourse.desc}</p>
                             )}
                           </div>
@@ -701,11 +729,12 @@ export default function Home() {
                       className="text-lg font-normal text-gray-400"
                       placeholder="ZH 标题…"
                     />
+                    <EnToggle section="news" />
                   </>
                 ) : (
                   <>
                     {zh.news.sectionTitle}
-                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.news.sectionTitle} · {en.news.sectionTitle}</span>
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.news.sectionTitle}{showEn("news") && en.news.sectionTitle.trim() && ` · ${en.news.sectionTitle}`}</span>
                   </>
                 )}
               </h2>
@@ -812,11 +841,11 @@ export default function Home() {
                                   {n.date}
                                 </time>
                                 {zhNews && <h3 className="font-cn font-bold text-[var(--school-dark)] mt-1 group-hover:text-[var(--school-red)] transition-colors">{zhNews.title}</h3>}
-                                <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>
-                                {enNews && <h3 className="text-xs text-gray-400 mt-0.5">{enNews.title}</h3>}
+                                {n.title.trim() && <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>}
+                                {showEn("news") && enNews && enNews.title.trim() && <h3 className="text-xs text-gray-400 mt-0.5">{enNews.title}</h3>}
                                 {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{zhNews.body}</p>}
                                 <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{firstText ? firstText.content : n.body}</p>
-                                {enNews && <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{enNews.body}</p>}
+                                {showEn("news") && enNews && enNews.body.trim() && <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{enNews.body}</p>}
                               </article>
                             </Link>
                           );
@@ -863,11 +892,12 @@ export default function Home() {
                       className="text-lg font-normal text-gray-400"
                       placeholder="ZH 标题…"
                     />
+                    <EnToggle section="about" />
                   </>
                 ) : (
                   <>
                     {zh.about.sectionTitle}
-                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.about.sectionTitle} · {en.about.sectionTitle}</span>
+                    <span className="text-lg font-normal text-gray-400 ml-2">· {de.about.sectionTitle}{showEn("about") && en.about.sectionTitle.trim() && ` · ${en.about.sectionTitle}`}</span>
                   </>
                 )}
               </h2>
@@ -908,8 +938,8 @@ export default function Home() {
                 <div className="space-y-3 text-[var(--school-dark)]">
                   <p className="font-cn leading-relaxed text-sm text-gray-600">{zh.about.desc1}</p>
                   <p className="font-cn leading-relaxed text-xs text-gray-500">{zh.about.desc2}</p>
-                  <p className="leading-relaxed text-sm text-gray-600">{de.about.desc1}</p>
-                  <p className="leading-relaxed text-xs text-gray-400">{en.about.desc1}</p>
+                  {de.about.desc1.trim() && <p className="leading-relaxed text-sm text-gray-600">{de.about.desc1}</p>}
+                  {showEn("about") && en.about.desc1.trim() && <p className="leading-relaxed text-xs text-gray-400">{en.about.desc1}</p>}
                 </div>
               )}
 
@@ -953,7 +983,7 @@ export default function Home() {
                         <div className="text-2xl font-bold text-[var(--school-red)]">{de.about[statKey] as string}</div>
                         <div className="font-cn text-xs text-gray-500 mt-1">{zh.about[zhLabelKey] as string}</div>
                         <div className="text-xs text-gray-400">{de.about[deLabelKey] as string}</div>
-                        <div className="text-xs text-gray-400">{en.about[deLabelKey] as string}</div>
+                        {showEn("about") && (en.about[deLabelKey] as string).trim() && <div className="text-xs text-gray-400">{en.about[deLabelKey] as string}</div>}
                       </>
                     )}
                   </div>
@@ -985,11 +1015,12 @@ export default function Home() {
                     className="text-lg font-normal text-gray-400"
                     placeholder="ZH 标题…"
                   />
+                  <EnToggle section="contact" />
                 </>
               ) : (
                 <>
                   {zh.contact.sectionTitle}
-                  <span className="text-lg font-normal text-gray-400 ml-2">· {de.contact.sectionTitle} · {en.contact.sectionTitle}</span>
+                  <span className="text-lg font-normal text-gray-400 ml-2">· {de.contact.sectionTitle}{showEn("contact") && en.contact.sectionTitle.trim() && ` · ${en.contact.sectionTitle}`}</span>
                 </>
               )}
             </h2>
@@ -1011,11 +1042,11 @@ export default function Home() {
                 ) : (
                   <>
                     <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.addressTitle}</h3>
-                    <p className="text-xs text-gray-400 mb-0.5">{de.contact.addressTitle}</p>
-                    <p className="text-xs text-gray-400 mb-2">{en.contact.addressTitle}</p>
+                    {de.contact.addressTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.addressTitle}</p>}
+                    {showEn("contact") && en.contact.addressTitle.trim() && <p className="text-xs text-gray-400 mb-2">{en.contact.addressTitle}</p>}
                     {zh.contact.addressLines.map((l) => (<p key={l} className="font-cn text-sm text-gray-600">{l}</p>))}
                     {de.contact.addressLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
-                    {en.contact.addressLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
+                    {showEn("contact") && en.contact.addressLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
                   </>
                 )}
               </div>
@@ -1031,8 +1062,8 @@ export default function Home() {
                 ) : (
                   <>
                     <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.emailTitle}</h3>
-                    <p className="text-xs text-gray-400 mb-0.5">{de.contact.emailTitle}</p>
-                    <p className="text-xs text-gray-400 mb-2">{en.contact.emailTitle}</p>
+                    {de.contact.emailTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.emailTitle}</p>}
+                    {showEn("contact") && en.contact.emailTitle.trim() && <p className="text-xs text-gray-400 mb-2">{en.contact.emailTitle}</p>}
                     <p className="text-sm text-gray-600">{de.contact.email}</p>
                   </>
                 )}
@@ -1049,8 +1080,8 @@ export default function Home() {
                 ) : de.contact.phone ? (
                   <>
                     <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.phoneTitle}</h3>
-                    <p className="text-xs text-gray-400 mb-0.5">{de.contact.phoneTitle}</p>
-                    <p className="text-xs text-gray-400 mb-2">{en.contact.phoneTitle}</p>
+                    {de.contact.phoneTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.phoneTitle}</p>}
+                    {showEn("contact") && en.contact.phoneTitle.trim() && <p className="text-xs text-gray-400 mb-2">{en.contact.phoneTitle}</p>}
                     <p className="text-sm text-gray-600">{de.contact.phone}</p>
                   </>
                 ) : null}
