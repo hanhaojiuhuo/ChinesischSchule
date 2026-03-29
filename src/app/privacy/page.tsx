@@ -4,9 +4,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Datenschutzerklärung · 隐私政策",
+  title: "Datenschutzerklärung · 隐私政策 · Privacy Policy",
   description:
-    "Datenschutzerklärung der Yi Xin Chinesischen Sprachschule Heilbronn gemäß DSGVO.",
+    "Datenschutzerklärung der Yi Xin Chinesischen Sprachschule Heilbronn gemäß DSGVO. Privacy Policy of Yi Xin Chinese Language School Heilbronn.",
   robots: { index: false, follow: false },
 };
 
@@ -248,6 +248,135 @@ export default function PrivacyPage() {
                   info@yixin-heilbronn.de
                 </a>
                 。
+              </p>
+            </section>
+
+            {/* ── EN Privacy Policy ── */}
+            <section className="border-t border-gray-100 pt-8">
+              <h2 className="text-base font-bold text-[var(--school-dark)] mb-3 pb-1 border-b border-gray-100">
+                Privacy Policy (English)
+              </h2>
+
+              <h3 className="text-sm font-semibold text-[var(--school-dark)] mt-4 mb-2">1. Data Controller</h3>
+              <p>
+                The data controller within the meaning of the General Data Protection Regulation (GDPR) is:
+              </p>
+              <address className="not-italic mt-2 space-y-0.5 text-gray-600">
+                <p className="font-semibold">Yi Xin Chinese Language School Heilbronn</p>
+                <p>Heilbronn, Baden-Württemberg, Germany</p>
+                <p>
+                  Email:{" "}
+                  <a
+                    href="mailto:info@yixin-heilbronn.de"
+                    className="text-[var(--school-red)] hover:underline"
+                  >
+                    info@yixin-heilbronn.de
+                  </a>
+                </p>
+              </address>
+
+              <h3 className="text-sm font-semibold text-[var(--school-dark)] mt-4 mb-2">2. Collection and Storage of Personal Data</h3>
+              <p>
+                When you visit our website, the browser on your device automatically sends information to our server.
+                This information is temporarily stored in a log file. The following data is collected automatically and
+                stored until it is deleted:
+              </p>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-gray-600">
+                <li>IP address of the requesting device</li>
+                <li>Date and time of access</li>
+                <li>Name and URL of the retrieved file</li>
+                <li>Referring website (referrer URL)</li>
+                <li>Browser used and, if applicable, the operating system of your device</li>
+              </ul>
+              <p className="mt-3">
+                This data is processed for the following purposes: ensuring a smooth connection to the website,
+                ensuring comfortable use of our website, and evaluating system security and stability.
+                The legal basis is Art. 6(1)(f) GDPR (legitimate interest).
+              </p>
+
+              <h3 className="text-sm font-semibold text-[var(--school-dark)] mt-4 mb-2">3. Disclosure to Third Parties</h3>
+              <p>
+                Your personal data will not be transmitted to third parties for purposes other than those listed below.
+                We only share your data if you have given explicit consent (Art. 6(1)(a) GDPR), if disclosure is
+                necessary for the assertion of legal claims (Art. 6(1)(f) GDPR), or if there is a legal obligation
+                to do so (Art. 6(1)(c) GDPR).
+              </p>
+
+              <h3 className="text-sm font-semibold text-[var(--school-dark)] mt-4 mb-2">4. Hosting</h3>
+              <p>
+                This website is hosted by{" "}
+                <strong>Vercel Inc.</strong>, 440 N Barranca Ave #4133, Covina, CA 91723, USA.
+                When you visit our website, your personal data is processed on Vercel&apos;s servers.
+                Vercel is certified under the EU-US Data Privacy Framework. For details, please refer to the{" "}
+                <a
+                  href="https://vercel.com/legal/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--school-red)] hover:underline"
+                >
+                  Vercel Privacy Policy
+                </a>
+                .
+              </p>
+
+              <h3 className="text-sm font-semibold text-[var(--school-dark)] mt-4 mb-2">5. Cookies</h3>
+              <p>
+                Our website uses cookies. Cookies are small text files stored locally in your browser&apos;s cache.
+                We only use technically necessary cookies required for the operation of the website.
+                These cookies are not used for tracking or advertising purposes.
+              </p>
+
+              <h3 className="text-sm font-semibold text-[var(--school-dark)] mt-4 mb-2">6. Contact via Email</h3>
+              <p>
+                If you contact us by email, the data you provide (your email address, name, and phone number if
+                applicable) will be stored to answer your questions. We delete this data once storage is no longer
+                necessary, or restrict processing if statutory retention obligations apply.
+                The legal basis is Art. 6(1)(f) GDPR.
+              </p>
+
+              <h3 className="text-sm font-semibold text-[var(--school-dark)] mt-4 mb-2">7. Your Rights as a Data Subject</h3>
+              <p>You have the right to:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-gray-600">
+                <li><strong>Access</strong> information about your personal data processed by us (Art. 15 GDPR),</li>
+                <li>Request <strong>rectification</strong> of inaccurate or incomplete data (Art. 16 GDPR),</li>
+                <li>Request <strong>erasure</strong> of your stored data (Art. 17 GDPR),</li>
+                <li>Request <strong>restriction</strong> of processing (Art. 18 GDPR),</li>
+                <li>Receive your data in a structured format (<strong>data portability</strong>, Art. 20 GDPR),</li>
+                <li><strong>Object</strong> to processing (Art. 21 GDPR).</li>
+              </ul>
+              <p className="mt-3">
+                To exercise your rights, please contact:{" "}
+                <a
+                  href="mailto:info@yixin-heilbronn.de"
+                  className="text-[var(--school-red)] hover:underline"
+                >
+                  info@yixin-heilbronn.de
+                </a>
+              </p>
+              <p className="mt-3">
+                You also have the right to lodge a complaint with a data protection supervisory authority.
+                The competent authority for Baden-Württemberg is:{" "}
+                <strong>
+                  Der Landesbeauftragte für den Datenschutz und die Informationsfreiheit
+                  Baden-Württemberg (LfDI)
+                </strong>
+                ,{" "}
+                <a
+                  href="https://www.baden-wuerttemberg.datenschutz.de"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--school-red)] hover:underline"
+                >
+                  www.baden-wuerttemberg.datenschutz.de
+                </a>
+                .
+              </p>
+
+              <h3 className="text-sm font-semibold text-[var(--school-dark)] mt-4 mb-2">8. Updates to this Privacy Policy</h3>
+              <p>
+                This privacy policy is currently valid as of March 2025. Due to the further development of our
+                website or changes in legal or regulatory requirements, it may become necessary to amend this
+                privacy policy. The current version can always be accessed on this page.
               </p>
             </section>
 

@@ -13,11 +13,21 @@ import { defaultTranslations } from "@/i18n/translations";
 
 type ContentOverrides = Partial<Record<Language, SiteContent>>;
 
+/** Per-section English visibility flags. Absent key = true (show English by default). */
+export type EnglishVisibility = Record<string, boolean>;
+
+/** Raw shape stored in Vercel Blob (language overrides + English visibility metadata). */
+type RawOverrides = ContentOverrides & { _showEnglish?: EnglishVisibility };
+
 interface ContentContextValue {
   getContent: (lang: Language) => SiteContent;
   saveContent: (lang: Language, content: SiteContent) => Promise<void>;
   resetContent: (lang: Language) => Promise<void>;
   contentLoading: boolean;
+  /** Per-section English visibility. Missing key means English IS shown. */
+  showEnglish: EnglishVisibility;
+  /** Toggle English visibility for a section and persist immediately. */
+  updateShowEnglish: (section: string, show: boolean) => void;
 }
 
 const ContentContext = createContext<ContentContextValue>({
@@ -25,13 +35,15 @@ const ContentContext = createContext<ContentContextValue>({
   saveContent: async () => {},
   resetContent: async () => {},
   contentLoading: true,
+  showEnglish: {},
+  updateShowEnglish: () => {},
 });
 
-async function fetchOverrides(): Promise<ContentOverrides> {
+async function fetchRawOverrides(): Promise<RawOverrides> {
   try {
     const res = await fetch("/api/content");
     if (res.ok) {
-      return (await res.json()) as ContentOverrides;
+      return (await res.json()) as RawOverrides;
     }
   } catch {
     // ignore
@@ -39,29 +51,43 @@ async function fetchOverrides(): Promise<ContentOverrides> {
   return {};
 }
 
-async function persistOverrides(overrides: ContentOverrides): Promise<void> {
+async function persistData(data: RawOverrides): Promise<boolean> {
   try {
-    await fetch("/api/content", {
+    const res = await fetch("/api/content", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(overrides),
+      body: JSON.stringify(data),
     });
-  } catch {
-    // ignore
+    if (!res.ok) {
+      console.warn("[ContentContext] persistData failed:", res.status, await res.text().catch(() => ""));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("[ContentContext] persistData error:", err);
+    return false;
   }
 }
 
 export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [overrides, setOverrides] = useState<ContentOverrides>({});
+  const [showEnglish, setShowEnglishState] = useState<EnglishVisibility>({});
   const [contentLoading, setContentLoading] = useState(true);
-  // Mutable ref keeps the latest overrides in sync so concurrent saves
+
+  // Mutable refs keep the latest state in sync so concurrent saves
   // always build on top of the most recent in-memory state.
   const overridesRef = useRef<ContentOverrides>(overrides);
+  const showEnglishRef = useRef<EnglishVisibility>(showEnglish);
 
   useEffect(() => {
-    fetchOverrides().then((data) => {
-      overridesRef.current = data;
-      setOverrides(data);
+    fetchRawOverrides().then((raw) => {
+      const { _showEnglish, ...langOverrides } = raw;
+      overridesRef.current = langOverrides;
+      setOverrides(langOverrides);
+      if (_showEnglish) {
+        showEnglishRef.current = _showEnglish;
+        setShowEnglishState(_showEnglish);
+      }
       setContentLoading(false);
     });
   }, []);
@@ -77,7 +103,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     const next = { ...overridesRef.current, [lang]: content };
     overridesRef.current = next;
     setOverrides(next);
-    await persistOverrides(next);
+    await persistData({ ...next, _showEnglish: showEnglishRef.current });
   }, []);
 
   const resetContent = useCallback(async (lang: Language) => {
@@ -85,12 +111,19 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     delete next[lang];
     overridesRef.current = next;
     setOverrides(next);
-    await persistOverrides(next);
+    await persistData({ ...next, _showEnglish: showEnglishRef.current });
+  }, []);
+
+  const updateShowEnglish = useCallback(async (section: string, show: boolean) => {
+    const next = { ...showEnglishRef.current, [section]: show };
+    showEnglishRef.current = next;
+    setShowEnglishState(next);
+    await persistData({ ...overridesRef.current, _showEnglish: next });
   }, []);
 
   return (
     <ContentContext.Provider
-      value={{ getContent, saveContent, resetContent, contentLoading }}
+      value={{ getContent, saveContent, resetContent, contentLoading, showEnglish, updateShowEnglish }}
     >
       {children}
     </ContentContext.Provider>

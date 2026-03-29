@@ -11,13 +11,16 @@ import Footer from "@/components/Footer";
 export default function NewsDetailPage() {
   const params = useParams();
   const idx = parseInt(params.idx as string, 10);
-  const { getContent } = useContent();
+  const { getContent, showEnglish } = useContent();
   const { isAdmin } = useAuth();
+  const showEn = showEnglish.news !== false;
 
   const de = getContent("de");
   const zh = getContent("zh");
+  const en = getContent("en");
   const news = !isNaN(idx) ? de.news.items[idx] : undefined;
   const zhNews = !isNaN(idx) ? zh.news.items[idx] : undefined;
+  const enNews = !isNaN(idx) ? en.news.items[idx] : undefined;
 
   if (!news) {
     return (
@@ -25,8 +28,8 @@ export default function NewsDetailPage() {
         <Navbar />
         <main className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-700 mb-4">Artikel nicht gefunden / 文章未找到</h1>
-            <Link href="/#news" className="text-[var(--school-red)] underline">← Zurück / 返回</Link>
+            <h1 className="text-2xl font-bold text-gray-700 mb-4">Artikel nicht gefunden / 文章未找到 / Article not found</h1>
+            <Link href="/#news" className="text-[var(--school-red)] underline">← Zurück / 返回 / Back</Link>
           </div>
         </main>
         <Footer />
@@ -36,6 +39,7 @@ export default function NewsDetailPage() {
 
   const deBlocks = getNewsBodyBlocks(news);
   const zhBlocks = zhNews ? getNewsBodyBlocks(zhNews) : [];
+  const enBlocks = enNews ? getNewsBodyBlocks(enNews) : [];
 
   return (
     <>
@@ -44,7 +48,7 @@ export default function NewsDetailPage() {
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <Link href="/#news" className="text-sm text-[var(--school-red)] hover:opacity-80 transition-opacity">
-              ← {de.news.sectionTitle || "Aktuelles"} / 返回
+              ← {de.news.sectionTitle || "Aktuelles"} / 返回 / Back
             </Link>
             {isAdmin && (
               <Link
@@ -62,7 +66,8 @@ export default function NewsDetailPage() {
                 {news.date}
               </time>
               {zhNews && <h1 className="font-cn text-2xl font-bold text-[var(--school-dark)] mt-2 mb-1">{zhNews.title}</h1>}
-              <h2 className="text-lg text-gray-500 mb-6">{news.title}</h2>
+              {news.title.trim() && <h2 className="text-lg text-gray-500 mb-1">{news.title}</h2>}
+              {showEn && enNews && enNews.title.trim() && <h2 className="text-base text-gray-400 mb-6">{enNews.title}</h2>}
 
               {/* Chinese blocks */}
               {zhBlocks.length > 0 && (
@@ -117,6 +122,33 @@ export default function NewsDetailPage() {
               ) : (
                 <div className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">
                   {news.body}
+                </div>
+              )}
+
+              {/* English blocks */}
+              {showEn && enBlocks.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  {enBlocks.map((block, i) =>
+                    block.type === "text" ? (
+                      <div key={i} className="text-sm text-gray-400 leading-relaxed mb-4 whitespace-pre-wrap">
+                        {block.content}
+                      </div>
+                    ) : (
+                      <figure key={i} className="mb-4">
+                        <Image
+                          src={block.url}
+                          alt={block.caption ?? (enNews?.title || news.title)}
+                          width={800}
+                          height={400}
+                          unoptimized
+                          className="w-full h-auto rounded"
+                        />
+                        {block.caption && (
+                          <figcaption className="text-xs text-gray-400 text-center mt-2 italic">{block.caption}</figcaption>
+                        )}
+                      </figure>
+                    )
+                  )}
                 </div>
               )}
             </div>

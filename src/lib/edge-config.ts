@@ -11,7 +11,6 @@ export const DEFAULT_ADMINS: AdminUser[] = [
 ];
 
 export const EDGE_CONFIG_KEY = "yixin-admins";
-export const CONTENT_EDGE_CONFIG_KEY = "yixin-content-overrides";
 
 /* ── helpers ─────────────────────────────────────────────────────── */
 
@@ -632,22 +631,4 @@ export async function readAdmins(): Promise<AdminUser[]> {
 export async function writeAdmins(admins: AdminUser[]): Promise<boolean> {
   await writeEdgeConfigItem(EDGE_CONFIG_KEY, admins);
   return true;
-}
-
-/* ── content override helpers ────────────────────────────────────── */
-
-/**
- * Read content overrides from Vercel Edge Config.
- * Returns an empty object when not configured or unavailable.
- */
-export async function readContentOverrides(): Promise<Record<string, unknown>> {
-  const data = await readEdgeConfigItem<Record<string, unknown>>(CONTENT_EDGE_CONFIG_KEY);
-  return data ?? {};
-}
-
-/**
- * Write content overrides to Vercel Edge Config.
- */
-export async function writeContentOverrides(content: Record<string, unknown>): Promise<boolean> {
-  return writeEdgeConfigItem(CONTENT_EDGE_CONFIG_KEY, content);
 }

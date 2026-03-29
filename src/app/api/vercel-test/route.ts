@@ -4,7 +4,6 @@ import {
   readEdgeConfigItem,
   writeEdgeConfigItem,
   readAdmins,
-  readContentOverrides,
   getEdgeConfigConnectionString,
   getApiCredentials,
   resolveApiCredentials,
@@ -14,7 +13,6 @@ import {
   checkEdgeConfigPersistence,
   getTeamIdParam,
   EDGE_CONFIG_KEY,
-  CONTENT_EDGE_CONFIG_KEY,
 } from "@/lib/edge-config";
 
 /**
@@ -186,19 +184,47 @@ export async function GET() {
     };
   }
 
-  /* ── 4. Read content overrides ───────────────────────────────── */
-  try {
-    const content = await readContentOverrides();
-    const keys = Object.keys(content);
+  /* ── 4. Read content overrides from Blob ──────────────────────── */
+  if (hasBlobToken) {
+    try {
+      const CONTENT_BLOB_PATH = "yixin-content-overrides.json";
+      const { blobs } = await list({
+        prefix: CONTENT_BLOB_PATH,
+        limit: 1,
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
+      if (blobs.length > 0) {
+        const res = await fetch(blobs[0].url, { cache: "no-store" });
+        if (res.ok) {
+          const content = await res.json();
+          const keys = Object.keys(content);
+          results["read_content_overrides"] = {
+            ok: true,
+            detail:
+              keys.length > 0
+                ? `languages with overrides: ${keys.join(", ")} (Blob: ${CONTENT_BLOB_PATH})`
+                : `no overrides stored yet (Blob: ${CONTENT_BLOB_PATH})`,
+          };
+        } else {
+          results["read_content_overrides"] = {
+            ok: false,
+            detail: `Blob read failed with status ${res.status}`,
+          };
+        }
+      } else {
+        results["read_content_overrides"] = {
+          ok: true,
+          detail: `no content overrides blob found yet (Blob: ${CONTENT_BLOB_PATH})`,
+        };
+      }
+    } catch (err) {
+      results["read_content_overrides"] = { ok: false, detail: String(err) };
+    }
+  } else {
     results["read_content_overrides"] = {
-      ok: true,
-      detail:
-        keys.length > 0
-          ? `languages with overrides: ${keys.join(", ")} (key: ${CONTENT_EDGE_CONFIG_KEY})`
-          : `no overrides stored yet (key: ${CONTENT_EDGE_CONFIG_KEY})`,
+      ok: false,
+      detail: "skipped — BLOB_READ_WRITE_TOKEN not set",
     };
-  } catch (err) {
-    results["read_content_overrides"] = { ok: false, detail: String(err) };
   }
 
   /* ── 5. Vercel Blob connectivity ─────────────────────────────── */
