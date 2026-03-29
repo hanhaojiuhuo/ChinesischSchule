@@ -1,39 +1,32 @@
 import { put, list } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
-import { readContentOverrides, writeContentOverrides, getLastPersistError } from "@/lib/edge-config";
 
 const BLOB_PATHNAME = "yixin-content-overrides.json";
 
 export async function GET() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json({});
+  }
+
   try {
-    // 1. Try Vercel Blob (primary — public store for site content)
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      try {
-        const { blobs } = await list({
-          prefix: BLOB_PATHNAME,
-          limit: 1,
-          token: process.env.BLOB_READ_WRITE_TOKEN,
+    const { blobs } = await list({
+      prefix: BLOB_PATHNAME,
+      limit: 1,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+    if (blobs.length > 0) {
+      const res = await fetch(blobs[0].url, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        return NextResponse.json(data, {
+          headers: {
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          },
         });
-        if (blobs.length > 0) {
-          const res = await fetch(blobs[0].url, { cache: "no-store" });
-          if (res.ok) {
-            const data = await res.json();
-            return NextResponse.json(data, {
-              headers: {
-                "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-              },
-            });
-          }
-        }
-      } catch {
-        // Blob read failed, fall through to Edge Config
       }
     }
-
-    // 2. Fallback: read from Edge Config
-    const data = await readContentOverrides();
-    return NextResponse.json(data);
+    return NextResponse.json({});
   } catch {
     return NextResponse.json({});
   }
@@ -46,45 +39,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const content = await request.json();
-    let blobOk = false;
-    let edgeOk = false;
-
-    // 1. Try Vercel Blob (primary — overwrites in place with addRandomSuffix: false)
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      try {
-        await put(BLOB_PATHNAME, JSON.stringify(content), {
-          access: "public",
-          contentType: "application/json",
-          addRandomSuffix: false,
-          token: process.env.BLOB_READ_WRITE_TOKEN,
-        });
-        blobOk = true;
-      } catch {
-        // Blob write failed, continue to Edge Config fallback
-      }
-    }
-
-    // 2. Also store in Edge Config as secondary backup
-    try {
-      await writeContentOverrides(content as Record<string, unknown>);
-      const persistError = getLastPersistError();
-      if (!persistError) {
-        edgeOk = true;
-      }
-    } catch {
-      // Edge Config write failed
-    }
-
-    if (blobOk || edgeOk) {
-      return NextResponse.json({ success: true });
-    }
-
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
-      { error: "No durable storage backend available. Content may be lost on redeploy." },
+      { error: "BLOB_READ_WRITE_TOKEN is not configured. Content cannot be saved." },
       { status: 503 }
     );
+  }
+
+  try {
+    const content = await request.json();
+
+    await put(BLOB_PATHNAME, JSON.stringify(content), {
+      access: "public",
+      contentType: "application/json",
+      addRandomSuffix: false,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+
+    return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
