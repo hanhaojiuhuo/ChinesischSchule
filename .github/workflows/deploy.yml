@@ -6,3 +6,12 @@ name: Deprecated - See Vercel
 
 on:
   workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  notice:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment notice
+        run: echo "This project is deployed via Vercel. No GitHub Actions deployment is needed."
