@@ -3,7 +3,7 @@ import { getSessionUser } from "@/lib/session";
 import {
   readAdmins,
   writeAdmins,
-  hasEdgeConfigPersistence,
+  getLastPersistError,
   type AdminUser,
 } from "@/lib/edge-config";
 
@@ -24,15 +24,14 @@ export async function POST(request: Request) {
   try {
     const admins = (await request.json()) as AdminUser[];
 
-    const saved = await writeAdmins(admins);
-    if (!saved) {
-      return NextResponse.json(
-        { error: "Failed to save admin data." },
-        { status: 500 }
-      );
-    }
+    await writeAdmins(admins);
+    const persistError = getLastPersistError();
 
-    return NextResponse.json({ success: true, persisted: hasEdgeConfigPersistence() });
+    return NextResponse.json({
+      success: true,
+      persisted: !persistError,
+      persistError: persistError ?? undefined,
+    });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

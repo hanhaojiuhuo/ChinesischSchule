@@ -33,19 +33,19 @@ interface AuthContextValue {
     username: string,
     password: string,
     email?: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; warning?: string }>;
   changePassword: (
     username: string,
     oldPassword: string,
     newPassword: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; warning?: string }>;
   updateEmail: (
     username: string,
     newEmail: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; warning?: string }>;
   removeAdmin: (
     username: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; warning?: string }>;
   getAdmins: () => Promise<AdminUser[]>;
 }
 
@@ -147,7 +147,12 @@ async function fetchAdmins(): Promise<AdminUser[]> {
   return loadLocalAdmins() ?? [{ username: "admin", password: "yixin" }];
 }
 
-async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
+interface SaveResult {
+  ok: boolean;
+  persistError?: string;
+}
+
+async function saveAdmins(admins: AdminUser[]): Promise<SaveResult> {
   // Always update localStorage as an offline cache.
   try {
     localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(admins));
@@ -166,14 +171,18 @@ async function saveAdmins(admins: AdminUser[]): Promise<boolean> {
       console.warn(
         `[AuthContext] Failed to save admin list to server (API returned ${res.status}).`
       );
-      return false;
+      return { ok: false };
     }
-    return true;
+    const data = await res.json().catch(() => ({}));
+    return {
+      ok: true,
+      persistError: data.persistError ?? undefined,
+    };
   } catch {
     console.warn(
       "[AuthContext] Failed to save admin list to server (API unreachable)."
     );
-    return false;
+    return { ok: false };
   }
 }
 
@@ -380,7 +389,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: string,
       password: string,
       email?: string
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<{ success: boolean; error?: string; warning?: string }> => {
       const trimmed = username.trim();
       if (!trimmed || trimmed.length < 4) {
         return {
@@ -410,13 +419,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         { username: trimmed, password, email: trimmedEmail },
       ];
       const ok = await saveAdmins(updated);
-      if (!ok) {
+      if (!ok.ok) {
         return {
           success: false,
           error: "保存失败 / Failed to save / Speichern fehlgeschlagen",
         };
       }
-      return { success: true };
+      return { success: true, warning: ok.persistError };
     },
     []
   );
@@ -426,7 +435,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: string,
       oldPassword: string,
       newPassword: string
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<{ success: boolean; error?: string; warning?: string }> => {
       if (!newPassword || newPassword.length < 6) {
         return {
           success: false,
@@ -449,13 +458,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         i === idx ? { ...a, password: newPassword } : a
       );
       const ok = await saveAdmins(updated);
-      if (!ok) {
+      if (!ok.ok) {
         return {
           success: false,
           error: "保存失败 / Failed to save / Speichern fehlgeschlagen",
         };
       }
-      return { success: true };
+      return { success: true, warning: ok.persistError };
     },
     []
   );
@@ -464,7 +473,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (
       username: string,
       newEmail: string
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<{ success: boolean; error?: string; warning?: string }> => {
       const admins = await fetchAdmins();
       const idx = admins.findIndex((a) => a.username === username);
       if (idx === -1) {
@@ -478,13 +487,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         i === idx ? { ...a, email: trimmedEmail } : a
       );
       const ok = await saveAdmins(updated);
-      if (!ok) {
+      if (!ok.ok) {
         return {
           success: false,
           error: "保存失败 / Failed to save / Speichern fehlgeschlagen",
         };
       }
-      return { success: true };
+      return { success: true, warning: ok.persistError };
     },
     []
   );
@@ -492,7 +501,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const removeAdmin = useCallback(
     async (
       username: string
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<{ success: boolean; error?: string; warning?: string }> => {
       if (username === currentUser) {
         return {
           success: false,
@@ -513,13 +522,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
       const ok = await saveAdmins(filtered);
-      if (!ok) {
+      if (!ok.ok) {
         return {
           success: false,
           error: "保存失败 / Failed to save / Speichern fehlgeschlagen",
         };
       }
-      return { success: true };
+      return { success: true, warning: ok.persistError };
     },
     [currentUser]
   );

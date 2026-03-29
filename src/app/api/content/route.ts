@@ -1,7 +1,7 @@
 import { put, list } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
-import { readContentOverrides, writeContentOverrides } from "@/lib/edge-config";
+import { readContentOverrides, writeContentOverrides, getLastPersistError } from "@/lib/edge-config";
 
 const BLOB_PATHNAME = "yixin-content-overrides.json";
 
@@ -58,10 +58,11 @@ export async function POST(request: Request) {
     }
 
     // 2. Fallback: store in Edge Config
-    const saved = await writeContentOverrides(content as Record<string, unknown>);
-    if (!saved) {
+    await writeContentOverrides(content as Record<string, unknown>);
+    const persistError = getLastPersistError();
+    if (persistError) {
       return NextResponse.json(
-        { error: "No storage backend configured (BLOB_READ_WRITE_TOKEN or EDGE_CONFIG_TOKEN + EDGE_CONFIG_ID required)." },
+        { error: `No durable storage backend available. ${persistError}` },
         { status: 503 }
       );
     }

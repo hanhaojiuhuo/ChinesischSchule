@@ -145,6 +145,7 @@ export default function AdminPage() {
   const [devModeError, setDevModeError] = useState("");
   const [devModeSuccess, setDevModeSuccess] = useState(false);
   const [devModePersisted, setDevModePersisted] = useState(true);
+  const [devModePersistError, setDevModePersistError] = useState("");
   const [devModeLoading, setDevModeLoading] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(() => {
     try {
@@ -261,14 +262,19 @@ export default function AdminPage() {
     }
     const result = await auth.changePassword(auth.currentUser!, oldPw, newPw);
     if (result.success) {
-      setPwChangeMsg("✓ Passwort geändert! / Password changed! / 密码已修改！");
+      const msg = "✓ Passwort geändert! / Password changed! / 密码已修改！";
+      setPwChangeMsg(
+        result.warning
+          ? `${msg}\n⚠️ ${result.warning}`
+          : msg
+      );
       setOldPw("");
       setNewPw("");
       setNewPwConfirm("");
       setTimeout(() => {
         setShowChangePw(false);
         setPwChangeMsg("");
-      }, 2000);
+      }, result.warning ? 5000 : 2000);
     } else {
       setPwChangeMsg(result.error ?? "Fehler / Error / 错误");
     }
@@ -867,9 +873,17 @@ export default function AdminPage() {
                   </p>
                   {!devModePersisted && (
                     <p className="text-xs text-amber-700 bg-amber-100 rounded p-2">
-                      ⚠️ ZH: Edge Config 未配置（缺少 EDGE_CONFIG_TOKEN 和 EDGE_CONFIG_ID）。密码仅临时保存，重新部署后将丢失。<br />
-                      ⚠️ EN: Edge Config not configured (EDGE_CONFIG_TOKEN and EDGE_CONFIG_ID missing). Password is saved temporarily and will be lost after redeployment.<br />
-                      ⚠️ DE: Edge Config nicht konfiguriert (EDGE_CONFIG_TOKEN und EDGE_CONFIG_ID fehlen). Passwort ist nur temporär gespeichert und geht nach einem Redeployment verloren.
+                      ⚠️ ZH: Edge Config 未配置或写入失败。密码仅临时保存，重新部署后将丢失。<br />
+                      ⚠️ EN: Edge Config not configured or write failed. Password is saved temporarily and will be lost after redeployment.<br />
+                      ⚠️ DE: Edge Config nicht konfiguriert oder Schreibvorgang fehlgeschlagen. Passwort ist nur temporär gespeichert und geht nach einem Redeployment verloren.
+                      {devModePersistError && (
+                        <>
+                          <br /><br />
+                          <span className="font-mono text-[10px] text-amber-800 break-all">
+                            Details: {devModePersistError}
+                          </span>
+                        </>
+                      )}
                     </p>
                   )}
                   <p className="text-xs text-gray-600">
@@ -943,6 +957,7 @@ export default function AdminPage() {
                       } else {
                         setDevModeSuccess(true);
                         setDevModePersisted(data.persisted !== false);
+                        setDevModePersistError(data.persistError ?? "");
                         // Save the new admin to localStorage so the client
                         // has the latest credentials for AuthContext fallback.
                         // NOTE: Passwords are stored in plaintext in localStorage
@@ -1403,7 +1418,7 @@ export default function AdminPage() {
               <Field label="新密码（至少6位）/ New password (min 6 chars) / Neues Passwort" value={newPw} onChange={setNewPw} type="password" autoComplete="new-password" />
               <Field label="确认新密码 / Confirm new password / Neues Passwort bestätigen" value={newPwConfirm} onChange={setNewPwConfirm} type="password" autoComplete="new-password" />
               {pwChangeMsg && (
-                <p className={`text-xs ${pwChangeMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>
+                <p className={`text-xs whitespace-pre-line ${pwChangeMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>
                   {pwChangeMsg}
                 </p>
               )}
