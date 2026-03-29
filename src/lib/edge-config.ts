@@ -418,10 +418,11 @@ async function readAdminsFromBlob(): Promise<AdminUser[] | null> {
       }
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
+        const admins = data as AdminUser[];
         console.log(
-          `[edge-config] Loaded ${(data as AdminUser[]).length} admin(s) from Blob.`
+          `[edge-config] Loaded ${admins.length} admin(s) from Blob.`
         );
-        return data as AdminUser[];
+        return admins;
       }
     }
   } catch (err) {
