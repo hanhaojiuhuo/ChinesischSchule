@@ -170,7 +170,16 @@ async function discoverEdgeConfigId(): Promise<string | null> {
           "Set EDGE_CONFIG_ID explicitly to choose a different store."
       );
     }
-    _discoveredEdgeConfigId = stores[0].id as string;
+    _discoveredEdgeConfigId =
+      typeof stores[0].id === "string" && stores[0].id
+        ? stores[0].id
+        : null;
+    if (!_discoveredEdgeConfigId) {
+      console.warn(
+        "[edge-config] Auto-discovery: first store has no valid id."
+      );
+      return null;
+    }
     console.log(
       `[edge-config] Auto-discovered Edge Config ID: ${_discoveredEdgeConfigId}`
     );

@@ -96,12 +96,13 @@ export async function GET() {
       : "BLOB_READ_WRITE_TOKEN not set — no Blob fallback for admin data. Admin changes may be lost on restart unless VERCEL_API_TOKEN is set.",
   };
   const usedAutoDiscovery = !syncApiCreds && !!apiCreds;
+  const autoDiscoveredId = usedAutoDiscovery ? apiCreds.id : undefined;
   results["edge_config_auto_discovery"] = {
     ok: !!apiCreds,
     detail: syncApiCreds
       ? "Edge Config ID resolved from EDGE_CONFIG or EDGE_CONFIG_ID (no auto-discovery needed)"
-      : usedAutoDiscovery
-        ? `Edge Config ID auto-discovered via VERCEL_API_TOKEN: ${apiCreds!.id}`
+      : autoDiscoveredId
+        ? `Edge Config ID auto-discovered via VERCEL_API_TOKEN: ${autoDiscoveredId}`
         : hasVercelApiToken
           ? "VERCEL_API_TOKEN set but auto-discovery found no Edge Config stores — create one in the Vercel dashboard"
           : "No EDGE_CONFIG, EDGE_CONFIG_ID, or VERCEL_API_TOKEN — cannot resolve Edge Config store",
