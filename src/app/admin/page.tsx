@@ -9,6 +9,13 @@ import Link from "next/link";
 import { defaultTranslations } from "@/i18n/translations";
 import type { Language, SiteContent, NewsItem, NewsBodyBlock, CourseItem } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
+import {
+  countWords,
+  MAX_WORDS_NEWS,
+  MAX_WORDS_DEFAULT,
+  validateImageFile,
+  IMAGE_ACCEPT,
+} from "@/lib/validation";
 
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
 
@@ -47,6 +54,7 @@ function Field({
   autoComplete,
   showPassword,
   onTogglePassword,
+  maxWords,
 }: {
   label: string;
   value: string;
@@ -56,18 +64,28 @@ function Field({
   autoComplete?: string;
   showPassword?: boolean;
   onTogglePassword?: () => void;
+  maxWords?: number;
 }) {
   const isPassword = type === "password";
   const effectiveType = isPassword && showPassword ? "text" : type;
+  const wc = maxWords != null ? countWords(value) : 0;
+  const overLimit = maxWords != null && wc > maxWords;
   return (
     <div className="mb-3">
       <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
       {multiline ? (
-        <textarea
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] resize-y min-h-[80px]"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <>
+          <textarea
+            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[80px] ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {maxWords != null && (
+            <p className={`text-xs mt-0.5 text-right ${overLimit ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+              {wc} / {maxWords} words
+            </p>
+          )}
+        </>
       ) : isPassword && onTogglePassword ? (
         <div className="relative">
           <input
@@ -80,13 +98,20 @@ function Field({
           <EyeToggle show={!!showPassword} onToggle={onTogglePassword} />
         </div>
       ) : (
-        <input
-          type={effectiveType}
-          autoComplete={autoComplete}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <>
+          <input
+            type={effectiveType}
+            autoComplete={autoComplete}
+            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {maxWords != null && (
+            <p className={`text-xs mt-0.5 text-right ${overLimit ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+              {wc} / {maxWords} words
+            </p>
+          )}
+        </>
       )}
     </div>
   );
@@ -1177,46 +1202,46 @@ export default function AdminPage() {
 
         {/* ── School identity ─────────────────────────────── */}
         <SectionCard title="🏫 Schulinfo / School Info / 学校信息" onSave={() => handleSectionSave("schoolInfo")} saveStatus={sectionStatus["schoolInfo"]}>
-          <Field label="School Name (full)" value={draft.schoolName} onChange={(v) => setField("schoolName", v)} />
-          <Field label="School Name (short)" value={draft.schoolNameShort} onChange={(v) => setField("schoolNameShort", v)} />
-          <Field label="School Subtitle" value={draft.schoolSubtitle} onChange={(v) => setField("schoolSubtitle", v)} />
+          <Field label="School Name (full)" value={draft.schoolName} onChange={(v) => setField("schoolName", v)} maxWords={MAX_WORDS_DEFAULT} />
+          <Field label="School Name (short)" value={draft.schoolNameShort} onChange={(v) => setField("schoolNameShort", v)} maxWords={MAX_WORDS_DEFAULT} />
+          <Field label="School Subtitle" value={draft.schoolSubtitle} onChange={(v) => setField("schoolSubtitle", v)} maxWords={MAX_WORDS_DEFAULT} />
         </SectionCard>
 
         {/* ── Navigation ──────────────────────────────────── */}
         <SectionCard title="🔗 Navigation" onSave={() => handleSectionSave("nav")} saveStatus={sectionStatus["nav"]}>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {(Object.keys(draft.nav) as (keyof SiteContent["nav"])[]).map((key) => (
-              <Field key={key} label={key} value={draft.nav[key]} onChange={(v) => updateNav(key, v)} />
+              <Field key={key} label={key} value={draft.nav[key]} onChange={(v) => updateNav(key, v)} maxWords={MAX_WORDS_DEFAULT} />
             ))}
           </div>
         </SectionCard>
 
         {/* ── Hero ────────────────────────────────────────── */}
         <SectionCard title="🌟 Hero Section" onSave={() => handleSectionSave("hero")} saveStatus={sectionStatus["hero"]}>
-          <Field label="Tagline (main)" value={draft.hero.tagline} onChange={(v) => updateHero("tagline", v)} />
-          <Field label="Tagline 2 (sub)" value={draft.hero.tagline2} onChange={(v) => updateHero("tagline2", v)} />
+          <Field label="Tagline (main)" value={draft.hero.tagline} onChange={(v) => updateHero("tagline", v)} maxWords={MAX_WORDS_DEFAULT} />
+          <Field label="Tagline 2 (sub)" value={draft.hero.tagline2} onChange={(v) => updateHero("tagline2", v)} maxWords={MAX_WORDS_DEFAULT} />
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Button: Discover Courses" value={draft.hero.discoverCourses} onChange={(v) => updateHero("discoverCourses", v)} />
-            <Field label="Button: Contact Us" value={draft.hero.contactUs} onChange={(v) => updateHero("contactUs", v)} />
+            <Field label="Button: Discover Courses" value={draft.hero.discoverCourses} onChange={(v) => updateHero("discoverCourses", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Button: Contact Us" value={draft.hero.contactUs} onChange={(v) => updateHero("contactUs", v)} maxWords={MAX_WORDS_DEFAULT} />
           </div>
         </SectionCard>
 
         {/* ── About ───────────────────────────────────────── */}
         <SectionCard title="ℹ️ About Section / Über uns / 关于我们" onSave={() => handleSectionSave("about")} saveStatus={sectionStatus["about"]}>
-          <Field label="Section title" value={draft.about.sectionTitle} onChange={(v) => updateAbout("sectionTitle", v)} />
-          <Field label="Description paragraph 1" value={draft.about.desc1} onChange={(v) => updateAbout("desc1", v)} multiline />
-          <Field label="Description paragraph 2" value={draft.about.desc2} onChange={(v) => updateAbout("desc2", v)} multiline />
+          <Field label="Section title" value={draft.about.sectionTitle} onChange={(v) => updateAbout("sectionTitle", v)} maxWords={MAX_WORDS_DEFAULT} />
+          <Field label="Description paragraph 1" value={draft.about.desc1} onChange={(v) => updateAbout("desc1", v)} multiline maxWords={MAX_WORDS_DEFAULT} />
+          <Field label="Description paragraph 2" value={draft.about.desc2} onChange={(v) => updateAbout("desc2", v)} multiline maxWords={MAX_WORDS_DEFAULT} />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Field label="Years" value={draft.about.years} onChange={(v) => updateAbout("years", v)} />
-            <Field label="Students" value={draft.about.students} onChange={(v) => updateAbout("students", v)} />
-            <Field label="Teachers" value={draft.about.teachers} onChange={(v) => updateAbout("teachers", v)} />
-            <Field label="Courses count" value={draft.about.coursesCount} onChange={(v) => updateAbout("coursesCount", v)} />
+            <Field label="Years" value={draft.about.years} onChange={(v) => updateAbout("years", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Students" value={draft.about.students} onChange={(v) => updateAbout("students", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Teachers" value={draft.about.teachers} onChange={(v) => updateAbout("teachers", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Courses count" value={draft.about.coursesCount} onChange={(v) => updateAbout("coursesCount", v)} maxWords={MAX_WORDS_DEFAULT} />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-1">
-            <Field label="Years label" value={draft.about.yearsLabel} onChange={(v) => updateAbout("yearsLabel", v)} />
-            <Field label="Students label" value={draft.about.studentsLabel} onChange={(v) => updateAbout("studentsLabel", v)} />
-            <Field label="Teachers label" value={draft.about.teachersLabel} onChange={(v) => updateAbout("teachersLabel", v)} />
-            <Field label="Courses label" value={draft.about.coursesLabel} onChange={(v) => updateAbout("coursesLabel", v)} />
+            <Field label="Years label" value={draft.about.yearsLabel} onChange={(v) => updateAbout("yearsLabel", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Students label" value={draft.about.studentsLabel} onChange={(v) => updateAbout("studentsLabel", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Teachers label" value={draft.about.teachersLabel} onChange={(v) => updateAbout("teachersLabel", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Courses label" value={draft.about.coursesLabel} onChange={(v) => updateAbout("coursesLabel", v)} maxWords={MAX_WORDS_DEFAULT} />
           </div>
         </SectionCard>
 
@@ -1226,6 +1251,7 @@ export default function AdminPage() {
             label="Section title"
             value={draft.courses.sectionTitle}
             onChange={(v) => setDraft((d) => ({ ...d, courses: { ...d.courses, sectionTitle: v } }))}
+            maxWords={MAX_WORDS_DEFAULT}
           />
           {draft.courses.items.map((course, idx) => (
             <div key={idx} className="border border-gray-200 rounded p-4 mb-3 bg-gray-50 relative">
@@ -1236,11 +1262,11 @@ export default function AdminPage() {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="课程 / Kurs" value={course.level} onChange={(v) => updateCourse(idx, "level", v)} />
-                <Field label="级别标签 / Level label" value={course.levelLabel} onChange={(v) => updateCourse(idx, "levelLabel", v)} />
-                <Field label="年龄 / Age range" value={course.ages} onChange={(v) => updateCourse(idx, "ages", v)} />
-                <Field label="上课时间 / Class time / Unterrichtszeit" value={course.time ?? ""} onChange={(v) => updateCourse(idx, "time", v)} />
-                <Field label="描述 / Description" value={course.desc} onChange={(v) => updateCourse(idx, "desc", v)} />
+                <Field label="课程 / Kurs" value={course.level} onChange={(v) => updateCourse(idx, "level", v)} maxWords={MAX_WORDS_DEFAULT} />
+                <Field label="级别标签 / Level label" value={course.levelLabel} onChange={(v) => updateCourse(idx, "levelLabel", v)} maxWords={MAX_WORDS_DEFAULT} />
+                <Field label="年龄 / Age range" value={course.ages} onChange={(v) => updateCourse(idx, "ages", v)} maxWords={MAX_WORDS_DEFAULT} />
+                <Field label="上课时间 / Class time / Unterrichtszeit" value={course.time ?? ""} onChange={(v) => updateCourse(idx, "time", v)} maxWords={MAX_WORDS_DEFAULT} />
+                <Field label="描述 / Description" value={course.desc} onChange={(v) => updateCourse(idx, "desc", v)} maxWords={MAX_WORDS_DEFAULT} />
               </div>
             </div>
           ))}
@@ -1257,12 +1283,17 @@ export default function AdminPage() {
         <input
           ref={newsFileInputRef}
           type="file"
-          accept="image/*"
+          accept={IMAGE_ACCEPT}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file && newsUploadingIdx) {
-              handleNewsImageUpload(file, newsUploadingIdx.newsIdx, newsUploadingIdx.blockIdx);
+              const err = validateImageFile(file);
+              if (err) {
+                setNewsUploadError(err);
+              } else {
+                handleNewsImageUpload(file, newsUploadingIdx.newsIdx, newsUploadingIdx.blockIdx);
+              }
             } else {
               setNewsUploadingIdx(null);
             }
@@ -1274,6 +1305,7 @@ export default function AdminPage() {
             label="Section title"
             value={draft.news.sectionTitle}
             onChange={(v) => setDraft((d) => ({ ...d, news: { ...d.news, sectionTitle: v } }))}
+            maxWords={MAX_WORDS_DEFAULT}
           />
           <button
             onClick={addNews}
@@ -1292,7 +1324,7 @@ export default function AdminPage() {
                 </button>
               </div>
               <Field label="Date (e.g. 2025-09)" value={item.date} onChange={(v) => updateNews(idx, "date", v)} />
-              <Field label="Title" value={item.title} onChange={(v) => updateNews(idx, "title", v)} />
+              <Field label="Title" value={item.title} onChange={(v) => updateNews(idx, "title", v)} maxWords={MAX_WORDS_DEFAULT} />
 
               {/* Body blocks */}
               <div className="mt-3 mb-2">
@@ -1327,17 +1359,22 @@ export default function AdminPage() {
                     </div>
                     <div className="flex-1">
                       {block.type === "text" ? (
-                        <textarea
-                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] resize-y min-h-[60px]"
-                          value={block.content}
-                          placeholder="Text…"
-                          onChange={(e) => {
-                            const newBlocks = blocks.map((b, i) =>
-                              i === bIdx ? { ...b, content: e.target.value } : b
-                            ) as typeof blocks;
-                            updateNewsBlocks(idx, newBlocks);
-                          }}
-                        />
+                        <div>
+                          <textarea
+                            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+                            value={block.content}
+                            placeholder="Text…"
+                            onChange={(e) => {
+                              const newBlocks = blocks.map((b, i) =>
+                                i === bIdx ? { ...b, content: e.target.value } : b
+                              ) as typeof blocks;
+                              updateNewsBlocks(idx, newBlocks);
+                            }}
+                          />
+                          <p className={`text-xs mt-0.5 text-right ${countWords(block.content) > MAX_WORDS_NEWS ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+                            {countWords(block.content)} / {MAX_WORDS_NEWS} words
+                          </p>
+                        </div>
                       ) : (
                         <div className="border border-gray-200 rounded p-2 bg-white">
                           <div
@@ -1347,8 +1384,13 @@ export default function AdminPage() {
                               e.preventDefault();
                               e.stopPropagation();
                               const file = e.dataTransfer.files?.[0];
-                              if (file && file.type.startsWith("image/")) {
-                                handleNewsImageUpload(file, idx, bIdx);
+                              if (file) {
+                                const err = validateImageFile(file);
+                                if (err) {
+                                  setNewsUploadError(err);
+                                } else {
+                                  handleNewsImageUpload(file, idx, bIdx);
+                                }
                               }
                             }}
                             onClick={() => {
@@ -1363,12 +1405,14 @@ export default function AdminPage() {
                               <div>
                                 <Image src={block.url} alt={block.caption ?? ""} width={400} height={128} unoptimized className="mx-auto max-h-32 object-cover rounded border border-gray-200 mb-1" />
                                 <p className="text-xs text-gray-400">Click or drop to replace / 点击或拖拽替换图片</p>
+                                <p className="text-xs text-gray-400 mt-0.5">JPEG, PNG, GIF, TIFF, SVG, RAW · max 3 MB</p>
                               </div>
                             ) : (
                               <div>
                                 <p className="text-xl mb-1">📎</p>
                                 <p className="text-sm text-gray-500">Drop image here or click to upload</p>
                                 <p className="text-xs text-gray-400">Bild hierher ziehen oder klicken / 拖拽图片到此处或点击上传</p>
+                                <p className="text-xs text-gray-400 mt-1">JPEG, PNG, GIF, TIFF, SVG, RAW · max 3 MB</p>
                               </div>
                             )}
                           </div>
@@ -1426,28 +1470,31 @@ export default function AdminPage() {
         {/* ── Contact ─────────────────────────────────────── */}
         <SectionCard title="📍 Contact / Kontakt / 联系我们" onSave={() => handleSectionSave("contact")} saveStatus={sectionStatus["contact"]}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Section title" value={draft.contact.sectionTitle} onChange={(v) => updateContact("sectionTitle", v)} />
-            <Field label="Address title" value={draft.contact.addressTitle} onChange={(v) => updateContact("addressTitle", v)} />
-            <Field label="Email title" value={draft.contact.emailTitle} onChange={(v) => updateContact("emailTitle", v)} />
-            <Field label="Email address" value={draft.contact.email} onChange={(v) => updateContact("email", v)} />
-            <Field label="Phone title" value={draft.contact.phoneTitle} onChange={(v) => updateContact("phoneTitle", v)} />
-            <Field label="Phone number" value={draft.contact.phone} onChange={(v) => updateContact("phone", v)} />
+            <Field label="Section title" value={draft.contact.sectionTitle} onChange={(v) => updateContact("sectionTitle", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Address title" value={draft.contact.addressTitle} onChange={(v) => updateContact("addressTitle", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Email title" value={draft.contact.emailTitle} onChange={(v) => updateContact("emailTitle", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Email address" value={draft.contact.email} onChange={(v) => updateContact("email", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Phone title" value={draft.contact.phoneTitle} onChange={(v) => updateContact("phoneTitle", v)} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Phone number" value={draft.contact.phone} onChange={(v) => updateContact("phone", v)} maxWords={MAX_WORDS_DEFAULT} />
           </div>
           <div className="mt-2">
             <label className="block text-xs font-semibold text-gray-600 mb-1">Address lines (one per line)</label>
             <textarea
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] min-h-[60px]"
+              className={`w-full border rounded px-3 py-2 text-sm focus:outline-none min-h-[60px] ${countWords(draft.contact.addressLines.join("\n")) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
               value={draft.contact.addressLines.join("\n")}
               onChange={(e) => updateContact("addressLines", e.target.value.split("\n"))}
             />
+            <p className={`text-xs mt-0.5 text-right ${countWords(draft.contact.addressLines.join("\n")) > MAX_WORDS_DEFAULT ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+              {countWords(draft.contact.addressLines.join("\n"))} / {MAX_WORDS_DEFAULT} words
+            </p>
           </div>
         </SectionCard>
 
         {/* ── Footer labels ────────────────────────────────── */}
         <SectionCard title="🔻 Footer" onSave={() => handleSectionSave("footer")} saveStatus={sectionStatus["footer"]}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Navigation section title" value={draft.footer.navigationTitle} onChange={(v) => setDraft((d) => ({ ...d, footer: { ...d.footer, navigationTitle: v } }))} />
-            <Field label="Contact section title" value={draft.footer.contactTitle} onChange={(v) => setDraft((d) => ({ ...d, footer: { ...d.footer, contactTitle: v } }))} />
+            <Field label="Navigation section title" value={draft.footer.navigationTitle} onChange={(v) => setDraft((d) => ({ ...d, footer: { ...d.footer, navigationTitle: v } }))} maxWords={MAX_WORDS_DEFAULT} />
+            <Field label="Contact section title" value={draft.footer.contactTitle} onChange={(v) => setDraft((d) => ({ ...d, footer: { ...d.footer, contactTitle: v } }))} maxWords={MAX_WORDS_DEFAULT} />
           </div>
         </SectionCard>
 

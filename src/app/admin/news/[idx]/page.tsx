@@ -7,6 +7,13 @@ import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { NewsItem, NewsBodyBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
+import {
+  countWords,
+  MAX_WORDS_NEWS,
+  MAX_WORDS_DEFAULT,
+  validateImageFile,
+  IMAGE_ACCEPT,
+} from "@/lib/validation";
 
 export default function AdminNewsEditPage() {
   const params = useParams();
@@ -117,15 +124,26 @@ export default function AdminNewsEditPage() {
     }
   }
 
-  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/tiff", "image/svg+xml"];
+  const ALLOWED_IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|tiff?|svg|raw|cr2|nef|arw|dng)$/i;
+  const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
+  const MAX_WORDS_NEWS = 1000;
+  const MAX_WORDS_DEFAULT = 200;
+
+  function countWords(text: string): number {
+    if (!text.trim()) return 0;
+    const cjk = text.match(/[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}]/gu);
+    const stripped = text.replace(/[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}]/gu, " ");
+    const latin = stripped.trim().split(/\s+/).filter(Boolean);
+    return (cjk?.length ?? 0) + latin.length;
+  }
 
   function validateImageFile(file: File): string | null {
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      return "Only JPG, PNG, GIF, and WebP images are allowed. / Nur JPG, PNG, GIF und WebP Bilder erlaubt. / 仅支持 JPG、PNG、GIF、WebP 格式。";
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type) && !ALLOWED_IMAGE_EXTENSIONS.test(file.name)) {
+      return "Only JPEG, PNG, GIF, TIFF, SVG, and RAW images are allowed. / Nur JPEG, PNG, GIF, TIFF, SVG und RAW erlaubt. / 仅支持 JPEG、PNG、GIF、TIFF、SVG、RAW 格式。";
     }
     if (file.size > MAX_FILE_SIZE) {
-      return "File size must be under 5 MB. / Dateigröße muss unter 5 MB liegen. / 文件大小不能超过 5 MB。";
+      return "File size must be under 3 MB. / Dateigröße muss unter 3 MB liegen. / 文件大小不能超过 3 MB。";
     }
     return null;
   }
@@ -201,9 +219,12 @@ export default function AdminNewsEditPage() {
                       );
                     }}
                     rows={4}
-                    className={`w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)] resize-y ${lang === "zh" ? "font-cn" : ""}`}
+                    className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y ${lang === "zh" ? "font-cn" : ""} ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
                     placeholder={lang === "de" ? "Text eingeben…" : "输入文本…"}
                   />
+                  <p className={`text-xs mt-0.5 text-right ${countWords(block.content) > MAX_WORDS_NEWS ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+                    {countWords(block.content)} / {MAX_WORDS_NEWS} words
+                  </p>
                 </div>
               ) : (
                 <div className="border border-gray-200 rounded p-3 bg-gray-50">
@@ -215,10 +236,13 @@ export default function AdminNewsEditPage() {
                       e.preventDefault();
                       e.stopPropagation();
                       const file = e.dataTransfer.files?.[0];
-                      if (file && file.type.startsWith("image/")) {
-                        handleUpload(file, lang, bIdx);
-                      } else if (file) {
-                        setUploadError("Only JPG, PNG, GIF, and WebP images are allowed. / Nur JPG, PNG, GIF und WebP Bilder erlaubt. / 仅支持 JPG、PNG、GIF、WebP 格式。");
+                      if (file) {
+                        const err = validateImageFile(file);
+                        if (err) {
+                          setUploadError(err);
+                        } else {
+                          handleUpload(file, lang, bIdx);
+                        }
                       }
                     }}
                     onClick={() => {
@@ -233,13 +257,14 @@ export default function AdminNewsEditPage() {
                       <div>
                         <Image src={block.url} alt={block.caption ?? ""} width={400} height={160} unoptimized className="mx-auto max-h-40 object-cover rounded border border-gray-200 mb-2" />
                         <p className="text-xs text-gray-400">Click or drop to replace / Klicken oder Bild hierher ziehen / 点击或拖拽替换图片</p>
+                        <p className="text-xs text-gray-400 mt-0.5">JPEG, PNG, GIF, TIFF, SVG, RAW · max 3 MB</p>
                       </div>
                     ) : (
                       <div>
                         <p className="text-2xl mb-1">📎</p>
                         <p className="text-sm text-gray-500">Drop image here or click to upload</p>
                         <p className="text-xs text-gray-400">Bild hierher ziehen oder klicken / 拖拽图片到此处或点击上传</p>
-                        <p className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WebP · max 5 MB</p>
+                        <p className="text-xs text-gray-400 mt-1">JPEG, PNG, GIF, TIFF, SVG, RAW · max 3 MB</p>
                       </div>
                     )}
                   </div>
@@ -323,7 +348,7 @@ export default function AdminNewsEditPage() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/gif,image/webp"
+        accept={IMAGE_ACCEPT}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -359,9 +384,12 @@ export default function AdminNewsEditPage() {
               type="text"
               value={deTitle}
               onChange={(e) => setDeTitle(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+              className={`w-full border rounded px-3 py-2 text-sm focus:outline-none ${countWords(deTitle) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
               placeholder="Deutscher Titel…"
             />
+            <p className={`text-xs mt-0.5 text-right ${countWords(deTitle) > MAX_WORDS_DEFAULT ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+              {countWords(deTitle)} / {MAX_WORDS_DEFAULT} words
+            </p>
           </div>
           <label className="block text-xs font-semibold text-gray-600 mb-2">Inhalt / Body (Blocks)</label>
           {renderBlockEditor(deBlocks, setDeBlocks, "de")}
@@ -376,9 +404,12 @@ export default function AdminNewsEditPage() {
               type="text"
               value={zhTitle}
               onChange={(e) => setZhTitle(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-cn focus:outline-none focus:border-[var(--school-red)]"
+              className={`w-full border rounded px-3 py-2 text-sm font-cn focus:outline-none ${countWords(zhTitle) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
               placeholder="中文标题…"
             />
+            <p className={`text-xs mt-0.5 text-right ${countWords(zhTitle) > MAX_WORDS_DEFAULT ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+              {countWords(zhTitle)} / {MAX_WORDS_DEFAULT} words
+            </p>
           </div>
           <label className="block text-xs font-semibold text-gray-600 mb-2">正文 / Body (Blocks)</label>
           {renderBlockEditor(zhBlocks, setZhBlocks, "zh")}

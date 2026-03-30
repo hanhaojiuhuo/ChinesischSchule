@@ -23,15 +23,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No file provided." }, { status: 400 });
   }
 
-  // Validate file type
-  if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Only image files are allowed." }, { status: 400 });
+  // Validate file type – only JPEG/JPG, PNG, GIF, TIFF, SVG, RAW
+  const ALLOWED_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/tiff",
+    "image/svg+xml",
+    "image/x-dcraw",        // RAW (generic)
+    "image/x-canon-cr2",    // Canon RAW
+    "image/x-nikon-nef",    // Nikon RAW
+    "image/x-sony-arw",     // Sony RAW
+    "image/x-adobe-dng",    // Adobe DNG
+  ];
+  const ALLOWED_EXTENSIONS = /\.(jpe?g|png|gif|tiff?|svg|raw|cr2|nef|arw|dng)$/i;
+  if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.test(file.name)) {
+    return NextResponse.json(
+      { error: "Only JPEG, PNG, GIF, TIFF, SVG, and RAW images are allowed." },
+      { status: 400 }
+    );
   }
 
-  // Validate file size (max 5 MB)
-  const MAX_SIZE = 5 * 1024 * 1024;
+  // Validate file size (max 3 MB)
+  const MAX_SIZE = 3 * 1024 * 1024;
   if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "File is too large (max 5 MB)." }, { status: 400 });
+    return NextResponse.json({ error: "File is too large (max 3 MB)." }, { status: 400 });
   }
 
   try {
