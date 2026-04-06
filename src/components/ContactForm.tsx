@@ -94,7 +94,7 @@ export default function ContactForm() {
       {/* Status messages */}
       {status === "success" && (
         <p className="text-sm text-green-600 font-semibold">
-          ✓ 留言已发送！/ Nachricht gesendet! / Message sent!
+          ✓ 留言已发送！ / Nachricht gesendet! / Message sent!
         </p>
       )}
       {status === "error" && (

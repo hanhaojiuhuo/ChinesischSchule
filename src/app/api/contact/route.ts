@@ -45,7 +45,8 @@ export async function POST(request: Request) {
     }
 
     // Basic email format check (linear-time regex to avoid ReDoS)
-    if (!/^[^\s@]+@[^\s@]+$/.test(email.trim()) || !email.trim().includes(".")) {
+    const trimmedEmail = email.trim();
+    if (!/^[^\s@]+@[^\s@]+$/.test(trimmedEmail) || !trimmedEmail.includes(".")) {
       return NextResponse.json(
         {
           error:
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
       from: fromEmail,
       to: notificationEmail,
       subject: `Neue Kontaktanfrage von ${name.trim()} / New contact from ${name.trim()} / 新留言：${name.trim()}`,
-      replyTo: email.trim(),
+      replyTo: trimmedEmail,
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
           <h2 style="color:#c0392b">
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
                 E-Mail
               </td>
               <td style="padding:8px 12px;border-bottom:1px solid #eee">
-                <a href="mailto:${escapeHtml(email.trim())}">${escapeHtml(email.trim())}</a>
+                <a href="mailto:${escapeHtml(trimmedEmail)}">${escapeHtml(trimmedEmail)}</a>
               </td>
             </tr>
             <tr>
