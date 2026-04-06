@@ -186,9 +186,16 @@ export default function AdminPage() {
   const [newPw, setNewPw] = useState("");
   const [newPwConfirm, setNewPwConfirm] = useState("");
   const [pwChangeMsg, setPwChangeMsg] = useState("");
+  const [pwChangeMsgType, setPwChangeMsgType] = useState<"success" | "info" | "error">("error");
   const [showChangePwOld, setShowChangePwOld] = useState(false);
   const [showChangePwNew, setShowChangePwNew] = useState(false);
   const [showChangePwConfirm, setShowChangePwConfirm] = useState(false);
+
+  // Password change email verification state
+  const [pwChangeStep, setPwChangeStep] = useState<"form" | "verify">("form");
+  const [pwChangeCode, setPwChangeCode] = useState("");
+  const [pwChangeMaskedEmail, setPwChangeMaskedEmail] = useState("");
+  const [pwChangeLoading, setPwChangeLoading] = useState(false);
 
   // Add-admin state
   const [showAddAdmin, setShowAddAdmin] = useState(false);
@@ -328,14 +335,91 @@ export default function AdminPage() {
     e.preventDefault();
     if (!newPw || newPw.length < 6) {
       setPwChangeMsg("Mindestens 6 Zeichen / Min 6 characters / 至少6个字符");
+      setPwChangeMsgType("error");
       return;
     }
     if (newPw !== newPwConfirm) {
       setPwChangeMsg(
         "Passwörter stimmen nicht überein / Passwords do not match / 密码不匹配"
       );
+      setPwChangeMsgType("error");
       return;
     }
+
+    // Step 1: If email verification is needed, request a code first
+    if (pwChangeStep === "form") {
+      setPwChangeLoading(true);
+      setPwChangeMsg("");
+      try {
+        const res = await fetch("/api/password-change", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "request", username: auth.currentUser }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setPwChangeMaskedEmail(data.maskedEmail ?? "");
+          setPwChangeStep("verify");
+          setPwChangeMsg(
+            `验证码已发送至 ${data.maskedEmail ?? "您的邮箱"} / Code sent to ${data.maskedEmail ?? "your email"} / Code gesendet an ${data.maskedEmail ?? "Ihre E-Mail"}`
+          );
+          setPwChangeMsgType("info");
+        } else if (data.noEmail) {
+          // No email bound — fall back to direct password change (no verification)
+          await doDirectPasswordChange();
+        } else {
+          setPwChangeMsg(data.error ?? "Fehler / Error / 错误");
+          setPwChangeMsgType("error");
+        }
+      } catch {
+        // API unreachable — fall back to direct password change
+        await doDirectPasswordChange();
+      } finally {
+        setPwChangeLoading(false);
+      }
+      return;
+    }
+
+    // Step 2: Verify code and then change password
+    if (pwChangeStep === "verify") {
+      if (!pwChangeCode.trim()) {
+        setPwChangeMsg("请输入验证码 / Enter the code / Bitte Code eingeben");
+        setPwChangeMsgType("error");
+        return;
+      }
+      setPwChangeLoading(true);
+      setPwChangeMsg("");
+      try {
+        const verifyRes = await fetch("/api/password-change", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "verify",
+            username: auth.currentUser,
+            code: pwChangeCode.trim(),
+          }),
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok || !verifyData.success) {
+          setPwChangeMsg(
+            verifyData.error ?? "验证码无效 / Invalid code / Ungültiger Code"
+          );
+          setPwChangeMsgType("error");
+          setPwChangeLoading(false);
+          return;
+        }
+        // Code verified — now change the password
+        await doDirectPasswordChange();
+      } catch {
+        setPwChangeMsg("网络错误 / Network error / Netzwerkfehler");
+        setPwChangeMsgType("error");
+      } finally {
+        setPwChangeLoading(false);
+      }
+    }
+  }
+
+  async function doDirectPasswordChange() {
     const result = await auth.changePassword(auth.currentUser!, oldPw, newPw);
     if (result.success) {
       const msg = "✓ Passwort geändert! / Password changed! / 密码已修改！";
@@ -344,15 +428,19 @@ export default function AdminPage() {
           ? `${msg}\n⚠️ ${result.warning}`
           : msg
       );
+      setPwChangeMsgType("success");
       setOldPw("");
       setNewPw("");
       setNewPwConfirm("");
+      setPwChangeCode("");
+      setPwChangeStep("form");
       setTimeout(() => {
         setShowChangePw(false);
         setPwChangeMsg("");
       }, result.warning ? 5000 : 2000);
     } else {
       setPwChangeMsg(result.error ?? "Fehler / Error / 错误");
+      setPwChangeMsgType("error");
     }
   }
 
@@ -371,6 +459,22 @@ export default function AdminPage() {
         `✓ 管理员 "${newAdminUser.trim()}" 已添加！/ Administrator "${newAdminUser.trim()}" added / hinzugefügt！`
       );
       setAddAdminSuccess(true);
+
+      // Send email notification (best-effort, don't block on failure)
+      try {
+        await fetch("/api/notify-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            newUsername: newAdminUser.trim(),
+            newEmail: newAdminEmail.trim() || undefined,
+            addedBy: auth.currentUser ?? "unknown",
+          }),
+        });
+      } catch {
+        // Notification is best-effort — don't show errors to user
+      }
+
       setNewAdminUser("");
       setNewAdminPw("");
       setNewAdminPwConfirm("");
@@ -1506,21 +1610,37 @@ export default function AdminPage() {
             </button>
           ) : (
             <form onSubmit={handleChangePw} className="max-w-sm space-y-3">
-              <Field label="当前密码 / Current password / Aktuelles Passwort" value={oldPw} onChange={setOldPw} type="password" autoComplete="current-password" showPassword={showChangePwOld} onTogglePassword={() => setShowChangePwOld((v) => !v)} />
-              <Field label="新密码（至少6位）/ New password (min 6 chars) / Neues Passwort" value={newPw} onChange={setNewPw} type="password" autoComplete="new-password" showPassword={showChangePwNew} onTogglePassword={() => setShowChangePwNew((v) => !v)} />
-              <Field label="确认新密码 / Confirm new password / Neues Passwort bestätigen" value={newPwConfirm} onChange={setNewPwConfirm} type="password" autoComplete="new-password" showPassword={showChangePwConfirm} onTogglePassword={() => setShowChangePwConfirm((v) => !v)} />
+              {pwChangeStep === "form" && (
+                <>
+                  <Field label="当前密码 / Current password / Aktuelles Passwort" value={oldPw} onChange={setOldPw} type="password" autoComplete="current-password" showPassword={showChangePwOld} onTogglePassword={() => setShowChangePwOld((v) => !v)} />
+                  <Field label="新密码（至少6位）/ New password (min 6 chars) / Neues Passwort" value={newPw} onChange={setNewPw} type="password" autoComplete="new-password" showPassword={showChangePwNew} onTogglePassword={() => setShowChangePwNew((v) => !v)} />
+                  <Field label="确认新密码 / Confirm new password / Neues Passwort bestätigen" value={newPwConfirm} onChange={setNewPwConfirm} type="password" autoComplete="new-password" showPassword={showChangePwConfirm} onTogglePassword={() => setShowChangePwConfirm((v) => !v)} />
+                </>
+              )}
+              {pwChangeStep === "verify" && (
+                <>
+                  <p className="text-xs text-gray-500">
+                    验证码已发送至 {pwChangeMaskedEmail} / Code sent to {pwChangeMaskedEmail} / Code gesendet an {pwChangeMaskedEmail}
+                  </p>
+                  <Field
+                    label="验证码 / Verification code / Verifizierungscode"
+                    value={pwChangeCode}
+                    onChange={setPwChangeCode}
+                  />
+                </>
+              )}
               {pwChangeMsg && (
-                <p className={`text-xs whitespace-pre-line ${pwChangeMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>
+                <p className={`text-xs whitespace-pre-line ${pwChangeMsgType === "success" ? "text-green-600" : pwChangeMsgType === "info" ? "text-blue-600" : "text-red-600"}`}>
                   {pwChangeMsg}
                 </p>
               )}
               <div className="flex gap-3">
-                <button type="submit" className="px-4 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white text-sm font-semibold rounded transition-colors">
-                  保存 / Save / Speichern
+                <button type="submit" disabled={pwChangeLoading} className="px-4 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold rounded transition-colors">
+                  {pwChangeLoading ? "⏳" : pwChangeStep === "verify" ? "✓ 验证并保存 / Verify & Save / Verifizieren & Speichern" : "保存 / Save / Speichern"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowChangePw(false); setPwChangeMsg(""); setOldPw(""); setNewPw(""); setNewPwConfirm(""); }}
+                  onClick={() => { setShowChangePw(false); setPwChangeMsg(""); setOldPw(""); setNewPw(""); setNewPwConfirm(""); setPwChangeStep("form"); setPwChangeCode(""); }}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded transition-colors"
                 >
                   取消 / Cancel / Abbrechen

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
+import ContactForm from "@/components/ContactForm";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { SiteContent, CourseItem, NewsItem, NewsTextBlock } from "@/i18n/translations";
@@ -995,7 +996,7 @@ export default function Home() {
 
         {/* ── Contact ────────────────────────────────────────── */}
         <section id="contact" className="py-16 px-4 bg-white">
-          <div className="max-w-3xl mx-auto text-center">
+          <div className="max-w-5xl mx-auto text-center">
             <div className="flex justify-center mb-4">
               <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
             </div>
@@ -1025,67 +1026,97 @@ export default function Home() {
               )}
             </h2>
 
-            <div className="grid sm:grid-cols-3 gap-6 text-left mt-8">
-              <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
-                <div className="text-3xl mb-3">📍</div>
-                {isAdmin ? (
-                  <div className="space-y-1">
-                    <EditField value={de.contact.addressTitle} onChange={(v) => updDe("contact", { addressTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Address title…" />
-                    <EditField value={zh.contact.addressTitle} onChange={(v) => updZh("contact", { addressTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 地址标题…" />
-                    {de.contact.addressLines.map((l, i) => (
-                      <EditField key={`de-addr-${i}`} value={l} onChange={(v) => updDeAddrLine(i, v)} className="text-sm text-gray-600 w-full" placeholder={`DE address line ${i + 1}…`} />
-                    ))}
-                    {zh.contact.addressLines.map((l, i) => (
-                      <EditField key={`zh-addr-${i}`} value={l} onChange={(v) => updZhAddrLine(i, v)} className="font-cn text-xs text-gray-400 w-full" placeholder={`ZH 地址行 ${i + 1}…`} />
-                    ))}
+            <div className={`grid ${isAdmin ? "" : "md:grid-cols-2"} gap-8 text-left mt-8`}>
+              {/* Left column: Contact info cards */}
+              <div className="space-y-4">
+                <div className={`bg-[var(--school-gray)] rounded-lg p-5 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">📍</span>
+                    <div className="flex-1">
+                      {isAdmin ? (
+                        <div className="space-y-1">
+                          <EditField value={de.contact.addressTitle} onChange={(v) => updDe("contact", { addressTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Address title…" />
+                          <EditField value={zh.contact.addressTitle} onChange={(v) => updZh("contact", { addressTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 地址标题…" />
+                          {de.contact.addressLines.map((l, i) => (
+                            <EditField key={`de-addr-${i}`} value={l} onChange={(v) => updDeAddrLine(i, v)} className="text-sm text-gray-600 w-full" placeholder={`DE address line ${i + 1}…`} />
+                          ))}
+                          {zh.contact.addressLines.map((l, i) => (
+                            <EditField key={`zh-addr-${i}`} value={l} onChange={(v) => updZhAddrLine(i, v)} className="font-cn text-xs text-gray-400 w-full" placeholder={`ZH 地址行 ${i + 1}…`} />
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.addressTitle}</h3>
+                          {de.contact.addressTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.addressTitle}</p>}
+                          {showEn("contact") && en.contact.addressTitle.trim() && <p className="text-xs text-gray-400 mb-1">{en.contact.addressTitle}</p>}
+                          {zh.contact.addressLines.map((l) => (<p key={l} className="font-cn text-sm text-gray-600">{l}</p>))}
+                          {de.contact.addressLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
+                          {showEn("contact") && en.contact.addressLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
+                        </>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.addressTitle}</h3>
-                    {de.contact.addressTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.addressTitle}</p>}
-                    {showEn("contact") && en.contact.addressTitle.trim() && <p className="text-xs text-gray-400 mb-2">{en.contact.addressTitle}</p>}
-                    {zh.contact.addressLines.map((l) => (<p key={l} className="font-cn text-sm text-gray-600">{l}</p>))}
-                    {de.contact.addressLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
-                    {showEn("contact") && en.contact.addressLines.map((l) => (<p key={l} className="text-xs text-gray-400">{l}</p>))}
-                  </>
+                </div>
+
+                <div className={`bg-[var(--school-gray)] rounded-lg p-5 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">✉️</span>
+                    <div className="flex-1">
+                      {isAdmin ? (
+                        <div className="space-y-1">
+                          <EditField value={de.contact.emailTitle} onChange={(v) => updDe("contact", { emailTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Email title…" />
+                          <EditField value={zh.contact.emailTitle} onChange={(v) => updZh("contact", { emailTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 邮箱标题…" />
+                          <EditField value={de.contact.email} onChange={(v) => { updDe("contact", { email: v }); updZh("contact", { email: v }); }} className="text-sm text-gray-600 w-full" placeholder="email@example.com" />
+                        </div>
+                      ) : (
+                        <>
+                          <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.emailTitle}</h3>
+                          {de.contact.emailTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.emailTitle}</p>}
+                          {showEn("contact") && en.contact.emailTitle.trim() && <p className="text-xs text-gray-400 mb-1">{en.contact.emailTitle}</p>}
+                          <p className="text-sm text-gray-600">{de.contact.email}</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {(isAdmin || de.contact.phone) && (
+                  <div className={`bg-[var(--school-gray)] rounded-lg p-5 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📞</span>
+                      <div className="flex-1">
+                        {isAdmin ? (
+                          <div className="space-y-1">
+                            <EditField value={de.contact.phoneTitle} onChange={(v) => updDe("contact", { phoneTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Phone title…" />
+                            <EditField value={zh.contact.phoneTitle} onChange={(v) => updZh("contact", { phoneTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 电话标题…" />
+                            <EditField value={de.contact.phone} onChange={(v) => { updDe("contact", { phone: v }); updZh("contact", { phone: v }); }} className="text-sm text-gray-600 w-full" placeholder="+49 123 456789" />
+                          </div>
+                        ) : (
+                          <>
+                            <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.phoneTitle}</h3>
+                            {de.contact.phoneTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.phoneTitle}</p>}
+                            {showEn("contact") && en.contact.phoneTitle.trim() && <p className="text-xs text-gray-400 mb-1">{en.contact.phoneTitle}</p>}
+                            <p className="text-sm text-gray-600">{de.contact.phone}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
-              <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
-                <div className="text-3xl mb-3">✉️</div>
-                {isAdmin ? (
-                  <div className="space-y-1">
-                    <EditField value={de.contact.emailTitle} onChange={(v) => updDe("contact", { emailTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Email title…" />
-                    <EditField value={zh.contact.emailTitle} onChange={(v) => updZh("contact", { emailTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 邮箱标题…" />
-                    <EditField value={de.contact.email} onChange={(v) => { updDe("contact", { email: v }); updZh("contact", { email: v }); }} className="text-sm text-gray-600 w-full" placeholder="email@example.com" />
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.emailTitle}</h3>
-                    {de.contact.emailTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.emailTitle}</p>}
-                    {showEn("contact") && en.contact.emailTitle.trim() && <p className="text-xs text-gray-400 mb-2">{en.contact.emailTitle}</p>}
-                    <p className="text-sm text-gray-600">{de.contact.email}</p>
-                  </>
-                )}
-              </div>
-
-              <div className={`bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]${isAdmin ? " ring-2 ring-amber-300" : ""}`}>
-                <div className="text-3xl mb-3">📞</div>
-                {isAdmin ? (
-                  <div className="space-y-1">
-                    <EditField value={de.contact.phoneTitle} onChange={(v) => updDe("contact", { phoneTitle: v })} className="font-semibold text-[var(--school-dark)] text-sm w-full" placeholder="DE Phone title…" />
-                    <EditField value={zh.contact.phoneTitle} onChange={(v) => updZh("contact", { phoneTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 电话标题…" />
-                    <EditField value={de.contact.phone} onChange={(v) => { updDe("contact", { phone: v }); updZh("contact", { phone: v }); }} className="text-sm text-gray-600 w-full" placeholder="+49 123 456789" />
-                  </div>
-                ) : de.contact.phone ? (
-                  <>
-                    <h3 className="font-cn font-semibold text-[var(--school-dark)] mb-0.5 text-sm">{zh.contact.phoneTitle}</h3>
-                    {de.contact.phoneTitle.trim() && <p className="text-xs text-gray-400 mb-0.5">{de.contact.phoneTitle}</p>}
-                    {showEn("contact") && en.contact.phoneTitle.trim() && <p className="text-xs text-gray-400 mb-2">{en.contact.phoneTitle}</p>}
-                    <p className="text-sm text-gray-600">{de.contact.phone}</p>
-                  </>
-                ) : null}
-              </div>
+              {/* Right column: Contact form — only shown for non-admin visitors */}
+              {!isAdmin && (
+                <div className="bg-[var(--school-gray)] rounded-lg p-6 border border-[var(--school-border)]">
+                  <h3 className="font-cn text-lg font-semibold text-[var(--school-dark)] mb-1 text-center">
+                    给我们留言
+                  </h3>
+                  <p className="text-xs text-gray-400 text-center mb-2">
+                    Schreiben Sie uns · Send us a message
+                  </p>
+                  <ContactForm />
+                </div>
+              )}
             </div>
           </div>
         </section>
