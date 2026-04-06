@@ -44,8 +44,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Basic email format check
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    // Basic email format check (linear-time regex to avoid ReDoS)
+    if (!/^[^\s@]+@[^\s@]+$/.test(email.trim()) || !email.trim().includes(".")) {
       return NextResponse.json(
         {
           error:

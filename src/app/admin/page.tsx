@@ -186,6 +186,7 @@ export default function AdminPage() {
   const [newPw, setNewPw] = useState("");
   const [newPwConfirm, setNewPwConfirm] = useState("");
   const [pwChangeMsg, setPwChangeMsg] = useState("");
+  const [pwChangeMsgType, setPwChangeMsgType] = useState<"success" | "info" | "error">("error");
   const [showChangePwOld, setShowChangePwOld] = useState(false);
   const [showChangePwNew, setShowChangePwNew] = useState(false);
   const [showChangePwConfirm, setShowChangePwConfirm] = useState(false);
@@ -334,12 +335,14 @@ export default function AdminPage() {
     e.preventDefault();
     if (!newPw || newPw.length < 6) {
       setPwChangeMsg("Mindestens 6 Zeichen / Min 6 characters / 至少6个字符");
+      setPwChangeMsgType("error");
       return;
     }
     if (newPw !== newPwConfirm) {
       setPwChangeMsg(
         "Passwörter stimmen nicht überein / Passwords do not match / 密码不匹配"
       );
+      setPwChangeMsgType("error");
       return;
     }
 
@@ -360,11 +363,13 @@ export default function AdminPage() {
           setPwChangeMsg(
             `验证码已发送至 ${data.maskedEmail ?? "您的邮箱"} / Code sent to ${data.maskedEmail ?? "your email"} / Code gesendet an ${data.maskedEmail ?? "Ihre E-Mail"}`
           );
+          setPwChangeMsgType("info");
         } else if (data.noEmail) {
           // No email bound — fall back to direct password change (no verification)
           await doDirectPasswordChange();
         } else {
           setPwChangeMsg(data.error ?? "Fehler / Error / 错误");
+          setPwChangeMsgType("error");
         }
       } catch {
         // API unreachable — fall back to direct password change
@@ -379,6 +384,7 @@ export default function AdminPage() {
     if (pwChangeStep === "verify") {
       if (!pwChangeCode.trim()) {
         setPwChangeMsg("请输入验证码 / Enter the code / Bitte Code eingeben");
+        setPwChangeMsgType("error");
         return;
       }
       setPwChangeLoading(true);
@@ -398,6 +404,7 @@ export default function AdminPage() {
           setPwChangeMsg(
             verifyData.error ?? "验证码无效 / Invalid code / Ungültiger Code"
           );
+          setPwChangeMsgType("error");
           setPwChangeLoading(false);
           return;
         }
@@ -405,6 +412,7 @@ export default function AdminPage() {
         await doDirectPasswordChange();
       } catch {
         setPwChangeMsg("网络错误 / Network error / Netzwerkfehler");
+        setPwChangeMsgType("error");
       } finally {
         setPwChangeLoading(false);
       }
@@ -420,6 +428,7 @@ export default function AdminPage() {
           ? `${msg}\n⚠️ ${result.warning}`
           : msg
       );
+      setPwChangeMsgType("success");
       setOldPw("");
       setNewPw("");
       setNewPwConfirm("");
@@ -431,6 +440,7 @@ export default function AdminPage() {
       }, result.warning ? 5000 : 2000);
     } else {
       setPwChangeMsg(result.error ?? "Fehler / Error / 错误");
+      setPwChangeMsgType("error");
     }
   }
 
@@ -1620,13 +1630,13 @@ export default function AdminPage() {
                 </>
               )}
               {pwChangeMsg && (
-                <p className={`text-xs whitespace-pre-line ${pwChangeMsg.startsWith("✓") ? "text-green-600" : pwChangeMsg.startsWith("验证码已") || pwChangeMsg.startsWith("Code sent") ? "text-blue-600" : "text-red-600"}`}>
+                <p className={`text-xs whitespace-pre-line ${pwChangeMsgType === "success" ? "text-green-600" : pwChangeMsgType === "info" ? "text-blue-600" : "text-red-600"}`}>
                   {pwChangeMsg}
                 </p>
               )}
               <div className="flex gap-3">
                 <button type="submit" disabled={pwChangeLoading} className="px-4 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold rounded transition-colors">
-                  {pwChangeLoading ? "⏳" : pwChangeStep === "verify" ? "✓ 验证并保存 / Verify & Save" : "保存 / Save / Speichern"}
+                  {pwChangeLoading ? "⏳" : pwChangeStep === "verify" ? "✓ 验证并保存 / Verify & Save / Verifizieren & Speichern" : "保存 / Save / Speichern"}
                 </button>
                 <button
                   type="button"
