@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
+import ContactForm from "@/components/ContactForm";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { SiteContent, CourseItem, NewsItem, NewsTextBlock } from "@/i18n/translations";
@@ -1087,6 +1088,9 @@ export default function Home() {
                 ) : null}
               </div>
             </div>
+
+            {/* Contact form — only shown for non-admin visitors */}
+            {!isAdmin && <ContactForm />}
           </div>
         </section>
       </main>
