@@ -316,6 +316,13 @@ function AdminPageContent() {
     e.preventDefault();
     setLoginError("");
     setLoginBlocked(false);
+    // Client-side validation: require non-empty credentials
+    if (!userInput.trim() || !pwInput) {
+      setLoginError(
+        "请输入用户名和密码 / Please enter username and password / Bitte Benutzername und Passwort eingeben"
+      );
+      return;
+    }
     const result = await auth.login(userInput.trim(), pwInput);
     if (!result.success) {
       setFailedAttempts((c) => c + 1);
