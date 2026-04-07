@@ -23,6 +23,66 @@ const LOGIN_FAILURES_KEY = "yixin-login-failures";
 
 /* ─── Small helpers ─────────────────────────────────────────── */
 
+function ExpandModal({
+  label,
+  value,
+  onChange,
+  onClose,
+  maxWords,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onClose: () => void;
+  maxWords?: number;
+}) {
+  const wc = maxWords != null ? countWords(value) : 0;
+  const overLimit = maxWords != null && wc > maxWords;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-2xl w-[90vw] max-w-4xl max-h-[90vh] flex flex-col p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-700">{label}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700 text-lg font-bold px-2"
+            title="Close"
+          >✕</button>
+        </div>
+        <textarea
+          className={`flex-1 w-full border rounded px-4 py-3 text-sm focus:outline-none resize-none min-h-[60vh] ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoFocus
+        />
+        {maxWords != null && (
+          <p className={`text-xs mt-1 text-right ${overLimit ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+            {wc} / {maxWords} words
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ExpandButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="ml-2 text-gray-400 hover:text-[var(--school-red)] transition-colors"
+      title="Expand editor / Vergrößern / 展开编辑器"
+    >
+      <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
+        <path d="M3 3h4V1H1v6h2V3zm14 0h-4V1h6v6h-2V3zM3 17h4v2H1v-6h2v4zm14 0h-4v2h6v-6h-2v4z" />
+      </svg>
+    </button>
+  );
+}
+
 function EyeToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
   return (
     <button
@@ -52,6 +112,7 @@ function Field({
   value,
   onChange,
   multiline = false,
+  expandable = false,
   type = "text",
   autoComplete,
   showPassword,
@@ -62,19 +123,35 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   multiline?: boolean;
+  expandable?: boolean;
   type?: string;
   autoComplete?: string;
   showPassword?: boolean;
   onTogglePassword?: () => void;
   maxWords?: number;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const isPassword = type === "password";
   const effectiveType = isPassword && showPassword ? "text" : type;
   const wc = maxWords != null ? countWords(value) : 0;
   const overLimit = maxWords != null && wc > maxWords;
   return (
     <div className="mb-3">
-      <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
+      <div className="flex items-center mb-1">
+        <label className="block text-xs font-semibold text-gray-600">{label}</label>
+        {multiline && expandable && (
+          <ExpandButton onClick={() => setExpanded(true)} />
+        )}
+      </div>
+      {expanded && (
+        <ExpandModal
+          label={label}
+          value={value}
+          onChange={onChange}
+          onClose={() => setExpanded(false)}
+          maxWords={maxWords}
+        />
+      )}
       {multiline ? (
         <>
           <textarea
@@ -295,6 +372,7 @@ function AdminPageContent() {
   const [newsUploadingIdx, setNewsUploadingIdx] = useState<{ newsIdx: number; blockIdx: number } | null>(null);
   const [newsUploadError, setNewsUploadError] = useState("");
   const newsFileInputRef = useRef<HTMLInputElement>(null);
+  const [newsExpandedBlock, setNewsExpandedBlock] = useState<{ newsIdx: number; blockIdx: number } | null>(null);
 
   // Per-section save status
   type SaveStatus = "idle" | "saving" | "saved";
@@ -1607,6 +1685,24 @@ function AdminPageContent() {
                     <div className="flex-1">
                       {block.type === "text" ? (
                         <div>
+                          <div className="flex items-center mb-1">
+                            <span className="text-xs text-gray-500">Text</span>
+                            <ExpandButton onClick={() => setNewsExpandedBlock({ newsIdx: idx, blockIdx: bIdx })} />
+                          </div>
+                          {newsExpandedBlock?.newsIdx === idx && newsExpandedBlock?.blockIdx === bIdx && (
+                            <ExpandModal
+                              label={`News ${idx + 1} – Text block ${bIdx + 1}`}
+                              value={block.content}
+                              onChange={(v) => {
+                                const newBlocks = blocks.map((b, i) =>
+                                  i === bIdx ? { ...b, content: v } : b
+                                ) as typeof blocks;
+                                updateNewsBlocks(idx, newBlocks);
+                              }}
+                              onClose={() => setNewsExpandedBlock(null)}
+                              maxWords={MAX_WORDS_NEWS}
+                            />
+                          )}
                           <textarea
                             className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
                             value={block.content}
@@ -1748,13 +1844,13 @@ function AdminPageContent() {
         {/* ── Impressum ───────────────────────────────────── */}
         <SectionCard title="📋 Impressum / Legal Notice / 法律声明" onSave={() => handleSectionSave("impressum")} saveStatus={sectionStatus["impressum"]}>
           <Field label="Page title" value={draft.impressum.pageTitle} onChange={(v) => setDraft((d) => ({ ...d, impressum: { ...d.impressum, pageTitle: v } }))} maxWords={MAX_WORDS_DEFAULT} />
-          <Field label="Content" value={draft.impressum.content} onChange={(v) => setDraft((d) => ({ ...d, impressum: { ...d.impressum, content: v } }))} multiline />
+          <Field label="Content" value={draft.impressum.content} onChange={(v) => setDraft((d) => ({ ...d, impressum: { ...d.impressum, content: v } }))} multiline expandable />
         </SectionCard>
 
         {/* ── Privacy / Datenschutz ───────────────────────── */}
         <SectionCard title="🔒 Datenschutz / Privacy / 隐私政策" onSave={() => handleSectionSave("privacy")} saveStatus={sectionStatus["privacy"]}>
           <Field label="Page title" value={draft.privacy.pageTitle} onChange={(v) => setDraft((d) => ({ ...d, privacy: { ...d.privacy, pageTitle: v } }))} maxWords={MAX_WORDS_DEFAULT} />
-          <Field label="Content" value={draft.privacy.content} onChange={(v) => setDraft((d) => ({ ...d, privacy: { ...d.privacy, content: v } }))} multiline />
+          <Field label="Content" value={draft.privacy.content} onChange={(v) => setDraft((d) => ({ ...d, privacy: { ...d.privacy, content: v } }))} multiline expandable />
         </SectionCard>
 
         {/* ── Change password ──────────────────────────────── */}
