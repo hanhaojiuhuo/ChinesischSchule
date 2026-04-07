@@ -360,6 +360,10 @@ function AdminPageContent() {
   const [forgotPwCooldownEnd, setForgotPwCooldownEnd] = useState(0);
   const [forgotPwCooldownSecs, setForgotPwCooldownSecs] = useState(0);
 
+  /** Format seconds as MM:SS for countdown display. */
+  const fmtCooldown = (secs: number) =>
+    `${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
+
   useEffect(() => {
     if (forgotPwCooldownEnd <= 0) {
       setForgotPwCooldownSecs(0);
@@ -373,9 +377,6 @@ function AdminPageContent() {
     const tick = window.setInterval(() => {
       const left = Math.max(0, Math.ceil((forgotPwCooldownEnd - Date.now()) / 1000));
       setForgotPwCooldownSecs(left);
-      if (left <= 0) {
-        window.clearInterval(tick);
-      }
     }, 1000);
     return () => window.clearInterval(tick);
   }, [forgotPwCooldownEnd]);
@@ -987,7 +988,7 @@ function AdminPageContent() {
                     className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
                   >
                     {forgotPwCooldownSecs > 0
-                      ? `⏳ ${String(Math.floor(forgotPwCooldownSecs / 60)).padStart(2, "0")}:${String(forgotPwCooldownSecs % 60).padStart(2, "0")} — 请等待 / Bitte warten / Please wait`
+                      ? `⏳ ${fmtCooldown(forgotPwCooldownSecs)} — 请等待 / Bitte warten / Please wait`
                       : forgotPwLoading ? "⏳ …" : "发送验证码 / Code senden / Send Code"}
                   </button>
                 </form>
@@ -1030,7 +1031,7 @@ function AdminPageContent() {
                   {forgotPwSuccess && <p className="text-xs text-green-600 font-semibold" role="status">{forgotPwSuccess}</p>}
                   {forgotPwCooldownSecs > 0 && (
                     <p className="text-xs text-amber-600 font-mono text-center">
-                      ⏳ {String(Math.floor(forgotPwCooldownSecs / 60)).padStart(2, "0")}:{String(forgotPwCooldownSecs % 60).padStart(2, "0")}{" "}
+                      ⏳ {fmtCooldown(forgotPwCooldownSecs)}{" "}
                       — 重新发送前请等待 / Bitte warten Sie vor dem erneuten Senden / Please wait before resending
                     </p>
                   )}
@@ -1091,7 +1092,7 @@ function AdminPageContent() {
                     className="w-full text-xs text-[var(--school-red)] underline hover:opacity-80 disabled:opacity-40"
                   >
                     {forgotPwCooldownSecs > 0
-                      ? `⏳ ${String(Math.floor(forgotPwCooldownSecs / 60)).padStart(2, "0")}:${String(forgotPwCooldownSecs % 60).padStart(2, "0")} — 请等待 / Bitte warten / Please wait`
+                      ? `⏳ ${fmtCooldown(forgotPwCooldownSecs)} — 请等待 / Bitte warten / Please wait`
                       : forgotPwResendCount > 0
                         ? `🔁 Code erneut gesendet (${forgotPwResendCount}×) / Resent / 已重发`
                         : "🔁 Code erneut senden / Resend code / 重新发送验证码"}
