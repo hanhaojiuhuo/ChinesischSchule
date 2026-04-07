@@ -168,15 +168,16 @@ export async function POST(request: Request) {
       const fromEmail =
         process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
-      // Build the password change link for admin-initiated resets
-      const origin = new URL(request.url).origin;
-      const resetLink = `${origin}/admin?reset=1&username=${encodeURIComponent(admin.username)}`;
-
       const resend = new Resend(apiKey);
 
       // Use a different email template when the reset is initiated by an admin
-      const emailHtml = adminInitiated
-        ? `
+      let emailHtml: string;
+      let emailSubject: string;
+      if (adminInitiated) {
+        const origin = new URL(request.url).origin;
+        const resetLink = `${origin}/admin?reset=1&username=${encodeURIComponent(admin.username)}`;
+        emailSubject = "Passwort-Reset durch Administrator / Admin Password Reset / 管理员重置密码";
+        emailHtml = `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
             <h2 style="color:#c0392b">
               YiXin 中文学校 · Chinesisch Schule Heilbronn
@@ -221,8 +222,10 @@ export async function POST(request: Request) {
               If you did not request this, please contact an administrator immediately.<br>
               如非本人操作，请立即联系管理员。
             </p>
-          </div>`
-        : `
+          </div>`;
+      } else {
+        emailSubject = "Passwort-Reset Verifizierungscode / Password Reset Code / 密码重置验证码";
+        emailHtml = `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
             <h2 style="color:#c0392b">
               YiXin 中文学校 · Chinesisch Schule Heilbronn
@@ -247,13 +250,12 @@ export async function POST(request: Request) {
               如非本人操作，请忽略此邮件。
             </p>
           </div>`;
+      }
 
       const { error } = await resend.emails.send({
         from: fromEmail,
         to: admin.email!,
-        subject: adminInitiated
-          ? "Passwort-Reset durch Administrator / Admin Password Reset / 管理员重置密码"
-          : "Passwort-Reset Verifizierungscode / Password Reset Code / 密码重置验证码",
+        subject: emailSubject,
         html: emailHtml,
       });
 
