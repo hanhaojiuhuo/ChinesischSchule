@@ -3,16 +3,16 @@ import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
 
-/** Time-slot duration for HMAC-based code validity (10 minutes). */
-const CODE_SLOT_MS = 10 * 60 * 1000;
+/** Time-slot duration for HMAC-based code validity (15 minutes). */
+const CODE_SLOT_MS = 15 * 60 * 1000;
 
 /** Rate-limit: max attempts per email within 1 hour. */
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
-/** Max wrong username+email mismatch attempts before blocking. */
+/** Max wrong username+email mismatch attempts before blocking (per day). */
 const MISMATCH_MAX = 3;
-const MISMATCH_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const MISMATCH_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /** In-memory rate-limit store (keyed by email). Reset on server restart. */
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
@@ -51,7 +51,7 @@ function checkMismatchLimit(key: string): { allowed: boolean; remaining: number 
 
 
 /**
- * Generate a 6-digit HMAC-based code tied to a username and a 10-minute time
+ * Generate a 6-digit HMAC-based code tied to a username and a 15-minute time
  * slot. Stateless – no server-side storage required.
  * Domain separation ("password-reset") is included in the HMAC message so the
  * raw API key can be used directly as the HMAC secret without modification.
@@ -66,7 +66,7 @@ function generateCode(username: string, secret: string): string {
 
 /**
  * Verify a code against the current and previous time slot so codes remain
- * valid for up to 20 minutes regardless of when the user acts.
+ * valid for up to 30 minutes regardless of when the user acts.
  */
 function verifyCode(username: string, secret: string, code: string): boolean {
   const slot = Math.floor(Date.now() / CODE_SLOT_MS);
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
       if (!mm.allowed) {
         return NextResponse.json(
           {
-            error: "Too many incorrect attempts. Please contact the administrator. / Zu viele Fehlversuche. Bitte kontaktieren Sie den Administrator. / 错误尝试次数过多，请联系管理员。",
+            error: "Too many incorrect attempts. Please wait 24 hours before trying again. / Zu viele Fehlversuche. Bitte warten Sie 24 Stunden. / 错误尝试次数过多，请等待24小时后再试。",
             blocked: true,
           },
           { status: 403 }
@@ -189,9 +189,9 @@ export async function POST(request: Request) {
               ${code}
             </p>
             <p style="color:#666;font-size:13px">
-              DE: Dieser Code ist 20 Minuten gültig.<br>
-              EN: This code is valid for 20 minutes.<br>
-              ZH: 此验证码有效期为 20 分钟。
+              DE: Dieser Code ist 30 Minuten gültig. Danach ist eine neue Anfrage erforderlich.<br>
+              EN: This code is valid for 30 minutes. After that, a new request is required.<br>
+              ZH: 此验证码有效期为 30 分钟，过期后需重新申请。
             </p>
             <p style="color:#999;font-size:12px">
               Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.<br>

@@ -879,9 +879,9 @@ export default function AdminPage() {
                   className="space-y-2"
                 >
                   <p className="text-xs text-gray-600">
-                    DE: Falls die E-Mail-Adresse im System registriert ist, wurde ein Verifizierungscode gesendet (gültig 20 Min.).<br />
-                    EN: If the email is registered in the system, a verification code was sent (valid 20 min).<br />
-                    ZH: 如果该邮箱已在系统中注册，验证码已发送（有效期 20 分钟）。
+                    DE: Falls die E-Mail-Adresse im System registriert ist, wurde ein Verifizierungscode gesendet (gültig 30 Min.). Nach Ablauf muss ein neuer Code angefordert werden.<br />
+                    EN: If the email is registered in the system, a verification code was sent (valid 30 min). After expiry, a new code must be requested.<br />
+                    ZH: 如果该邮箱已在系统中注册，验证码已发送（有效期 30 分钟）。过期后需重新申请。
                   </p>
                   <input
                     type="text"
@@ -1090,9 +1090,9 @@ export default function AdminPage() {
                     🚫 操作已被封锁 / Activity blocked / Aktivität gesperrt
                   </p>
                   <p className="text-xs text-gray-600">
-                    DE: Zu viele Fehlversuche. Bitte kontaktieren Sie einen Administrator, um Ihr Passwort zurückzusetzen.<br />
-                    EN: Too many incorrect attempts. Please contact an administrator to reset your password.<br />
-                    ZH: 错误尝试次数过多，请联系管理员重置密码。
+                    DE: Zu viele Fehlversuche. Bitte warten Sie 24 Stunden, bevor Sie es erneut versuchen.<br />
+                    EN: Too many incorrect attempts. Please wait 24 hours before trying again.<br />
+                    ZH: 错误尝试次数过多，请等待24小时后再试。
                   </p>
                   <button
                     type="button"
