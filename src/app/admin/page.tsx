@@ -317,7 +317,7 @@ function AdminPageContent() {
     setLoginError("");
     setLoginBlocked(false);
     // Client-side validation: require non-empty credentials
-    if (!userInput.trim() || !pwInput) {
+    if (!userInput.trim() || !pwInput.trim()) {
       setLoginError(
         "请输入用户名和密码 / Please enter username and password / Bitte Benutzername und Passwort eingeben"
       );

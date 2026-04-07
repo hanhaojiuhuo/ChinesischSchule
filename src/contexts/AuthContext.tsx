@@ -274,7 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Handle HTTP errors (e.g. 400 Bad Request for missing credentials)
         // that don't carry rate-limit data – don't count them as failed attempts
-        if (!res.ok && !("remainingAttempts" in data) && !data.success) {
+        if (!res.ok && !("remainingAttempts" in data)) {
           return { success: false, remainingAttempts: MAX_DAILY_ATTEMPTS - failures.count };
         }
 
