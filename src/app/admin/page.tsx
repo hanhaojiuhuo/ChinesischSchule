@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useContent } from "@/contexts/ContentContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAutoLogout } from "@/hooks/useAutoLogout";
 import Image from "next/image";
 import Link from "next/link";
 import { defaultTranslations } from "@/i18n/translations";
@@ -246,6 +247,9 @@ function AdminPageContent() {
   const { getContent, saveContent, resetContent } = useContent();
   const auth = useAuth();
   const searchParams = useSearchParams();
+
+  // Auto-logout after 10 minutes of inactivity
+  const { remainingSeconds } = useAutoLogout(auth.isAdmin, auth.logout);
 
   // Login form state
   const [userInput, setUserInput] = useState("");
@@ -1459,6 +1463,20 @@ function AdminPageContent() {
           <span className="font-cn font-bold text-lg">管理面板</span>
           <span className="text-gray-400 text-sm hidden sm:inline">
             Admin Panel · {auth.currentUser}
+          </span>
+          {/* Auto-logout countdown */}
+          <span
+            className={`text-xs font-mono px-2 py-0.5 rounded ${
+              remainingSeconds <= 60
+                ? "bg-red-600 text-white animate-pulse"
+                : remainingSeconds <= 180
+                ? "bg-yellow-500 text-black"
+                : "bg-white/10 text-gray-300"
+            }`}
+            title="自动登出倒计时 / Auto-logout countdown / Automatische Abmeldung"
+          >
+            ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:
+            {String(remainingSeconds % 60).padStart(2, "0")}
           </span>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
