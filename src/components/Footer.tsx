@@ -80,6 +80,10 @@ export default function Footer() {
         © {new Date().getFullYear()} 海尔布隆一心中文学校 · Yi Xin Chinesische Sprachschule
         Heilbronn{showEn && " · Yi Xin Chinese Language School"}
         <span className="mx-2">·</span>
+        <a href="/impressum" className="hover:text-[var(--school-red)] transition-colors underline">
+          法律声明 · Impressum{showEn && " · Legal Notice"}
+        </a>
+        <span className="mx-2">·</span>
         <a href="/privacy" className="hover:text-[var(--school-red)] transition-colors underline">
           隐私政策 · Datenschutz{showEn && " · Privacy Policy"}
         </a>

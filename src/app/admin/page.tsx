@@ -1738,6 +1738,18 @@ function AdminPageContent() {
           </div>
         </SectionCard>
 
+        {/* ── Impressum ───────────────────────────────────── */}
+        <SectionCard title="📋 Impressum / Legal Notice / 法律声明" onSave={() => handleSectionSave("impressum")} saveStatus={sectionStatus["impressum"]}>
+          <Field label="Page title" value={draft.impressum.pageTitle} onChange={(v) => setDraft((d) => ({ ...d, impressum: { ...d.impressum, pageTitle: v } }))} maxWords={MAX_WORDS_DEFAULT} />
+          <Field label="Content" value={draft.impressum.content} onChange={(v) => setDraft((d) => ({ ...d, impressum: { ...d.impressum, content: v } }))} multiline />
+        </SectionCard>
+
+        {/* ── Privacy / Datenschutz ───────────────────────── */}
+        <SectionCard title="🔒 Datenschutz / Privacy / 隐私政策" onSave={() => handleSectionSave("privacy")} saveStatus={sectionStatus["privacy"]}>
+          <Field label="Page title" value={draft.privacy.pageTitle} onChange={(v) => setDraft((d) => ({ ...d, privacy: { ...d.privacy, pageTitle: v } }))} maxWords={MAX_WORDS_DEFAULT} />
+          <Field label="Content" value={draft.privacy.content} onChange={(v) => setDraft((d) => ({ ...d, privacy: { ...d.privacy, content: v } }))} multiline />
+        </SectionCard>
+
         {/* ── Change password ──────────────────────────────── */}
         <SectionCard title="🔐 修改密码 / Change Password / Passwort ändern">
           {!showChangePw ? (
