@@ -803,7 +803,7 @@ export default function AdminPage() {
                         setForgotPwStep(2);
                         setForgotPwResendCount(0);
                         setForgotPwMismatchCount(0);
-                        setForgotPwSuccess("✅ 验证码已发送 / Code wurde gesendet / Code sent successfully");
+                        setForgotPwSuccess("✅ 验证码已发送 / Code erfolgreich gesendet / Code sent successfully");
                       }
                     } catch {
                       setForgotPwError("Network error / Netzwerkfehler");
@@ -888,7 +888,7 @@ export default function AdminPage() {
                     EN: If the email is registered in the system, a verification code was sent (valid 30 min). After expiry, a new code must be requested.<br />
                     ZH: 如果该邮箱已在系统中注册，验证码已发送（有效期 30 分钟）。过期后需重新申请。
                   </p>
-                  {forgotPwSuccess && <p className="text-xs text-green-600 font-semibold">{forgotPwSuccess}</p>}
+                  {forgotPwSuccess && <p className="text-xs text-green-600 font-semibold" role="status">{forgotPwSuccess}</p>}
                   <input
                     type="text"
                     inputMode="numeric"
@@ -934,7 +934,7 @@ export default function AdminPage() {
                           setForgotPwResendCount((c) => c + 1);
                           setForgotPwCode("");
                           setForgotPwError("");
-                          setForgotPwSuccess("✅ 新验证码已发送 / Neuer Code gesendet / New code sent successfully");
+                          setForgotPwSuccess("✅ 新验证码已发送 / Neuer Code erfolgreich gesendet / New code sent successfully");
                         }
                       } catch {
                         setForgotPwError("Network error / Netzwerkfehler");
