@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** Auto-logout timeout in milliseconds (10 minutes). */
 const TIMEOUT_MS = 10 * 60 * 1000;
@@ -42,11 +42,6 @@ export function useAutoLogout(
     logoutRef.current = onLogout;
   }, [onLogout]);
 
-  /** Reset the deadline to "now + TIMEOUT_MS". */
-  const resetTimer = useCallback(() => {
-    deadlineRef.current = Date.now() + TIMEOUT_MS;
-  }, []);
-
   useEffect(() => {
     if (!active) return;
 
@@ -79,7 +74,7 @@ export function useAutoLogout(
       }
       window.clearInterval(tick);
     };
-  }, [active, resetTimer]);
+  }, [active]);
 
   return { remainingSeconds: active ? remainingSeconds : 0 };
 }
