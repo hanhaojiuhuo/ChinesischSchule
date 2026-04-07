@@ -254,6 +254,7 @@ export default function AdminPage() {
   const [forgotPwNewPw, setForgotPwNewPw] = useState("");
   const [forgotPwNewPwConfirm, setForgotPwNewPwConfirm] = useState("");
   const [forgotPwError, setForgotPwError] = useState("");
+  const [forgotPwSuccess, setForgotPwSuccess] = useState("");
   const [forgotPwLoading, setForgotPwLoading] = useState(false);
   const [forgotPwResendCount, setForgotPwResendCount] = useState(0);
   const [forgotPwRateLimited, setForgotPwRateLimited] = useState(false);
@@ -734,6 +735,7 @@ export default function AdminPage() {
               onClick={() => {
                 setForgotPwStep((s) => (s === 0 ? 1 : 0));
                 setForgotPwError("");
+                setForgotPwSuccess("");
                 setForgotPwUsername("");
                 setForgotPwCode("");
                 setForgotPwNewPw("");
@@ -769,6 +771,7 @@ export default function AdminPage() {
                     if (!forgotPwUsername.trim() || !forgotPwEmail.trim()) return;
                     setForgotPwLoading(true);
                     setForgotPwError("");
+                    setForgotPwSuccess("");
                     setForgotPwRateLimited(false);
                     try {
                       const res = await fetch("/api/password-reset", {
@@ -800,6 +803,7 @@ export default function AdminPage() {
                         setForgotPwStep(2);
                         setForgotPwResendCount(0);
                         setForgotPwMismatchCount(0);
+                        setForgotPwSuccess("✅ 验证码已发送 / Code wurde gesendet / Code sent successfully");
                       }
                     } catch {
                       setForgotPwError("Network error / Netzwerkfehler");
@@ -858,6 +862,7 @@ export default function AdminPage() {
                     if (!forgotPwCode.trim()) return;
                     setForgotPwLoading(true);
                     setForgotPwError("");
+                    setForgotPwSuccess("");
                     try {
                       const res = await fetch("/api/password-reset", {
                         method: "POST",
@@ -883,6 +888,7 @@ export default function AdminPage() {
                     EN: If the email is registered in the system, a verification code was sent (valid 30 min). After expiry, a new code must be requested.<br />
                     ZH: 如果该邮箱已在系统中注册，验证码已发送（有效期 30 分钟）。过期后需重新申请。
                   </p>
+                  {forgotPwSuccess && <p className="text-xs text-green-600 font-semibold">{forgotPwSuccess}</p>}
                   <input
                     type="text"
                     inputMode="numeric"
@@ -910,6 +916,7 @@ export default function AdminPage() {
                     onClick={async () => {
                       setForgotPwLoading(true);
                       setForgotPwError("");
+                      setForgotPwSuccess("");
                       setForgotPwRateLimited(false);
                       try {
                         const res = await fetch("/api/password-reset", {
@@ -927,6 +934,7 @@ export default function AdminPage() {
                           setForgotPwResendCount((c) => c + 1);
                           setForgotPwCode("");
                           setForgotPwError("");
+                          setForgotPwSuccess("✅ 新验证码已发送 / Neuer Code gesendet / New code sent successfully");
                         }
                       } catch {
                         setForgotPwError("Network error / Netzwerkfehler");
@@ -954,7 +962,7 @@ export default function AdminPage() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => { setForgotPwStep(1); setForgotPwError(""); setForgotPwCode(""); }}
+                    onClick={() => { setForgotPwStep(1); setForgotPwError(""); setForgotPwSuccess(""); setForgotPwCode(""); }}
                     className="w-full text-xs text-gray-500 underline hover:opacity-80"
                   >
                     ← 返回 / Zurück / Back
@@ -1072,6 +1080,7 @@ export default function AdminPage() {
                       setForgotPwNewPw("");
                       setForgotPwNewPwConfirm("");
                       setForgotPwError("");
+                      setForgotPwSuccess("");
                       setForgotPwResendCount(0);
                       setForgotPwRateLimited(false);
                       setForgotPwMismatchCount(0);
@@ -1104,6 +1113,7 @@ export default function AdminPage() {
                       setForgotPwNewPw("");
                       setForgotPwNewPwConfirm("");
                       setForgotPwError("");
+                      setForgotPwSuccess("");
                       setForgotPwResendCount(0);
                       setForgotPwRateLimited(false);
                       setForgotPwMismatchCount(0);
