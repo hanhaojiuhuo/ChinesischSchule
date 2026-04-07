@@ -72,14 +72,15 @@ export function useAutoLogout(
   const totalSeconds = Math.floor(TIMEOUT_MS / 1000);
 
   // Compute initial remaining seconds from a persisted deadline (if any).
+  // Always check sessionStorage even when `active` is false (auth still
+  // loading) so the UI never briefly flashes the full 10-min default when
+  // navigating between pages.
   const [remainingSeconds, setRemainingSeconds] = useState(() => {
-    if (!active) return totalSeconds;
     const stored = readDeadline();
     if (stored > Date.now()) return Math.ceil((stored - Date.now()) / 1000);
     return totalSeconds;
   });
   const [showWarning, setShowWarning] = useState(() => {
-    if (!active) return false;
     const stored = readDeadline();
     if (stored > Date.now()) {
       return Math.ceil((stored - Date.now()) / 1000) <= WARNING_THRESHOLD_S;
@@ -124,13 +125,20 @@ export function useAutoLogout(
     wasActiveRef.current = true;
 
     // Restore a previously-persisted deadline, or create a fresh one.
+    // Immediately sync React state so the UI never shows a stale value
+    // (e.g. the full 10-min default) between this effect and the first tick.
     const stored = readDeadline();
     if (stored > Date.now()) {
       deadlineRef.current = stored;
+      const secs = Math.ceil((stored - Date.now()) / 1000);
+      setRemainingSeconds(secs);
+      setShowWarning(secs <= WARNING_THRESHOLD_S);
     } else {
       const newDeadline = Date.now() + TIMEOUT_MS;
       deadlineRef.current = newDeadline;
       writeDeadline(newDeadline);
+      setRemainingSeconds(totalSeconds);
+      setShowWarning(false);
     }
 
     // --- 1-second tick to update `remainingSeconds` and check expiry ---
