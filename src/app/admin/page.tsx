@@ -7,6 +7,7 @@ import { useContent } from "@/contexts/ContentContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
+import SessionTimeoutWarning from "@/components/SessionTimeoutWarning";
 import Image from "next/image";
 import Link from "next/link";
 import { defaultTranslations } from "@/i18n/translations";
@@ -248,8 +249,9 @@ function AdminPageContent() {
   const auth = useAuth();
   const searchParams = useSearchParams();
 
-  // Auto-logout after 10 minutes of inactivity
-  const { remainingSeconds } = useAutoLogout(auth.isAdmin, auth.logout);
+  // Auto-logout after 10 minutes – only extendable via popup confirmation
+  const { remainingSeconds, totalSeconds, showWarning, extendSession } =
+    useAutoLogout(auth.isAdmin, auth.logout);
 
   // Login form state
   const [userInput, setUserInput] = useState("");
@@ -1498,6 +1500,13 @@ function AdminPageContent() {
 
   return (
     <div className="min-h-screen bg-[var(--school-gray)]">
+      {/* Session timeout warning popup */}
+      {showWarning && (
+        <SessionTimeoutWarning
+          remainingSeconds={remainingSeconds}
+          onExtend={extendSession}
+        />
+      )}
       {/* Top bar */}
       <div className="sticky top-0 z-40 bg-[var(--school-dark)] text-white px-4 py-3 flex items-center justify-between gap-4 flex-wrap shadow-md">
         <div className="flex items-center gap-3">
@@ -1505,7 +1514,7 @@ function AdminPageContent() {
           <span className="text-gray-400 text-sm hidden sm:inline">
             Admin Panel · {auth.currentUser}
           </span>
-          {/* Auto-logout countdown */}
+          {/* Auto-logout countdown + total limit */}
           <span
             className={`text-xs font-mono px-2 py-0.5 rounded ${
               remainingSeconds <= 60
@@ -1518,6 +1527,9 @@ function AdminPageContent() {
           >
             ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:
             {String(remainingSeconds % 60).padStart(2, "0")}
+            {" / "}
+            {String(Math.floor(totalSeconds / 60)).padStart(2, "0")}:
+            {String(totalSeconds % 60).padStart(2, "0")}
           </span>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
