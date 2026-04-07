@@ -13,6 +13,34 @@ import { defaultTranslations } from "@/i18n/translations";
 
 type ContentOverrides = Partial<Record<Language, SiteContent>>;
 
+/**
+ * Shallow-merge each top-level section of the override with the default so
+ * that sections added after the override was saved (e.g. impressum, privacy)
+ * still fall back to defaults instead of being undefined.
+ */
+function mergeWithDefaults(override: SiteContent, defaults: SiteContent): SiteContent {
+  const merged = { ...defaults };
+  for (const key of Object.keys(override) as (keyof SiteContent)[]) {
+    const overrideVal = override[key];
+    const defaultVal = defaults[key];
+    if (
+      overrideVal != null &&
+      typeof overrideVal === "object" &&
+      !Array.isArray(overrideVal) &&
+      defaultVal != null &&
+      typeof defaultVal === "object" &&
+      !Array.isArray(defaultVal)
+    ) {
+      // Merge object sections (nav, hero, about, impressum, …)
+      (merged as Record<string, unknown>)[key] = { ...defaultVal, ...overrideVal };
+    } else {
+      // Primitives and arrays are replaced outright
+      (merged as Record<string, unknown>)[key] = overrideVal;
+    }
+  }
+  return merged;
+}
+
 /** Per-section English visibility flags. Absent key = true (show English by default). */
 export type EnglishVisibility = Record<string, boolean>;
 
@@ -94,7 +122,9 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
   const getContent = useCallback(
     (lang: Language): SiteContent => {
-      return overrides[lang] ?? defaultTranslations[lang];
+      const override = overrides[lang];
+      if (!override) return defaultTranslations[lang];
+      return mergeWithDefaults(override, defaultTranslations[lang]);
     },
     [overrides]
   );
