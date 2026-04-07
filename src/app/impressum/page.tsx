@@ -5,12 +5,12 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useContent } from "@/contexts/ContentContext";
 
-export default function PrivacyPage() {
+export default function ImpressumPage() {
   const { getContent, showEnglish } = useContent();
   const de = getContent("de");
   const zh = getContent("zh");
   const en = getContent("en");
-  const showEn = showEnglish.privacy !== false;
+  const showEn = showEnglish.impressum !== false;
 
   return (
     <>
@@ -24,10 +24,10 @@ export default function PrivacyPage() {
               <span className="block w-3 h-1 bg-[var(--school-red)] rounded opacity-50" />
             </div>
             <h1 className="font-cn text-3xl font-bold text-[var(--school-dark)] mb-2">
-              {zh.privacy.pageTitle}
+              {zh.impressum.pageTitle}
             </h1>
             <p className="text-lg text-gray-500">
-              {de.privacy.pageTitle}{showEn && ` · ${en.privacy.pageTitle}`}
+              {de.impressum.pageTitle}{showEn && ` · ${en.impressum.pageTitle}`}
             </p>
           </div>
 
@@ -35,18 +35,18 @@ export default function PrivacyPage() {
             {/* DE content */}
             <section>
               <h2 className="text-base font-bold text-[var(--school-dark)] mb-3 pb-1 border-b border-gray-100">
-                {de.privacy.pageTitle}
+                {de.impressum.pageTitle}
               </h2>
-              <div className="whitespace-pre-line">{de.privacy.content}</div>
+              <div className="whitespace-pre-line">{de.impressum.content}</div>
             </section>
 
             {/* ZH content */}
             <section className="border-t border-gray-100 pt-8">
               <h2 className="font-cn text-base font-bold text-[var(--school-dark)] mb-3 pb-1 border-b border-gray-100">
-                {zh.privacy.pageTitle}
+                {zh.impressum.pageTitle}
               </h2>
               <div className="font-cn whitespace-pre-line text-gray-600 leading-loose">
-                {zh.privacy.content}
+                {zh.impressum.content}
               </div>
             </section>
 
@@ -54,9 +54,9 @@ export default function PrivacyPage() {
             {showEn && (
               <section className="border-t border-gray-100 pt-8">
                 <h2 className="text-base font-bold text-[var(--school-dark)] mb-3 pb-1 border-b border-gray-100">
-                  {en.privacy.pageTitle}
+                  {en.impressum.pageTitle}
                 </h2>
-                <div className="whitespace-pre-line">{en.privacy.content}</div>
+                <div className="whitespace-pre-line">{en.impressum.content}</div>
               </section>
             )}
           </div>

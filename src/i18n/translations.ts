@@ -86,6 +86,14 @@ export interface SiteContent {
     navigationTitle: string;
     contactTitle: string;
   };
+  impressum: {
+    pageTitle: string;
+    content: string;
+  };
+  privacy: {
+    pageTitle: string;
+    content: string;
+  };
 }
 
 const de: SiteContent = {
@@ -183,6 +191,51 @@ const de: SiteContent = {
   footer: {
     navigationTitle: "Navigation",
     contactTitle: "Kontakt",
+  },
+  impressum: {
+    pageTitle: "Impressum",
+    content: `Angaben gemäß § 5 TMG
+
+Yi Xin Chinesische Sprachschule Heilbronn
+Heilbronn, Baden-Württemberg, Deutschland
+
+Kontakt:
+E-Mail: info@yixin-heilbronn.de
+
+Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV:
+Yi Xin Chinesische Sprachschule Heilbronn
+
+Haftungsausschluss:
+Die Inhalte unserer Seiten wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen.`,
+  },
+  privacy: {
+    pageTitle: "Datenschutzerklärung",
+    content: `1. Verantwortlicher
+Verantwortlich im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:
+Yi Xin Chinesische Sprachschule Heilbronn
+Heilbronn, Baden-Württemberg, Deutschland
+E-Mail: info@yixin-heilbronn.de
+
+2. Erhebung und Speicherung personenbezogener Daten
+Beim Besuch unserer Website werden durch den auf Ihrem Endgerät zum Einsatz kommenden Browser automatisch Informationen an den Server unserer Website gesendet. Diese Informationen werden temporär in einem sogenannten Logfile gespeichert.
+
+3. Weitergabe von Daten an Dritte
+Eine Übermittlung Ihrer persönlichen Daten an Dritte zu anderen als den im Folgenden aufgeführten Zwecken findet nicht statt.
+
+4. Hosting
+Diese Website wird bei Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, USA, gehostet.
+
+5. Cookies
+Unsere Website verwendet ausschließlich technisch notwendige Cookies.
+
+6. Kontaktaufnahme per E-Mail
+Wenn Sie uns per E-Mail kontaktieren, werden die von Ihnen mitgeteilten Daten von uns gespeichert, um Ihre Fragen zu beantworten.
+
+7. Ihre Rechte als betroffene Person
+Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch.
+
+8. Aktualität und Änderung dieser Datenschutzerklärung
+Diese Datenschutzerklärung ist aktuell gültig und hat den Stand März 2025.`,
   },
 };
 
@@ -282,6 +335,26 @@ const zh: SiteContent = {
     navigationTitle: "导航",
     contactTitle: "联系",
   },
+  impressum: {
+    pageTitle: "法律声明",
+    content: `根据德国《电信媒体法》(TMG) 第5条
+
+海尔布隆一心中文学校
+海尔布隆，巴登-符腾堡州，德国
+
+联系方式：
+电子邮件：info@yixin-heilbronn.de
+
+根据《州际广播协议》(RStV) 第55条第2款对内容负责：
+海尔布隆一心中文学校
+
+免责声明：
+我们以最大的谨慎创建了本网站的内容。但我们不能保证内容的准确性、完整性和及时性。`,
+  },
+  privacy: {
+    pageTitle: "隐私政策",
+    content: `本网站由一心中文学校（海尔布隆）运营。我们依据欧盟《通用数据保护条例》（DSGVO/GDPR）保护您的个人数据。我们仅收集运营本网站所必需的技术数据（如服务器日志），不会将您的个人数据出售或用于广告目的。如需行使您的数据权利（访问、更正、删除等），请发送电子邮件至 info@yixin-heilbronn.de。`,
+  },
 };
 
 const en: SiteContent = {
@@ -379,6 +452,51 @@ const en: SiteContent = {
   footer: {
     navigationTitle: "Navigation",
     contactTitle: "Contact",
+  },
+  impressum: {
+    pageTitle: "Legal Notice",
+    content: `Information pursuant to § 5 TMG (German Telemedia Act)
+
+Yi Xin Chinese Language School Heilbronn
+Heilbronn, Baden-Württemberg, Germany
+
+Contact:
+Email: info@yixin-heilbronn.de
+
+Responsible for content pursuant to § 55 para. 2 RStV:
+Yi Xin Chinese Language School Heilbronn
+
+Disclaimer:
+The contents of our pages were created with the greatest care. However, we cannot guarantee the accuracy, completeness, and timeliness of the content.`,
+  },
+  privacy: {
+    pageTitle: "Privacy Policy",
+    content: `1. Data Controller
+The data controller within the meaning of the GDPR is:
+Yi Xin Chinese Language School Heilbronn
+Heilbronn, Baden-Württemberg, Germany
+Email: info@yixin-heilbronn.de
+
+2. Collection and Storage of Personal Data
+When you visit our website, the browser on your device automatically sends information to our server.
+
+3. Disclosure to Third Parties
+Your personal data will not be transmitted to third parties for purposes other than those listed.
+
+4. Hosting
+This website is hosted by Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, USA.
+
+5. Cookies
+Our website uses only technically necessary cookies.
+
+6. Contact via Email
+If you contact us by email, the data you provide will be stored to answer your questions.
+
+7. Your Rights as a Data Subject
+You have the right to access, rectification, erasure, restriction of processing, data portability, and objection.
+
+8. Updates to this Privacy Policy
+This privacy policy is currently valid as of March 2025.`,
   },
 };
 
