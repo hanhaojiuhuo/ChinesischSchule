@@ -12,11 +12,11 @@ export default function Footer() {
   const showEn = showEnglish.footer !== false;
 
   const navLinks: [string, string, string, string][] = [
-    [de.nav.home, zh.nav.home, en.nav.home, "#home"],
-    [de.nav.courses, zh.nav.courses, en.nav.courses, "#courses"],
-    [de.nav.news, zh.nav.news, en.nav.news, "#news"],
-    [de.nav.about, zh.nav.about, en.nav.about, "#about"],
-    [de.nav.contact, zh.nav.contact, en.nav.contact, "#contact"],
+    [de.nav.home, zh.nav.home, en.nav.home, "/#home"],
+    [de.nav.courses, zh.nav.courses, en.nav.courses, "/#courses"],
+    [de.nav.news, zh.nav.news, en.nav.news, "/#news"],
+    [de.nav.about, zh.nav.about, en.nav.about, "/#about"],
+    [de.nav.contact, zh.nav.contact, en.nav.contact, "/#contact"],
   ];
 
   return (
