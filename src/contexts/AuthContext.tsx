@@ -248,6 +248,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restoreSession();
   }, []);
 
+  // Cross-tab logout: when another tab removes the session key from
+  // localStorage, log out in this tab as well.
+  useEffect(() => {
+    function handleStorageChange(e: StorageEvent) {
+      if (e.key === SESSION_KEY && e.newValue === null) {
+        // Another tab removed the session — log out locally.
+        setIsAdmin(false);
+        setCurrentUser(null);
+        setIsRecoverySession(false);
+        // Clear the session deadline so the auto-logout timer resets.
+        try {
+          sessionStorage.removeItem("yixin-session-deadline");
+        } catch { /* ignore */ }
+      }
+    }
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
   const login = useCallback(
     async (
       username: string,
