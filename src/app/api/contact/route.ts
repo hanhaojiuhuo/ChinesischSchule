@@ -148,6 +148,48 @@ export async function POST(request: Request) {
       );
     }
 
+    // Send confirmation email to user (best-effort — don't fail the request)
+    try {
+      const { error: confirmError } = await resend.emails.send({
+        from: fromEmail,
+        to: trimmedEmail,
+        subject:
+          "Nachricht erhalten / Message Received / 留言已收到 — YiXin 中文学校",
+        html: `
+          <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+            <h2 style="color:#c0392b">
+              YiXin 中文学校 · Chinesisch Schule Heilbronn
+            </h2>
+            <h3>Vielen Dank für Ihre Nachricht! / Thank you for your message! / 感谢您的留言！</h3>
+            <p>
+              <strong>DE:</strong> Liebe/r ${escapeHtml(name.trim())}, wir haben Ihre Nachricht erhalten und werden uns so bald wie möglich bei Ihnen melden.<br><br>
+              <strong>EN:</strong> Dear ${escapeHtml(name.trim())}, we have received your message and will get back to you as soon as possible.<br><br>
+              <strong>ZH:</strong> 亲爱的${escapeHtml(name.trim())}，我们已收到您的留言，将会尽快回复您。
+            </p>
+            <h4 style="color:#666;margin-bottom:4px">Ihre Nachricht / Your message / 您的留言：</h4>
+            <div style="background:#f8f8f8;padding:12px 16px;border-radius:6px;white-space:pre-wrap;font-size:14px;color:#333;border-left:3px solid #c0392b">
+              ${escapeHtml(message.trim())}
+            </div>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Dies ist eine automatische Bestätigungs-E-Mail. Bitte antworten Sie nicht auf diese E-Mail.<br>
+              This is an automated confirmation email. Please do not reply to this email.<br>
+              这是一封自动确认邮件，请勿直接回复此邮件。
+            </p>
+          </div>`,
+      });
+      if (confirmError) {
+        console.warn(
+          "[contact] Confirmation email to user failed:",
+          confirmError
+        );
+      }
+    } catch (confirmErr) {
+      console.warn(
+        "[contact] Confirmation email to user threw:",
+        confirmErr
+      );
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[contact] Error:", err);
