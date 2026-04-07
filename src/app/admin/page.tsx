@@ -355,6 +355,31 @@ function AdminPageContent() {
   const [forgotPwMismatchCount, setForgotPwMismatchCount] = useState(0);
   const FORGOT_PW_MISMATCH_MAX = 3;
 
+  // 3-minute cooldown between forgot-password code requests
+  const FORGOT_PW_COOLDOWN_MS = 3 * 60 * 1000;
+  const [forgotPwCooldownEnd, setForgotPwCooldownEnd] = useState(0);
+  const [forgotPwCooldownSecs, setForgotPwCooldownSecs] = useState(0);
+
+  useEffect(() => {
+    if (forgotPwCooldownEnd <= 0) {
+      setForgotPwCooldownSecs(0);
+      return;
+    }
+    // Initial calculation
+    const remaining = Math.max(0, Math.ceil((forgotPwCooldownEnd - Date.now()) / 1000));
+    setForgotPwCooldownSecs(remaining);
+    if (remaining <= 0) return;
+
+    const tick = window.setInterval(() => {
+      const left = Math.max(0, Math.ceil((forgotPwCooldownEnd - Date.now()) / 1000));
+      setForgotPwCooldownSecs(left);
+      if (left <= 0) {
+        window.clearInterval(tick);
+      }
+    }, 1000);
+    return () => window.clearInterval(tick);
+  }, [forgotPwCooldownEnd]);
+
   // Auto-open forgot-password flow when URL has ?reset=1&username=xxx
   useEffect(() => {
     const reset = searchParams.get("reset");
@@ -853,6 +878,7 @@ function AdminPageContent() {
                 setForgotPwResendCount(0);
                 setForgotPwRateLimited(false);
                 setForgotPwMismatchCount(0);
+                setForgotPwCooldownEnd(0);
               }}
               className="text-xs text-[var(--school-red)] underline hover:opacity-80 transition-opacity"
             >
@@ -913,6 +939,7 @@ function AdminPageContent() {
                         setForgotPwStep(2);
                         setForgotPwResendCount(0);
                         setForgotPwMismatchCount(0);
+                        setForgotPwCooldownEnd(Date.now() + FORGOT_PW_COOLDOWN_MS);
                         setForgotPwSuccess("✅ 验证码已发送 / Code erfolgreich gesendet / Code sent successfully");
                       }
                     } catch {
@@ -956,10 +983,12 @@ function AdminPageContent() {
                   )}
                   <button
                     type="submit"
-                    disabled={forgotPwLoading}
+                    disabled={forgotPwLoading || forgotPwCooldownSecs > 0}
                     className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
                   >
-                    {forgotPwLoading ? "⏳ …" : "发送验证码 / Code senden / Send Code"}
+                    {forgotPwCooldownSecs > 0
+                      ? `⏳ ${String(Math.floor(forgotPwCooldownSecs / 60)).padStart(2, "0")}:${String(forgotPwCooldownSecs % 60).padStart(2, "0")} — 请等待 / Bitte warten / Please wait`
+                      : forgotPwLoading ? "⏳ …" : "发送验证码 / Code senden / Send Code"}
                   </button>
                 </form>
               )}
@@ -999,6 +1028,12 @@ function AdminPageContent() {
                     ZH: 如果该邮箱已在系统中注册，验证码已发送（有效期 30 分钟）。过期后需重新申请。
                   </p>
                   {forgotPwSuccess && <p className="text-xs text-green-600 font-semibold" role="status">{forgotPwSuccess}</p>}
+                  {forgotPwCooldownSecs > 0 && (
+                    <p className="text-xs text-amber-600 font-mono text-center">
+                      ⏳ {String(Math.floor(forgotPwCooldownSecs / 60)).padStart(2, "0")}:{String(forgotPwCooldownSecs % 60).padStart(2, "0")}{" "}
+                      — 重新发送前请等待 / Bitte warten Sie vor dem erneuten Senden / Please wait before resending
+                    </p>
+                  )}
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1022,7 +1057,7 @@ function AdminPageContent() {
                   {/* Retry / Resend code */}
                   <button
                     type="button"
-                    disabled={forgotPwLoading || forgotPwRateLimited}
+                    disabled={forgotPwLoading || forgotPwRateLimited || forgotPwCooldownSecs > 0}
                     onClick={async () => {
                       setForgotPwLoading(true);
                       setForgotPwError("");
@@ -1044,6 +1079,7 @@ function AdminPageContent() {
                           setForgotPwResendCount((c) => c + 1);
                           setForgotPwCode("");
                           setForgotPwError("");
+                          setForgotPwCooldownEnd(Date.now() + FORGOT_PW_COOLDOWN_MS);
                           setForgotPwSuccess("✅ 新验证码已发送 / Neuer Code erfolgreich gesendet / New code sent successfully");
                         }
                       } catch {
@@ -1054,9 +1090,11 @@ function AdminPageContent() {
                     }}
                     className="w-full text-xs text-[var(--school-red)] underline hover:opacity-80 disabled:opacity-40"
                   >
-                    {forgotPwResendCount > 0
-                      ? `🔁 Code erneut gesendet (${forgotPwResendCount}×) / Resent / 已重发`
-                      : "🔁 Code erneut senden / Resend code / 重新发送验证码"}
+                    {forgotPwCooldownSecs > 0
+                      ? `⏳ ${String(Math.floor(forgotPwCooldownSecs / 60)).padStart(2, "0")}:${String(forgotPwCooldownSecs % 60).padStart(2, "0")} — 请等待 / Bitte warten / Please wait`
+                      : forgotPwResendCount > 0
+                        ? `🔁 Code erneut gesendet (${forgotPwResendCount}×) / Resent / 已重发`
+                        : "🔁 Code erneut senden / Resend code / 重新发送验证码"}
                   </button>
                   {forgotPwRateLimited && (
                     <p className="text-xs text-amber-600">
@@ -1194,6 +1232,7 @@ function AdminPageContent() {
                       setForgotPwResendCount(0);
                       setForgotPwRateLimited(false);
                       setForgotPwMismatchCount(0);
+                      setForgotPwCooldownEnd(0);
                     }}
                     className="text-xs text-[var(--school-red)] underline hover:opacity-80"
                   >
@@ -1227,6 +1266,7 @@ function AdminPageContent() {
                       setForgotPwResendCount(0);
                       setForgotPwRateLimited(false);
                       setForgotPwMismatchCount(0);
+                      setForgotPwCooldownEnd(0);
                     }}
                     className="text-xs text-[var(--school-red)] underline hover:opacity-80"
                   >
