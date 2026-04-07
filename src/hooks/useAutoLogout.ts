@@ -90,6 +90,11 @@ export function useAutoLogout(
   // Track the wall-clock timestamp when the session should expire.
   const deadlineRef = useRef<number>(0);
 
+  // Track whether the session was previously active so we can distinguish
+  // an initial mount (active starts as false while auth loads) from a real
+  // logout (active transitions true → false).
+  const wasActiveRef = useRef(false);
+
   // Keep onLogout ref stable to avoid re-subscribing event listeners.
   const logoutRef = useRef(onLogout);
   useEffect(() => {
@@ -107,9 +112,16 @@ export function useAutoLogout(
 
   useEffect(() => {
     if (!active) {
-      clearDeadline();
+      // Only clear the persisted deadline on a real logout (active went from
+      // true → false), not on initial mount where active starts as false while
+      // AuthContext is still restoring the session asynchronously.
+      if (wasActiveRef.current) {
+        clearDeadline();
+      }
+      wasActiveRef.current = false;
       return;
     }
+    wasActiveRef.current = true;
 
     // Restore a previously-persisted deadline, or create a fresh one.
     const stored = readDeadline();
