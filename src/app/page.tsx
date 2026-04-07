@@ -8,6 +8,8 @@ import SchoolLogo from "@/components/SchoolLogo";
 import ContactForm from "@/components/ContactForm";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAutoLogout } from "@/hooks/useAutoLogout";
+import SessionTimeoutWarning from "@/components/SessionTimeoutWarning";
 import type { SiteContent, CourseItem, NewsItem, NewsTextBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
 import { defaultTranslations } from "@/i18n/translations";
@@ -93,6 +95,10 @@ function EditBlock({
 export default function Home() {
   const { getContent, saveContent, showEnglish, updateShowEnglish } = useContent();
   const { isAdmin, currentUser, logout } = useAuth();
+
+  // Auto-logout – shares the same persisted deadline as the admin panel
+  const { remainingSeconds, totalSeconds, showWarning, extendSession } =
+    useAutoLogout(isAdmin, logout);
 
   const [draftDe, setDraftDe] = useState<SiteContent>(() => defaultTranslations["de"]);
   const [draftZh, setDraftZh] = useState<SiteContent>(() => defaultTranslations["zh"]);
@@ -291,6 +297,14 @@ export default function Home() {
   /* ── Render ──────────────────────────────────────────────── */
   return (
     <>
+      {/* Session timeout warning popup – visible in edit mode */}
+      {showWarning && (
+        <SessionTimeoutWarning
+          remainingSeconds={remainingSeconds}
+          onExtend={extendSession}
+        />
+      )}
+
       <Navbar />
 
       <main className={`flex-1${isAdmin ? " pb-20" : ""}`}>
@@ -1143,6 +1157,23 @@ export default function Home() {
                 ✓ Saved!
               </span>
             )}
+            {/* Auto-logout countdown */}
+            <span
+              className={`text-xs font-mono px-2 py-0.5 rounded ${
+                remainingSeconds <= 60
+                  ? "bg-red-600 text-white animate-pulse"
+                  : remainingSeconds <= 180
+                  ? "bg-yellow-500 text-black"
+                  : "bg-white/10 text-gray-300"
+              }`}
+              title="自动登出倒计时 / Auto-logout countdown / Automatische Abmeldung"
+            >
+              ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:
+              {String(remainingSeconds % 60).padStart(2, "0")}
+              {" / "}
+              {String(Math.floor(totalSeconds / 60)).padStart(2, "0")}:
+              {String(totalSeconds % 60).padStart(2, "0")}
+            </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button
