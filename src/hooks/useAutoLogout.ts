@@ -11,6 +11,9 @@ export const WARNING_THRESHOLD_S = 2 * 60;
 /** How often the countdown display updates (every second). */
 const TICK_INTERVAL_MS = 1_000;
 
+/** sessionStorage key used to persist the deadline across page navigations. */
+const DEADLINE_STORAGE_KEY = "yixin-session-deadline";
+
 export interface AutoLogoutState {
   /** Seconds left until automatic logout. */
   remainingSeconds: number;
@@ -22,6 +25,32 @@ export interface AutoLogoutState {
   extendSession: () => void;
 }
 
+/** Read the persisted deadline from sessionStorage, or return 0. */
+function readDeadline(): number {
+  try {
+    const raw = sessionStorage.getItem(DEADLINE_STORAGE_KEY);
+    if (raw) {
+      const v = Number(raw);
+      if (Number.isFinite(v) && v > 0) return v;
+    }
+  } catch { /* SSR / privacy mode */ }
+  return 0;
+}
+
+/** Persist the deadline so it survives page navigations. */
+function writeDeadline(deadline: number): void {
+  try {
+    sessionStorage.setItem(DEADLINE_STORAGE_KEY, String(deadline));
+  } catch { /* ignore */ }
+}
+
+/** Remove the persisted deadline (e.g. on logout / expiry). */
+function clearDeadline(): void {
+  try {
+    sessionStorage.removeItem(DEADLINE_STORAGE_KEY);
+  } catch { /* ignore */ }
+}
+
 /**
  * Hook that automatically logs the user out after {@link TIMEOUT_MS}.
  *
@@ -29,6 +58,9 @@ export interface AutoLogoutState {
  * Instead a warning popup appears {@link WARNING_THRESHOLD_S} seconds before
  * expiry. Only an explicit call to `extendSession()` (e.g. by clicking
  * "Extend" in the popup) resets the timer.
+ *
+ * The deadline is stored in `sessionStorage` so the countdown is preserved
+ * when the user navigates between pages (e.g. edit-mode website ↔ admin panel).
  *
  * @param active  – whether the session is currently active (e.g. `isAdmin`)
  * @param onLogout – callback to invoke when time expires
@@ -39,8 +71,21 @@ export function useAutoLogout(
 ): AutoLogoutState {
   const totalSeconds = Math.floor(TIMEOUT_MS / 1000);
 
-  const [remainingSeconds, setRemainingSeconds] = useState(totalSeconds);
-  const [showWarning, setShowWarning] = useState(false);
+  // Compute initial remaining seconds from a persisted deadline (if any).
+  const [remainingSeconds, setRemainingSeconds] = useState(() => {
+    if (!active) return totalSeconds;
+    const stored = readDeadline();
+    if (stored > Date.now()) return Math.ceil((stored - Date.now()) / 1000);
+    return totalSeconds;
+  });
+  const [showWarning, setShowWarning] = useState(() => {
+    if (!active) return false;
+    const stored = readDeadline();
+    if (stored > Date.now()) {
+      return Math.ceil((stored - Date.now()) / 1000) <= WARNING_THRESHOLD_S;
+    }
+    return false;
+  });
 
   // Track the wall-clock timestamp when the session should expire.
   const deadlineRef = useRef<number>(0);
@@ -53,16 +98,28 @@ export function useAutoLogout(
 
   // --- extend session callback ---
   const extendSession = useCallback(() => {
-    deadlineRef.current = Date.now() + TIMEOUT_MS;
+    const newDeadline = Date.now() + TIMEOUT_MS;
+    deadlineRef.current = newDeadline;
+    writeDeadline(newDeadline);
     setShowWarning(false);
     setRemainingSeconds(totalSeconds);
   }, [totalSeconds]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      clearDeadline();
+      return;
+    }
 
-    // Initialise deadline on activation.
-    deadlineRef.current = Date.now() + TIMEOUT_MS;
+    // Restore a previously-persisted deadline, or create a fresh one.
+    const stored = readDeadline();
+    if (stored > Date.now()) {
+      deadlineRef.current = stored;
+    } else {
+      const newDeadline = Date.now() + TIMEOUT_MS;
+      deadlineRef.current = newDeadline;
+      writeDeadline(newDeadline);
+    }
 
     // --- 1-second tick to update `remainingSeconds` and check expiry ---
     const tick = window.setInterval(() => {
@@ -70,6 +127,7 @@ export function useAutoLogout(
       if (ms <= 0) {
         setRemainingSeconds(0);
         setShowWarning(false);
+        clearDeadline();
         logoutRef.current();
       } else {
         const secs = Math.ceil(ms / 1000);
