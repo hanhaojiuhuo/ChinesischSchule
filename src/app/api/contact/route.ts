@@ -44,8 +44,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Basic email format check (linear-time regex to avoid ReDoS)
+    // Trim once and reuse throughout
+    const trimmedName = name.trim();
     const trimmedEmail = email.trim();
+    const trimmedMessage = message.trim();
     if (!/^[^\s@]+@[^\s@]+$/.test(trimmedEmail) || !trimmedEmail.includes(".")) {
       return NextResponse.json(
         {
@@ -98,7 +100,7 @@ export async function POST(request: Request) {
     const { error } = await resend.emails.send({
       from: fromEmail,
       to: notificationEmail,
-      subject: `Neue Kontaktanfrage von ${name.trim()} / New contact from ${name.trim()} / 新留言：${name.trim()}`,
+      subject: `Neue Kontaktanfrage von ${trimmedName} / New contact from ${trimmedName} / 新留言：${trimmedName}`,
       replyTo: trimmedEmail,
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
@@ -112,7 +114,7 @@ export async function POST(request: Request) {
                 Name
               </td>
               <td style="padding:8px 12px;border-bottom:1px solid #eee">
-                ${escapeHtml(name.trim())}
+                ${escapeHtml(trimmedName)}
               </td>
             </tr>
             <tr>
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
                 Nachricht
               </td>
               <td style="padding:8px 12px;white-space:pre-wrap">
-                ${escapeHtml(message.trim())}
+                ${escapeHtml(trimmedMessage)}
               </td>
             </tr>
           </table>
@@ -162,13 +164,13 @@ export async function POST(request: Request) {
             </h2>
             <h3>Vielen Dank für Ihre Nachricht! / Thank you for your message! / 感谢您的留言！</h3>
             <p>
-              <strong>DE:</strong> Liebe/r ${escapeHtml(name.trim())}, wir haben Ihre Nachricht erhalten und werden uns so bald wie möglich bei Ihnen melden.<br><br>
-              <strong>EN:</strong> Dear ${escapeHtml(name.trim())}, we have received your message and will get back to you as soon as possible.<br><br>
-              <strong>ZH:</strong> 亲爱的${escapeHtml(name.trim())}，我们已收到您的留言，将会尽快回复您。
+              <strong>DE:</strong> Liebe/r ${escapeHtml(trimmedName)}, wir haben Ihre Nachricht erhalten und werden uns so bald wie möglich bei Ihnen melden.<br><br>
+              <strong>EN:</strong> Dear ${escapeHtml(trimmedName)}, we have received your message and will get back to you as soon as possible.<br><br>
+              <strong>ZH:</strong> 亲爱的${escapeHtml(trimmedName)}，我们已收到您的留言，将会尽快回复您。
             </p>
             <h4 style="color:#666;margin-bottom:4px">Ihre Nachricht / Your message / 您的留言：</h4>
             <div style="background:#f8f8f8;padding:12px 16px;border-radius:6px;white-space:pre-wrap;font-size:14px;color:#333;border-left:3px solid #c0392b">
-              ${escapeHtml(message.trim())}
+              ${escapeHtml(trimmedMessage)}
             </div>
             <p style="color:#999;font-size:12px;margin-top:24px">
               Dies ist eine automatische Bestätigungs-E-Mail. Bitte antworten Sie nicht auf diese E-Mail.<br>
