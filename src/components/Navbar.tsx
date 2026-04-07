@@ -5,11 +5,11 @@ import SchoolLogo from "./SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
 
 const navLinks = [
-  { de: "Home", zh: "首页", en: "Home", href: "#home" },
-  { de: "Kursangebot", zh: "课程", en: "Courses", href: "#courses" },
-  { de: "Aktuelles", zh: "新闻", en: "News", href: "#news" },
-  { de: "Über uns", zh: "关于我们", en: "About", href: "#about" },
-  { de: "Kontakt", zh: "联系", en: "Contact", href: "#contact" },
+  { de: "Home", zh: "首页", en: "Home", href: "/#home" },
+  { de: "Kursangebot", zh: "课程", en: "Courses", href: "/#courses" },
+  { de: "Aktuelles", zh: "新闻", en: "News", href: "/#news" },
+  { de: "Über uns", zh: "关于我们", en: "About", href: "/#about" },
+  { de: "Kontakt", zh: "联系", en: "Contact", href: "/#contact" },
 ];
 
 export default function Navbar() {
@@ -21,7 +21,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-white border-b-2 border-[var(--school-red)] shadow-sm">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
         {/* Logo + school name */}
-        <a href="#home" className="flex items-center gap-3 group" aria-label="Yi Xin Schulhomepage">
+        <a href="/" className="flex items-center gap-3 group" aria-label="Yi Xin Schulhomepage">
           <SchoolLogo size={44} />
           <div className="leading-tight">
             <p className="font-cn font-bold text-[var(--school-dark)] text-base sm:text-lg leading-none tracking-wide">

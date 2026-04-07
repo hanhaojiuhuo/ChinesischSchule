@@ -270,7 +270,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+
+        // Handle HTTP errors (e.g. 400 Bad Request for missing credentials)
+        // that don't carry rate-limit data – don't count them as failed attempts
+        if (!res.ok && !("remainingAttempts" in data)) {
+          return { success: false, remainingAttempts: MAX_DAILY_ATTEMPTS - failures.count };
+        }
 
         if (data.success) {
           resetLoginFailures();
