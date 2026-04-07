@@ -10,8 +10,15 @@ const CODE_SLOT_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
+/** Max wrong username+email mismatch attempts before blocking. */
+const MISMATCH_MAX = 3;
+const MISMATCH_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
 /** In-memory rate-limit store (keyed by email). Reset on server restart. */
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+
+/** In-memory mismatch counter (keyed by IP-like identifier or username). */
+const mismatchMap = new Map<string, { count: number; windowStart: number }>();
 
 function checkRateLimit(key: string): { allowed: boolean; remaining: number; retryAfterMs: number } {
   const now = Date.now();
@@ -26,6 +33,20 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number; ret
   }
   entry.count++;
   return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count, retryAfterMs: 0 };
+}
+
+function checkMismatchLimit(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = mismatchMap.get(key);
+  if (!entry || now - entry.windowStart > MISMATCH_WINDOW_MS) {
+    mismatchMap.set(key, { count: 1, windowStart: now });
+    return { allowed: true, remaining: MISMATCH_MAX - 1 };
+  }
+  if (entry.count >= MISMATCH_MAX) {
+    return { allowed: false, remaining: 0 };
+  }
+  entry.count++;
+  return { allowed: true, remaining: MISMATCH_MAX - entry.count };
 }
 
 
@@ -73,17 +94,31 @@ export async function POST(request: Request) {
       );
     }
 
-    /* ── Step 1: Request a reset code (by email) ──────────────────── */
+    /* ── Step 1: Request a reset code (by username + email) ──────── */
     if (action === "request") {
-      const { email } = body;
-      if (!email?.trim()) {
+      const { username, email } = body;
+      if (!username?.trim() || !email?.trim()) {
         return NextResponse.json(
-          { error: "Email is required" },
+          { error: "Username and email are required / Benutzername und E-Mail erforderlich / 用户名和邮箱为必填项" },
           { status: 400 }
         );
       }
 
+      const trimmedUsername = username.trim();
       const normalizedEmail = email.trim().toLowerCase();
+      const mismatchKey = `forgot:${trimmedUsername}`;
+
+      // Check mismatch block (3 wrong attempts → blocked)
+      const mm = checkMismatchLimit(mismatchKey);
+      if (!mm.allowed) {
+        return NextResponse.json(
+          {
+            error: "Too many incorrect attempts. Please contact the administrator. / Zu viele Fehlversuche. Bitte kontaktieren Sie den Administrator. / 错误尝试次数过多，请联系管理员。",
+            blocked: true,
+          },
+          { status: 403 }
+        );
+      }
 
       // Rate limit by email
       const rl = checkRateLimit(normalizedEmail);
@@ -100,14 +135,34 @@ export async function POST(request: Request) {
       }
 
       const admins = await readAdmins();
-      const admin = admins.find(
-        (a) => a.email && a.email.toLowerCase() === normalizedEmail
-      );
 
-      // Always respond success to avoid leaking whether an email is registered
-      if (!admin) {
-        return NextResponse.json({ success: true, remaining: rl.remaining });
+      // First check if username exists
+      const adminByUsername = admins.find((a) => a.username === trimmedUsername);
+      if (!adminByUsername) {
+        // Decrement the mismatch counter (already incremented inside checkMismatchLimit)
+        return NextResponse.json(
+          {
+            error: "Username not found. Please check and try again. / Benutzername nicht gefunden. Bitte überprüfen und erneut versuchen. / 用户名未找到，请检查后重试。",
+            mismatchRemaining: mm.remaining,
+          },
+          { status: 404 }
+        );
       }
+
+      // Check if email matches the username
+      if (!adminByUsername.email || adminByUsername.email.toLowerCase() !== normalizedEmail) {
+        return NextResponse.json(
+          {
+            error: "Email does not match this username. Please check and try again. / E-Mail stimmt nicht mit diesem Benutzernamen überein. / 邮箱与该用户名不匹配，请检查后重试。",
+            mismatchRemaining: mm.remaining,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Username + email match — reset the mismatch counter
+      mismatchMap.delete(mismatchKey);
+      const admin = adminByUsername;
 
       const code = generateCode(admin.username, apiKey);
       const fromEmail =
@@ -158,19 +213,29 @@ export async function POST(request: Request) {
 
     /* ── Step 2: Verify a code (no password change yet) ───────────── */
     if (action === "verify") {
-      const { email, code } = body;
-      if (!email?.trim() || !code?.trim()) {
+      const { username, email, code } = body;
+      if ((!username?.trim() && !email?.trim()) || !code?.trim()) {
         return NextResponse.json(
-          { error: "Email and code are required" },
+          { error: "Username/email and code are required" },
           { status: 400 }
         );
       }
 
-      const normalizedEmail = email.trim().toLowerCase();
       const admins = await readAdmins();
-      const admin = admins.find(
-        (a) => a.email && a.email.toLowerCase() === normalizedEmail
-      );
+      let admin;
+      if (username?.trim()) {
+        const trimmedUsername = username.trim();
+        admin = admins.find((a) => a.username === trimmedUsername);
+        // Also verify email matches if both provided
+        if (admin && email?.trim() && admin.email?.toLowerCase() !== email.trim().toLowerCase()) {
+          admin = undefined;
+        }
+      } else {
+        const normalizedEmail = email!.trim().toLowerCase();
+        admin = admins.find(
+          (a) => a.email && a.email.toLowerCase() === normalizedEmail
+        );
+      }
 
       if (!admin) {
         return NextResponse.json(
@@ -192,10 +257,10 @@ export async function POST(request: Request) {
 
     /* ── Step 3: Reset the password ───────────────────────────────── */
     if (action === "reset") {
-      const { email, code, newPassword } = body;
-      if (!email?.trim() || !code?.trim() || !newPassword) {
+      const { username, email, code, newPassword } = body;
+      if ((!username?.trim() && !email?.trim()) || !code?.trim() || !newPassword) {
         return NextResponse.json(
-          { error: "Email, code, and new password are required" },
+          { error: "Username/email, code, and new password are required" },
           { status: 400 }
         );
       }
@@ -207,11 +272,20 @@ export async function POST(request: Request) {
         );
       }
 
-      const normalizedEmail = email.trim().toLowerCase();
       const admins = await readAdmins();
-      const admin = admins.find(
-        (a) => a.email && a.email.toLowerCase() === normalizedEmail
-      );
+      let admin;
+      if (username?.trim()) {
+        const trimmedUsername = username.trim();
+        admin = admins.find((a) => a.username === trimmedUsername);
+        if (admin && email?.trim() && admin.email?.toLowerCase() !== email.trim().toLowerCase()) {
+          admin = undefined;
+        }
+      } else {
+        const normalizedEmail = email!.trim().toLowerCase();
+        admin = admins.find(
+          (a) => a.email && a.email.toLowerCase() === normalizedEmail
+        );
+      }
 
       if (!admin) {
         return NextResponse.json(
