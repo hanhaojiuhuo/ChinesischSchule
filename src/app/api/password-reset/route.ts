@@ -3,15 +3,22 @@ import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
 
-/** Time-slot duration for HMAC-based code validity (10 minutes). */
-const CODE_SLOT_MS = 10 * 60 * 1000;
+/** Time-slot duration for HMAC-based code validity (15 minutes). */
+const CODE_SLOT_MS = 15 * 60 * 1000;
 
 /** Rate-limit: max attempts per email within 1 hour. */
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
+/** Max wrong username+email mismatch attempts before blocking (per day). */
+const MISMATCH_MAX = 3;
+const MISMATCH_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 /** In-memory rate-limit store (keyed by email). Reset on server restart. */
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+
+/** In-memory mismatch counter (keyed by IP-like identifier or username). */
+const mismatchMap = new Map<string, { count: number; windowStart: number }>();
 
 function checkRateLimit(key: string): { allowed: boolean; remaining: number; retryAfterMs: number } {
   const now = Date.now();
@@ -28,9 +35,23 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number; ret
   return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count, retryAfterMs: 0 };
 }
 
+function checkMismatchLimit(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = mismatchMap.get(key);
+  if (!entry || now - entry.windowStart > MISMATCH_WINDOW_MS) {
+    mismatchMap.set(key, { count: 1, windowStart: now });
+    return { allowed: true, remaining: MISMATCH_MAX - 1 };
+  }
+  if (entry.count >= MISMATCH_MAX) {
+    return { allowed: false, remaining: 0 };
+  }
+  entry.count++;
+  return { allowed: true, remaining: MISMATCH_MAX - entry.count };
+}
+
 
 /**
- * Generate a 6-digit HMAC-based code tied to a username and a 10-minute time
+ * Generate a 6-digit HMAC-based code tied to a username and a 15-minute time
  * slot. Stateless – no server-side storage required.
  * Domain separation ("password-reset") is included in the HMAC message so the
  * raw API key can be used directly as the HMAC secret without modification.
@@ -45,7 +66,7 @@ function generateCode(username: string, secret: string): string {
 
 /**
  * Verify a code against the current and previous time slot so codes remain
- * valid for up to 20 minutes regardless of when the user acts.
+ * valid for up to 30 minutes regardless of when the user acts.
  */
 function verifyCode(username: string, secret: string, code: string): boolean {
   const slot = Math.floor(Date.now() / CODE_SLOT_MS);
@@ -73,17 +94,31 @@ export async function POST(request: Request) {
       );
     }
 
-    /* ── Step 1: Request a reset code (by email) ──────────────────── */
+    /* ── Step 1: Request a reset code (by username + email) ──────── */
     if (action === "request") {
-      const { email } = body;
-      if (!email?.trim()) {
+      const { username, email } = body;
+      if (!username?.trim() || !email?.trim()) {
         return NextResponse.json(
-          { error: "Email is required" },
+          { error: "Username and email are required / Benutzername und E-Mail erforderlich / 用户名和邮箱为必填项" },
           { status: 400 }
         );
       }
 
+      const trimmedUsername = username.trim();
       const normalizedEmail = email.trim().toLowerCase();
+      const mismatchKey = `forgot:${trimmedUsername}`;
+
+      // Check mismatch block (3 wrong attempts → blocked)
+      const mm = checkMismatchLimit(mismatchKey);
+      if (!mm.allowed) {
+        return NextResponse.json(
+          {
+            error: "Too many incorrect attempts. Please wait 24 hours before trying again. / Zu viele Fehlversuche. Bitte warten Sie 24 Stunden. / 错误尝试次数过多，请等待24小时后再试。",
+            blocked: true,
+          },
+          { status: 403 }
+        );
+      }
 
       // Rate limit by email
       const rl = checkRateLimit(normalizedEmail);
@@ -100,14 +135,34 @@ export async function POST(request: Request) {
       }
 
       const admins = await readAdmins();
-      const admin = admins.find(
-        (a) => a.email && a.email.toLowerCase() === normalizedEmail
-      );
 
-      // Always respond success to avoid leaking whether an email is registered
-      if (!admin) {
-        return NextResponse.json({ success: true, remaining: rl.remaining });
+      // First check if username exists
+      const adminByUsername = admins.find((a) => a.username === trimmedUsername);
+      if (!adminByUsername) {
+        // Decrement the mismatch counter (already incremented inside checkMismatchLimit)
+        return NextResponse.json(
+          {
+            error: "Username not found. Please check and try again. / Benutzername nicht gefunden. Bitte überprüfen und erneut versuchen. / 用户名未找到，请检查后重试。",
+            mismatchRemaining: mm.remaining,
+          },
+          { status: 404 }
+        );
       }
+
+      // Check if email matches the username
+      if (!adminByUsername.email || adminByUsername.email.toLowerCase() !== normalizedEmail) {
+        return NextResponse.json(
+          {
+            error: "Email does not match this username. Please check and try again. / E-Mail stimmt nicht mit diesem Benutzernamen überein. / 邮箱与该用户名不匹配，请检查后重试。",
+            mismatchRemaining: mm.remaining,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Username + email match — reset the mismatch counter
+      mismatchMap.delete(mismatchKey);
+      const admin = adminByUsername;
 
       const code = generateCode(admin.username, apiKey);
       const fromEmail =
@@ -134,9 +189,9 @@ export async function POST(request: Request) {
               ${code}
             </p>
             <p style="color:#666;font-size:13px">
-              DE: Dieser Code ist 20 Minuten gültig.<br>
-              EN: This code is valid for 20 minutes.<br>
-              ZH: 此验证码有效期为 20 分钟。
+              DE: Dieser Code ist 30 Minuten gültig. Danach ist eine neue Anfrage erforderlich.<br>
+              EN: This code is valid for 30 minutes. After that, a new request is required.<br>
+              ZH: 此验证码有效期为 30 分钟，过期后需重新申请。
             </p>
             <p style="color:#999;font-size:12px">
               Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.<br>
@@ -158,19 +213,29 @@ export async function POST(request: Request) {
 
     /* ── Step 2: Verify a code (no password change yet) ───────────── */
     if (action === "verify") {
-      const { email, code } = body;
-      if (!email?.trim() || !code?.trim()) {
+      const { username, email, code } = body;
+      if ((!username?.trim() && !email?.trim()) || !code?.trim()) {
         return NextResponse.json(
-          { error: "Email and code are required" },
+          { error: "Username/email and code are required" },
           { status: 400 }
         );
       }
 
-      const normalizedEmail = email.trim().toLowerCase();
       const admins = await readAdmins();
-      const admin = admins.find(
-        (a) => a.email && a.email.toLowerCase() === normalizedEmail
-      );
+      let admin;
+      if (username?.trim()) {
+        const trimmedUsername = username.trim();
+        admin = admins.find((a) => a.username === trimmedUsername);
+        // Also verify email matches if both provided
+        if (admin && email?.trim() && admin.email?.toLowerCase() !== email.trim().toLowerCase()) {
+          admin = undefined;
+        }
+      } else {
+        const normalizedEmail = email!.trim().toLowerCase();
+        admin = admins.find(
+          (a) => a.email && a.email.toLowerCase() === normalizedEmail
+        );
+      }
 
       if (!admin) {
         return NextResponse.json(
@@ -192,10 +257,10 @@ export async function POST(request: Request) {
 
     /* ── Step 3: Reset the password ───────────────────────────────── */
     if (action === "reset") {
-      const { email, code, newPassword } = body;
-      if (!email?.trim() || !code?.trim() || !newPassword) {
+      const { username, email, code, newPassword } = body;
+      if ((!username?.trim() && !email?.trim()) || !code?.trim() || !newPassword) {
         return NextResponse.json(
-          { error: "Email, code, and new password are required" },
+          { error: "Username/email, code, and new password are required" },
           { status: 400 }
         );
       }
@@ -207,11 +272,20 @@ export async function POST(request: Request) {
         );
       }
 
-      const normalizedEmail = email.trim().toLowerCase();
       const admins = await readAdmins();
-      const admin = admins.find(
-        (a) => a.email && a.email.toLowerCase() === normalizedEmail
-      );
+      let admin;
+      if (username?.trim()) {
+        const trimmedUsername = username.trim();
+        admin = admins.find((a) => a.username === trimmedUsername);
+        if (admin && email?.trim() && admin.email?.toLowerCase() !== email.trim().toLowerCase()) {
+          admin = undefined;
+        }
+      } else {
+        const normalizedEmail = email!.trim().toLowerCase();
+        admin = admins.find(
+          (a) => a.email && a.email.toLowerCase() === normalizedEmail
+        );
+      }
 
       if (!admin) {
         return NextResponse.json(
