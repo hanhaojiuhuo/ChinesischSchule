@@ -1009,8 +1009,8 @@ function AdminPageContent() {
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    if (!forgotPwCode.trim()) return;
                     if (forgotPwAdminInitiated && !forgotPwUsername.trim()) return;
+                    if (!forgotPwCode.trim()) return;
                     setForgotPwLoading(true);
                     setForgotPwError("");
                     setForgotPwSuccess("");
