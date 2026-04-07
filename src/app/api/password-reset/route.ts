@@ -96,7 +96,7 @@ export async function POST(request: Request) {
 
     /* ── Step 1: Request a reset code (by username + email) ──────── */
     if (action === "request") {
-      const { username, email } = body;
+      const { username, email, adminInitiated } = body;
       if (!username?.trim() || !email?.trim()) {
         return NextResponse.json(
           { error: "Username and email are required / Benutzername und E-Mail erforderlich / 用户名和邮箱为必填项" },
@@ -168,13 +168,61 @@ export async function POST(request: Request) {
       const fromEmail =
         process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
+      // Build the password change link for admin-initiated resets
+      const origin = new URL(request.url).origin;
+      const resetLink = `${origin}/admin?reset=1&username=${encodeURIComponent(admin.username)}`;
+
       const resend = new Resend(apiKey);
-      const { error } = await resend.emails.send({
-        from: fromEmail,
-        to: admin.email!,
-        subject:
-          "Passwort-Reset Verifizierungscode / Password Reset Code / 密码重置验证码",
-        html: `
+
+      // Use a different email template when the reset is initiated by an admin
+      const emailHtml = adminInitiated
+        ? `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+            <h2 style="color:#c0392b">
+              YiXin 中文学校 · Chinesisch Schule Heilbronn
+            </h2>
+            <h3>Passwort-Reset durch Administrator / Admin Password Reset / 管理员重置密码</h3>
+            <p>
+              <strong>DE:</strong> Ein Administrator hat einen Passwort-Reset für Ihr Konto angefordert.<br>
+              <strong>EN:</strong> An administrator has requested a password reset for your account.<br>
+              <strong>ZH:</strong> 管理员已为您的账户发起密码重置。
+            </p>
+            <p style="background:#f8f8f8;padding:10px;border-radius:6px;font-size:14px">
+              <strong>Benutzername / Username / 用户名:</strong> <code style="color:#c0392b;font-size:16px">${admin.username}</code>
+            </p>
+            <p>
+              <strong>DE:</strong> Ihr Verifizierungscode lautet:<br>
+              <strong>EN:</strong> Your verification code is:<br>
+              <strong>ZH:</strong> 您的验证码为：
+            </p>
+            <p style="font-size:36px;letter-spacing:8px;font-weight:bold;color:#c0392b;text-align:center">
+              ${code}
+            </p>
+            <p>
+              <strong>DE:</strong> Klicken Sie auf den folgenden Link, um Ihr Passwort zu ändern:<br>
+              <strong>EN:</strong> Click the link below to change your password:<br>
+              <strong>ZH:</strong> 请点击以下链接修改密码：
+            </p>
+            <p style="text-align:center;margin:16px 0">
+              <a href="${resetLink}" style="display:inline-block;background:#c0392b;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px">
+                Passwort ändern / Change Password / 修改密码
+              </a>
+            </p>
+            <p style="color:#666;font-size:12px;word-break:break-all">
+              ${resetLink}
+            </p>
+            <p style="color:#666;font-size:13px">
+              DE: Dieser Code ist 30 Minuten gültig. Danach ist eine neue Anfrage erforderlich.<br>
+              EN: This code is valid for 30 minutes. After that, a new request is required.<br>
+              ZH: 此验证码有效期为 30 分钟，过期后需重新申请。
+            </p>
+            <p style="color:#999;font-size:12px">
+              Falls Sie diese Anfrage nicht gestellt haben, kontaktieren Sie bitte sofort einen Administrator.<br>
+              If you did not request this, please contact an administrator immediately.<br>
+              如非本人操作，请立即联系管理员。
+            </p>
+          </div>`
+        : `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
             <h2 style="color:#c0392b">
               YiXin 中文学校 · Chinesisch Schule Heilbronn
@@ -198,7 +246,15 @@ export async function POST(request: Request) {
               If you did not request this, please ignore this email.<br>
               如非本人操作，请忽略此邮件。
             </p>
-          </div>`,
+          </div>`;
+
+      const { error } = await resend.emails.send({
+        from: fromEmail,
+        to: admin.email!,
+        subject: adminInitiated
+          ? "Passwort-Reset durch Administrator / Admin Password Reset / 管理员重置密码"
+          : "Passwort-Reset Verifizierungscode / Password Reset Code / 密码重置验证码",
+        html: emailHtml,
       });
 
       if (error) {

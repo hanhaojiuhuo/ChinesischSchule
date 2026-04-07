@@ -1,6 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useContent } from "@/contexts/ContentContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -155,9 +157,18 @@ function SectionCard({
 
 /* ─── Admin Page ────────────────────────────────────────────── */
 export default function AdminPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">⏳</div>}>
+      <AdminPageContent />
+    </Suspense>
+  );
+}
+
+function AdminPageContent() {
   const { setLanguage } = useLanguage();
   const { getContent, saveContent, resetContent } = useContent();
   const auth = useAuth();
+  const searchParams = useSearchParams();
 
   // Login form state
   const [userInput, setUserInput] = useState("");
@@ -262,6 +273,16 @@ export default function AdminPage() {
   const [showForgotPwConfirm, setShowForgotPwConfirm] = useState(false);
   const [forgotPwMismatchCount, setForgotPwMismatchCount] = useState(0);
   const FORGOT_PW_MISMATCH_MAX = 3;
+
+  // Auto-open forgot-password flow when URL has ?reset=1&username=xxx
+  useEffect(() => {
+    const reset = searchParams.get("reset");
+    const usernameParam = searchParams.get("username");
+    if (reset === "1" && usernameParam && !auth.currentUser) {
+      setForgotPwStep(1);
+      setForgotPwUsername(usernameParam);
+    }
+  }, [searchParams, auth.currentUser]);
 
   // Admin list (loaded async from API)
   const [adminList, setAdminList] = useState<import("@/contexts/AuthContext").AdminUser[]>([]);
@@ -546,7 +567,7 @@ export default function AdminPage() {
       const res = await fetch("/api/password-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "request", username, email: targetAdmin.email }),
+        body: JSON.stringify({ action: "request", username, email: targetAdmin.email, adminInitiated: "true" }),
       });
       const data = await res.json();
       if (!res.ok) {
