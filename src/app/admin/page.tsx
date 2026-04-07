@@ -356,6 +356,10 @@ function AdminPageContent() {
   const [showForgotPwConfirm, setShowForgotPwConfirm] = useState(false);
   const [forgotPwMismatchCount, setForgotPwMismatchCount] = useState(0);
   const FORGOT_PW_MISMATCH_MAX = 3;
+  // True when the forgot-password flow was triggered by an admin-initiated
+  // reset link (?reset=1&username=xxx). The verification code was already
+  // sent, so the user only needs to enter username + code (no email).
+  const [forgotPwAdminInitiated, setForgotPwAdminInitiated] = useState(false);
 
   // 3-minute cooldown between forgot-password code requests
   const FORGOT_PW_COOLDOWN_MS = 3 * 60 * 1000;
@@ -384,11 +388,14 @@ function AdminPageContent() {
   }, [forgotPwCooldownEnd]);
 
   // Auto-open forgot-password flow when URL has ?reset=1&username=xxx
+  // (admin-initiated reset). The verification code was already sent, so
+  // skip step 1 (email entry) and go directly to step 2 (code entry).
   useEffect(() => {
     const reset = searchParams.get("reset");
     const usernameParam = searchParams.get("username");
     if (reset === "1" && usernameParam && !auth.currentUser) {
-      setForgotPwStep(1);
+      setForgotPwAdminInitiated(true);
+      setForgotPwStep(2);
       setForgotPwUsername(usernameParam);
     }
   }, [searchParams, auth.currentUser]);
@@ -882,6 +889,7 @@ function AdminPageContent() {
                 setForgotPwRateLimited(false);
                 setForgotPwMismatchCount(0);
                 setForgotPwCooldownEnd(0);
+                setForgotPwAdminInitiated(false);
               }}
               className="text-xs text-[var(--school-red)] underline hover:opacity-80 transition-opacity"
             >
@@ -1001,15 +1009,25 @@ function AdminPageContent() {
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
+                    if (forgotPwAdminInitiated && !forgotPwUsername.trim()) return;
                     if (!forgotPwCode.trim()) return;
                     setForgotPwLoading(true);
                     setForgotPwError("");
                     setForgotPwSuccess("");
                     try {
+                      const verifyBody: Record<string, string> = {
+                        action: "verify",
+                        username: forgotPwUsername.trim(),
+                        code: forgotPwCode.trim(),
+                      };
+                      // Only include email when available (normal flow); admin-initiated flow skips email.
+                      if (forgotPwEmail.trim()) {
+                        verifyBody.email = forgotPwEmail.trim();
+                      }
                       const res = await fetch("/api/password-reset", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "verify", username: forgotPwUsername.trim(), email: forgotPwEmail.trim(), code: forgotPwCode.trim() }),
+                        body: JSON.stringify(verifyBody),
                       });
                       const data = await res.json();
                       if (!res.ok) {
@@ -1025,17 +1043,37 @@ function AdminPageContent() {
                   }}
                   className="space-y-2"
                 >
-                  <p className="text-xs text-gray-600">
-                    DE: Falls die E-Mail-Adresse im System registriert ist, wurde ein Verifizierungscode gesendet (gültig 30 Min.). Nach Ablauf muss ein neuer Code angefordert werden.<br />
-                    EN: If the email is registered in the system, a verification code was sent (valid 30 min). After expiry, a new code must be requested.<br />
-                    ZH: 如果该邮箱已在系统中注册，验证码已发送（有效期 30 分钟）。过期后需重新申请。
-                  </p>
+                  {forgotPwAdminInitiated ? (
+                    <p className="text-xs text-gray-600">
+                      DE: Ein Administrator hat einen Passwort-Reset für Ihr Konto angefordert. Bitte geben Sie Ihren Benutzernamen und den per E-Mail erhaltenen 6-stelligen Verifizierungscode ein.<br />
+                      EN: An administrator has requested a password reset for your account. Please enter your username and the 6-digit verification code you received by email.<br />
+                      ZH: 管理员已为您的账户发起密码重置。请输入您的用户名和通过邮件收到的6位验证码。
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-600">
+                      DE: Falls die E-Mail-Adresse im System registriert ist, wurde ein Verifizierungscode gesendet (gültig 30 Min.). Nach Ablauf muss ein neuer Code angefordert werden.<br />
+                      EN: If the email is registered in the system, a verification code was sent (valid 30 min). After expiry, a new code must be requested.<br />
+                      ZH: 如果该邮箱已在系统中注册，验证码已发送（有效期 30 分钟）。过期后需重新申请。
+                    </p>
+                  )}
                   {forgotPwSuccess && <p className="text-xs text-green-600 font-semibold" role="status">{forgotPwSuccess}</p>}
                   {forgotPwCooldownSecs > 0 && (
                     <p className="text-xs text-amber-600 font-mono text-center">
                       ⏳ {fmtCooldown(forgotPwCooldownSecs)}{" "}
                       — 重新发送前请等待 / Bitte warten Sie vor dem erneuten Senden / Please wait before resending
                     </p>
+                  )}
+                  {/* Show editable username field in admin-initiated flow */}
+                  {forgotPwAdminInitiated && (
+                    <input
+                      type="text"
+                      value={forgotPwUsername}
+                      onChange={(e) => setForgotPwUsername(e.target.value)}
+                      placeholder="用户名 / Username / Benutzername"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                      autoComplete="username"
+                      required
+                    />
                   )}
                   <input
                     type="text"
@@ -1057,48 +1095,50 @@ function AdminPageContent() {
                   >
                     {forgotPwLoading ? "⏳ …" : "验证 / Bestätigen / Verify"}
                   </button>
-                  {/* Retry / Resend code */}
-                  <button
-                    type="button"
-                    disabled={forgotPwLoading || forgotPwRateLimited || forgotPwCooldownSecs > 0}
-                    onClick={async () => {
-                      setForgotPwLoading(true);
-                      setForgotPwError("");
-                      setForgotPwSuccess("");
-                      setForgotPwRateLimited(false);
-                      try {
-                        const res = await fetch("/api/password-reset", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ action: "request", username: forgotPwUsername.trim(), email: forgotPwEmail.trim() }),
-                        });
-                        const data = await res.json();
-                        if (!res.ok) {
-                          if (data.rateLimited) {
-                            setForgotPwRateLimited(true);
+                  {/* Retry / Resend code — only in normal flow (email known) */}
+                  {!forgotPwAdminInitiated && (
+                    <button
+                      type="button"
+                      disabled={forgotPwLoading || forgotPwRateLimited || forgotPwCooldownSecs > 0}
+                      onClick={async () => {
+                        setForgotPwLoading(true);
+                        setForgotPwError("");
+                        setForgotPwSuccess("");
+                        setForgotPwRateLimited(false);
+                        try {
+                          const res = await fetch("/api/password-reset", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "request", username: forgotPwUsername.trim(), email: forgotPwEmail.trim() }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) {
+                            if (data.rateLimited) {
+                              setForgotPwRateLimited(true);
+                            }
+                            setForgotPwError(data.error ?? "Error");
+                          } else {
+                            setForgotPwResendCount((c) => c + 1);
+                            setForgotPwCode("");
+                            setForgotPwError("");
+                            setForgotPwCooldownEnd(Date.now() + FORGOT_PW_COOLDOWN_MS);
+                            setForgotPwSuccess("✅ 新验证码已发送 / Neuer Code erfolgreich gesendet / New code sent successfully");
                           }
-                          setForgotPwError(data.error ?? "Error");
-                        } else {
-                          setForgotPwResendCount((c) => c + 1);
-                          setForgotPwCode("");
-                          setForgotPwError("");
-                          setForgotPwCooldownEnd(Date.now() + FORGOT_PW_COOLDOWN_MS);
-                          setForgotPwSuccess("✅ 新验证码已发送 / Neuer Code erfolgreich gesendet / New code sent successfully");
+                        } catch {
+                          setForgotPwError("Network error / Netzwerkfehler");
+                        } finally {
+                          setForgotPwLoading(false);
                         }
-                      } catch {
-                        setForgotPwError("Network error / Netzwerkfehler");
-                      } finally {
-                        setForgotPwLoading(false);
-                      }
-                    }}
-                    className="w-full text-xs text-[var(--school-red)] underline hover:opacity-80 disabled:opacity-40"
-                  >
-                    {forgotPwCooldownSecs > 0
-                      ? `⏳ ${fmtCooldown(forgotPwCooldownSecs)} — 请等待 / Bitte warten / Please wait`
-                      : forgotPwResendCount > 0
-                        ? `🔁 Code erneut gesendet (${forgotPwResendCount}×) / Resent / 已重发`
-                        : "🔁 Code erneut senden / Resend code / 重新发送验证码"}
-                  </button>
+                      }}
+                      className="w-full text-xs text-[var(--school-red)] underline hover:opacity-80 disabled:opacity-40"
+                    >
+                      {forgotPwCooldownSecs > 0
+                        ? `⏳ ${fmtCooldown(forgotPwCooldownSecs)} — 请等待 / Bitte warten / Please wait`
+                        : forgotPwResendCount > 0
+                          ? `🔁 Code erneut gesendet (${forgotPwResendCount}×) / Resent / 已重发`
+                          : "🔁 Code erneut senden / Resend code / 重新发送验证码"}
+                    </button>
+                  )}
                   {forgotPwRateLimited && (
                     <p className="text-xs text-amber-600">
                       DE: Zu viele Versuche. Bitte kontaktieren Sie einen Administrator.<br />
@@ -1106,14 +1146,22 @@ function AdminPageContent() {
                       ZH: 尝试次数过多，请联系管理员。
                     </p>
                   )}
-                  <p className="text-xs text-gray-400">
-                    DE: Kein Code erhalten? Prüfen Sie Ihren Spam-Ordner oder kontaktieren Sie den Administrator.<br />
-                    EN: Didn&apos;t receive a code? Check your spam folder or contact the administrator.<br />
-                    ZH: 没收到验证码？请检查垃圾邮件或联系管理员。
-                  </p>
+                  {forgotPwAdminInitiated ? (
+                    <p className="text-xs text-gray-400">
+                      DE: Code abgelaufen? Bitten Sie einen Administrator, den Code erneut zu senden.<br />
+                      EN: Code expired? Ask an administrator to resend the code.<br />
+                      ZH: 验证码过期？请联系管理员重新发送。
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400">
+                      DE: Kein Code erhalten? Prüfen Sie Ihren Spam-Ordner oder kontaktieren Sie den Administrator.<br />
+                      EN: Didn&apos;t receive a code? Check your spam folder or contact the administrator.<br />
+                      ZH: 没收到验证码？请检查垃圾邮件或联系管理员。
+                    </p>
+                  )}
                   <button
                     type="button"
-                    onClick={() => { setForgotPwStep(1); setForgotPwError(""); setForgotPwSuccess(""); setForgotPwCode(""); }}
+                    onClick={() => { setForgotPwStep(1); setForgotPwError(""); setForgotPwSuccess(""); setForgotPwCode(""); setForgotPwAdminInitiated(false); }}
                     className="w-full text-xs text-gray-500 underline hover:opacity-80"
                   >
                     ← 返回 / Zurück / Back
@@ -1137,16 +1185,20 @@ function AdminPageContent() {
                     setForgotPwLoading(true);
                     setForgotPwError("");
                     try {
+                      const resetBody: Record<string, string> = {
+                        action: "reset",
+                        username: forgotPwUsername.trim(),
+                        code: forgotPwCode.trim(),
+                        newPassword: forgotPwNewPw,
+                      };
+                      // Only include email when available (normal flow); admin-initiated flow skips email.
+                      if (forgotPwEmail.trim()) {
+                        resetBody.email = forgotPwEmail.trim();
+                      }
                       const res = await fetch("/api/password-reset", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          action: "reset",
-                          username: forgotPwUsername.trim(),
-                          email: forgotPwEmail.trim(),
-                          code: forgotPwCode.trim(),
-                          newPassword: forgotPwNewPw,
-                        }),
+                        body: JSON.stringify(resetBody),
                       });
                       const data = await res.json();
                       if (!res.ok) {
