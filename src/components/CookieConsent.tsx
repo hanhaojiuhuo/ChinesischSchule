@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, startTransition } from "react";
 
 const CONSENT_KEY = "yixin-cookie-consent";
+/** Extra pixels below the measured banner so the footer never sits flush against it. */
+const BANNER_BOTTOM_PADDING = 24;
 
 type ConsentState = "all" | "essential" | null;
 
@@ -32,7 +34,7 @@ export default function CookieConsent() {
       return;
     }
     const ro = new ResizeObserver(([entry]) => {
-      setBannerHeight(entry.contentRect.height + 24); // 24px extra breathing room
+      setBannerHeight(entry.contentRect.height + BANNER_BOTTOM_PADDING);
     });
     ro.observe(bannerRef.current);
     return () => ro.disconnect();
@@ -107,13 +109,9 @@ export default function CookieConsent() {
                   </table>
                   <p className="text-gray-400 mt-1">
                     Mehr Informationen finden Sie in unserer{" "}
-                    <a href="/privacy" className="underline hover:text-[var(--school-red)]">
-                      Datenschutzerklärung
-                    </a>
+                    <a href="/privacy" className="underline hover:text-[var(--school-red)]">Datenschutzerklärung</a>
                     {" "}· More information in our{" "}
-                    <a href="/privacy" className="underline hover:text-[var(--school-red)]">
-                      Privacy Policy
-                    </a>.
+                    <a href="/privacy" className="underline hover:text-[var(--school-red)]">Privacy Policy</a>.
                   </p>
                 </div>
               )}
