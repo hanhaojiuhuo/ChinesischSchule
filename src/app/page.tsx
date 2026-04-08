@@ -281,7 +281,7 @@ export default function Home() {
       <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer select-none">
         <input
           type="checkbox"
-          checked={showEnglish[section] !== false}
+          checked={isEnglishVisible(section)}
           onChange={(e) => updateShowEnglish(section, e.target.checked)}
           className="accent-amber-500 w-3.5 h-3.5"
         />
@@ -304,7 +304,7 @@ export default function Home() {
 
       <Navbar />
 
-      <main className={`flex-1${isAdmin ? " pb-20" : ""}`}>
+      <main className={`flex-1${isAdmin ? " pb-28" : ""}`}>
         {/* ── Hero ───────────────────────────────────────────── */}
         <section
           id="home"
