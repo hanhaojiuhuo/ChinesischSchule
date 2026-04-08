@@ -8,10 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { NewsItem, NewsBodyBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
 import {
-  countWords,
-  MAX_WORDS_NEWS,
-  MAX_WORDS_DEFAULT,
-  validateImageFile,
   IMAGE_ACCEPT,
 } from "@/lib/validation";
 

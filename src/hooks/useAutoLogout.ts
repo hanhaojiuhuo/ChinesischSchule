@@ -125,24 +125,18 @@ export function useAutoLogout(
     wasActiveRef.current = true;
 
     // Restore a previously-persisted deadline, or create a fresh one.
-    // Immediately sync React state so the UI never shows a stale value
-    // (e.g. the full 10-min default) between this effect and the first tick.
     const stored = readDeadline();
     if (stored > Date.now()) {
       deadlineRef.current = stored;
-      const secs = Math.ceil((stored - Date.now()) / 1000);
-      setRemainingSeconds(secs);
-      setShowWarning(secs <= WARNING_THRESHOLD_S);
     } else {
       const newDeadline = Date.now() + TIMEOUT_MS;
       deadlineRef.current = newDeadline;
       writeDeadline(newDeadline);
-      setRemainingSeconds(totalSeconds);
-      setShowWarning(false);
     }
 
-    // --- 1-second tick to update `remainingSeconds` and check expiry ---
-    const tick = window.setInterval(() => {
+    // Tick function: updates `remainingSeconds`, `showWarning`, and
+    // triggers logout when the deadline is reached.
+    const tickFn = () => {
       const ms = deadlineRef.current - Date.now();
       if (ms <= 0) {
         setRemainingSeconds(0);
@@ -152,17 +146,22 @@ export function useAutoLogout(
       } else {
         const secs = Math.ceil(ms / 1000);
         setRemainingSeconds(secs);
-        // Show warning when we enter the threshold window
-        if (secs <= WARNING_THRESHOLD_S) {
-          setShowWarning(true);
-        }
+        setShowWarning(secs <= WARNING_THRESHOLD_S);
       }
-    }, TICK_INTERVAL_MS);
+    };
+
+    // Fire an immediate async tick so the UI never shows a stale value
+    // (e.g. the full 10-min default) between this effect and the first
+    // interval tick.  Using setTimeout keeps setState out of the
+    // synchronous effect body (satisfies react-hooks/set-state-in-effect).
+    const immediate = window.setTimeout(tickFn, 0);
+    const tick = window.setInterval(tickFn, TICK_INTERVAL_MS);
 
     return () => {
+      window.clearTimeout(immediate);
       window.clearInterval(tick);
     };
-  }, [active]);
+  }, [active, totalSeconds]);
 
   return {
     remainingSeconds: active ? remainingSeconds : 0,
