@@ -93,7 +93,7 @@ function loadShowEnglishCache(): EnglishVisibility | null {
     const raw = localStorage.getItem(SHOW_ENGLISH_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as EnglishVisibility;
-      if (parsed && typeof parsed === "object") return parsed;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
     }
   } catch { /* ignore */ }
   return null;
