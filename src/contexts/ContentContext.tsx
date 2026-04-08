@@ -85,6 +85,27 @@ async function fetchRawOverrides(): Promise<RawOverrides> {
   return {};
 }
 
+const SHOW_ENGLISH_STORAGE_KEY = "yixin-show-english";
+
+/** Read cached English visibility flags from localStorage. */
+function loadShowEnglishCache(): EnglishVisibility | null {
+  try {
+    const raw = localStorage.getItem(SHOW_ENGLISH_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as EnglishVisibility;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/** Persist English visibility flags to localStorage as a fast local cache. */
+function saveShowEnglishCache(flags: EnglishVisibility): void {
+  try {
+    localStorage.setItem(SHOW_ENGLISH_STORAGE_KEY, JSON.stringify(flags));
+  } catch { /* ignore */ }
+}
+
 async function persistData(data: RawOverrides): Promise<boolean> {
   try {
     const res = await fetch("/api/content", {
@@ -105,7 +126,11 @@ async function persistData(data: RawOverrides): Promise<boolean> {
 
 export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [overrides, setOverrides] = useState<ContentOverrides>({});
-  const [showEnglish, setShowEnglishState] = useState<EnglishVisibility>({});
+  // Initialise showEnglish from localStorage so the admin's last-known
+  // preference is available immediately (before the async Blob fetch).
+  const [showEnglish, setShowEnglishState] = useState<EnglishVisibility>(
+    () => loadShowEnglishCache() ?? {}
+  );
   const [contentLoading, setContentLoading] = useState(true);
 
   // Mutable refs keep the latest state in sync so concurrent saves
@@ -121,6 +146,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       if (_showEnglish) {
         showEnglishRef.current = _showEnglish;
         setShowEnglishState(_showEnglish);
+        saveShowEnglishCache(_showEnglish);
       }
       setContentLoading(false);
     });
@@ -162,6 +188,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     const next = { ...showEnglishRef.current, [section]: show };
     showEnglishRef.current = next;
     setShowEnglishState(next);
+    // Cache in localStorage so the preference is available immediately on next load.
+    saveShowEnglishCache(next);
     await persistData({ ...overridesRef.current, _showEnglish: next });
   }, []);
 
