@@ -2,6 +2,9 @@ import { put, list } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 
+/** Ensure GET is never cached by Next.js or Vercel's CDN. */
+export const dynamic = "force-dynamic";
+
 const BLOB_PATHNAME = "yixin-content-overrides.json";
 
 export async function GET() {
