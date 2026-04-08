@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SchoolLogo from "@/components/SchoolLogo";
@@ -10,9 +11,10 @@ import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import SessionTimeoutWarning from "@/components/SessionTimeoutWarning";
-import type { SiteContent, CourseItem, NewsItem, NewsTextBlock } from "@/i18n/translations";
+import type { SiteContent, CourseItem, NewsItem, NewsTextBlock, NewsBodyBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
 import { defaultTranslations } from "@/i18n/translations";
+import { countWords, MAX_WORDS_NEWS, validateImageFile, IMAGE_ACCEPT } from "@/lib/validation";
 
 /* ─── Inline editable helpers ──────────────────────────────── */
 function EditField({
@@ -108,6 +110,11 @@ export default function Home() {
   const [courseOffset, setCourseOffset] = useState(0);
   const [newsPage, setNewsPage] = useState(0);
   const NEWS_PER_PAGE = 4;
+
+  // News block editor state
+  const [newsUploadingIdx, setNewsUploadingIdx] = useState<{ lang: "de" | "zh"; newsIdx: number; blockIdx: number } | null>(null);
+  const [newsUploadError, setNewsUploadError] = useState("");
+  const newsFileInputRef = useRef<HTMLInputElement>(null);
 
   // Admin toolbar position — stored in sessionStorage so it resets on next login
   type ToolbarPos = "bottom" | "top";
@@ -261,6 +268,66 @@ export default function Home() {
       },
     }));
     setIsDirty(true);
+  }
+
+  function updDeNewsBlocks(idx: number, blocks: NewsBodyBlock[]) {
+    setDraftDe((d) => ({
+      ...d,
+      news: {
+        ...d.news,
+        items: d.news.items.map((n, i) =>
+          i === idx ? { ...n, bodyBlocks: blocks, body: blocks.filter((b): b is NewsTextBlock => b.type === "text").map((b) => b.content).join("\n\n") } : n
+        ),
+      },
+    }));
+    setIsDirty(true);
+  }
+
+  function updZhNewsBlocks(idx: number, blocks: NewsBodyBlock[]) {
+    setDraftZh((d) => ({
+      ...d,
+      news: {
+        ...d.news,
+        items: d.news.items.map((n, i) =>
+          i === idx ? { ...n, bodyBlocks: blocks, body: blocks.filter((b): b is NewsTextBlock => b.type === "text").map((b) => b.content).join("\n\n") } : n
+        ),
+      },
+    }));
+    setIsDirty(true);
+  }
+
+  async function handleNewsImageUpload(file: File, lang: "de" | "zh", newsIdx: number, blockIdx: number) {
+    setNewsUploadingIdx({ lang, newsIdx, blockIdx });
+    setNewsUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        const setter = lang === "de" ? setDraftDe : setDraftZh;
+        setter((d) => ({
+          ...d,
+          news: {
+            ...d.news,
+            items: d.news.items.map((item, i) => {
+              if (i !== newsIdx) return item;
+              const blocks = (item.bodyBlocks ?? []).map((b, bi) =>
+                bi === blockIdx && b.type === "image" ? { ...b, url: data.url } : b
+              );
+              return { ...item, bodyBlocks: blocks };
+            }),
+          },
+        }));
+        setIsDirty(true);
+      } else {
+        setNewsUploadError(data.error ?? "Upload failed");
+      }
+    } catch {
+      setNewsUploadError("Upload failed / 上传失败");
+    } finally {
+      setNewsUploadingIdx(null);
+    }
   }
 
   /* ── Save / Discard ──────────────────────────────────────── */
@@ -759,18 +826,44 @@ export default function Home() {
             </div>
 
             {isAdmin && (
-              <button
-                onClick={addNews}
-                className="mb-6 w-full px-4 py-3 border-2 border-dashed border-amber-400 rounded-lg text-amber-700 hover:border-amber-500 hover:bg-amber-50 font-semibold text-sm transition-colors"
-              >
-                + Add News Article / Neuigkeit hinzufügen / 添加新闻
-              </button>
+              <>
+                {/* Hidden file input for news image uploads */}
+                <input
+                  ref={newsFileInputRef}
+                  type="file"
+                  accept={IMAGE_ACCEPT}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && newsUploadingIdx) {
+                      const err = validateImageFile(file);
+                      if (err) {
+                        setNewsUploadError(err);
+                        setNewsUploadingIdx(null);
+                      } else {
+                        handleNewsImageUpload(file, newsUploadingIdx.lang, newsUploadingIdx.newsIdx, newsUploadingIdx.blockIdx);
+                      }
+                    } else {
+                      setNewsUploadingIdx(null);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  onClick={addNews}
+                  className="mb-6 w-full px-4 py-3 border-2 border-dashed border-amber-400 rounded-lg text-amber-700 hover:border-amber-500 hover:bg-amber-50 font-semibold text-sm transition-colors"
+                >
+                  + Add News Article / Neuigkeit hinzufügen / 添加新闻
+                </button>
+              </>
             )}
 
             <div className="space-y-6">
               {isAdmin ? (
                 de.news.items.map((n, i) => {
                   const zhNews = zh.news.items[i];
+                  const deBlocks = getNewsBodyBlocks(n).length > 0 ? getNewsBodyBlocks(n) : [{ type: "text" as const, content: "" }];
+                  const zhBlocks = zhNews ? (getNewsBodyBlocks(zhNews).length > 0 ? getNewsBodyBlocks(zhNews) : [{ type: "text" as const, content: "" }]) : [];
                   return (
                     <EditBlock
                       key={i}
@@ -808,29 +901,278 @@ export default function Home() {
                             />
                           </div>
                         )}
+
+                        {/* DE Body Blocks */}
                         <div>
-                          <label className="text-xs text-amber-600 font-semibold block mb-0.5">DE Body</label>
-                          <EditArea
-                            value={n.body}
-                            onChange={(v) => updDeNews(i, "body", v)}
-                            className="text-sm text-gray-600 leading-relaxed"
-                            placeholder="German body text…"
-                          />
+                          <label className="text-xs text-amber-600 font-semibold block mb-2">DE Body Blocks / Inhaltsblöcke</label>
+                          {deBlocks.map((block, bIdx) => (
+                            <div key={bIdx} className="flex gap-2 mb-2 items-start">
+                              <div className="flex flex-col gap-1 mt-1">
+                                {bIdx > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nb = [...deBlocks];
+                                      [nb[bIdx - 1], nb[bIdx]] = [nb[bIdx], nb[bIdx - 1]];
+                                      updDeNewsBlocks(i, nb);
+                                    }}
+                                    className="text-xs text-gray-400 hover:text-gray-700"
+                                    title="Move up"
+                                  >▲</button>
+                                )}
+                                {bIdx < deBlocks.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nb = [...deBlocks];
+                                      [nb[bIdx], nb[bIdx + 1]] = [nb[bIdx + 1], nb[bIdx]];
+                                      updDeNewsBlocks(i, nb);
+                                    }}
+                                    className="text-xs text-gray-400 hover:text-gray-700"
+                                    title="Move down"
+                                  >▼</button>
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                {block.type === "text" ? (
+                                  <div>
+                                    <span className="text-xs text-gray-500 mb-1 block">Text</span>
+                                    <textarea
+                                      className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
+                                      value={block.content}
+                                      placeholder="Text…"
+                                      onChange={(e) => {
+                                        const nb = deBlocks.map((b, bi) =>
+                                          bi === bIdx ? { ...b, content: e.target.value } : b
+                                        ) as typeof deBlocks;
+                                        updDeNewsBlocks(i, nb);
+                                      }}
+                                    />
+                                    <p className={`text-xs mt-0.5 text-right ${countWords(block.content) > MAX_WORDS_NEWS ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+                                      {countWords(block.content)} / {MAX_WORDS_NEWS} words
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="border border-gray-200 rounded p-2 bg-gray-50">
+                                    <div
+                                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const file = e.dataTransfer.files?.[0];
+                                        if (file) {
+                                          const err = validateImageFile(file);
+                                          if (err) { setNewsUploadError(err); }
+                                          else { handleNewsImageUpload(file, "de", i, bIdx); }
+                                        }
+                                      }}
+                                      onClick={() => {
+                                        setNewsUploadingIdx({ lang: "de", newsIdx: i, blockIdx: bIdx });
+                                        newsFileInputRef.current?.click();
+                                      }}
+                                      className="border-2 border-dashed border-gray-300 hover:border-amber-400 rounded-lg p-3 text-center cursor-pointer transition-colors mb-1"
+                                    >
+                                      {newsUploadingIdx?.lang === "de" && newsUploadingIdx?.newsIdx === i && newsUploadingIdx?.blockIdx === bIdx ? (
+                                        <p className="text-sm text-gray-500">⏳ Uploading… / 上传中…</p>
+                                      ) : block.url ? (
+                                        <div>
+                                          <Image src={block.url} alt={block.caption ?? ""} width={400} height={128} unoptimized className="mx-auto max-h-32 object-cover rounded border border-gray-200 mb-1" />
+                                          <p className="text-xs text-gray-400">Click or drop to replace / 点击或拖拽替换图片</p>
+                                          <p className="text-xs text-gray-400 mt-0.5">JPEG, PNG, GIF, TIFF, SVG, RAW · max 3 MB</p>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <p className="text-xl mb-1">📎</p>
+                                          <p className="text-sm text-gray-500">Drop image here or click to upload</p>
+                                          <p className="text-xs text-gray-400">Bild hierher ziehen oder klicken / 拖拽图片到此处或点击上传</p>
+                                          <p className="text-xs text-gray-400 mt-1">JPEG, PNG, GIF, TIFF, SVG, RAW · max 3 MB</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <input
+                                      type="text"
+                                      className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500"
+                                      value={block.caption ?? ""}
+                                      placeholder="Caption (optional) / Bildunterschrift"
+                                      onChange={(e) => {
+                                        const nb = deBlocks.map((b, bi) =>
+                                          bi === bIdx ? { ...b, caption: e.target.value || undefined } : b
+                                        ) as typeof deBlocks;
+                                        updDeNewsBlocks(i, nb);
+                                      }}
+                                    />
+                                    {newsUploadError && newsUploadingIdx?.lang === "de" && newsUploadingIdx?.newsIdx === i && (
+                                      <p className="text-xs text-red-600 mt-1">{newsUploadError}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nb = deBlocks.filter((_, bi) => bi !== bIdx);
+                                  updDeNewsBlocks(i, nb.length > 0 ? nb : [{ type: "text", content: "" }]);
+                                }}
+                                className="text-xs text-red-400 hover:text-red-600 mt-2"
+                                title="Remove block"
+                              >✕</button>
+                            </div>
+                          ))}
+                          <div className="flex gap-2 mt-1">
+                            <button
+                              type="button"
+                              onClick={() => updDeNewsBlocks(i, [...deBlocks, { type: "text", content: "" }])}
+                              className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-amber-400 hover:text-amber-600 transition-colors"
+                            >
+                              + Text
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updDeNewsBlocks(i, [...deBlocks, { type: "image", url: "" }])}
+                              className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-amber-400 hover:text-amber-600 transition-colors"
+                            >
+                              + Image / Bild
+                            </button>
+                          </div>
                         </div>
+
+                        {/* ZH Body Blocks */}
                         {zhNews && (
                           <div>
-                            <label className="text-xs text-amber-600 font-semibold block mb-0.5">ZH Body</label>
-                            <EditArea
-                              value={zhNews.body}
-                              onChange={(v) => updZhNews(i, "body", v)}
-                              className="font-cn text-xs text-gray-400 leading-relaxed"
-                              placeholder="中文内容…"
-                            />
+                            <label className="text-xs text-amber-600 font-semibold block mb-2">ZH Body Blocks / 内容块</label>
+                            {zhBlocks.map((block, bIdx) => (
+                              <div key={bIdx} className="flex gap-2 mb-2 items-start">
+                                <div className="flex flex-col gap-1 mt-1">
+                                  {bIdx > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const nb = [...zhBlocks];
+                                        [nb[bIdx - 1], nb[bIdx]] = [nb[bIdx], nb[bIdx - 1]];
+                                        updZhNewsBlocks(i, nb);
+                                      }}
+                                      className="text-xs text-gray-400 hover:text-gray-700"
+                                      title="Move up"
+                                    >▲</button>
+                                  )}
+                                  {bIdx < zhBlocks.length - 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const nb = [...zhBlocks];
+                                        [nb[bIdx], nb[bIdx + 1]] = [nb[bIdx + 1], nb[bIdx]];
+                                        updZhNewsBlocks(i, nb);
+                                      }}
+                                      className="text-xs text-gray-400 hover:text-gray-700"
+                                      title="Move down"
+                                    >▼</button>
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  {block.type === "text" ? (
+                                    <div>
+                                      <span className="text-xs text-gray-500 mb-1 block">Text</span>
+                                      <textarea
+                                        className={`w-full border rounded px-3 py-2 text-sm font-cn focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
+                                        value={block.content}
+                                        placeholder="中文文本…"
+                                        onChange={(e) => {
+                                          const nb = zhBlocks.map((b, bi) =>
+                                            bi === bIdx ? { ...b, content: e.target.value } : b
+                                          ) as typeof zhBlocks;
+                                          updZhNewsBlocks(i, nb);
+                                        }}
+                                      />
+                                      <p className={`text-xs mt-0.5 text-right ${countWords(block.content) > MAX_WORDS_NEWS ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+                                        {countWords(block.content)} / {MAX_WORDS_NEWS} words
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="border border-gray-200 rounded p-2 bg-gray-50">
+                                      <div
+                                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                        onDrop={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          const file = e.dataTransfer.files?.[0];
+                                          if (file) {
+                                            const err = validateImageFile(file);
+                                            if (err) { setNewsUploadError(err); }
+                                            else { handleNewsImageUpload(file, "zh", i, bIdx); }
+                                          }
+                                        }}
+                                        onClick={() => {
+                                          setNewsUploadingIdx({ lang: "zh", newsIdx: i, blockIdx: bIdx });
+                                          newsFileInputRef.current?.click();
+                                        }}
+                                        className="border-2 border-dashed border-gray-300 hover:border-amber-400 rounded-lg p-3 text-center cursor-pointer transition-colors mb-1"
+                                      >
+                                        {newsUploadingIdx?.lang === "zh" && newsUploadingIdx?.newsIdx === i && newsUploadingIdx?.blockIdx === bIdx ? (
+                                          <p className="text-sm text-gray-500">⏳ Uploading… / 上传中…</p>
+                                        ) : block.url ? (
+                                          <div>
+                                            <Image src={block.url} alt={block.caption ?? ""} width={400} height={128} unoptimized className="mx-auto max-h-32 object-cover rounded border border-gray-200 mb-1" />
+                                            <p className="text-xs text-gray-400">Click or drop to replace / 点击或拖拽替换图片</p>
+                                            <p className="text-xs text-gray-400 mt-0.5">JPEG, PNG, GIF, TIFF, SVG, RAW · max 3 MB</p>
+                                          </div>
+                                        ) : (
+                                          <div>
+                                            <p className="text-xl mb-1">📎</p>
+                                            <p className="text-sm text-gray-500">Drop image here or click to upload</p>
+                                            <p className="text-xs text-gray-400">拖拽图片到此处或点击上传</p>
+                                            <p className="text-xs text-gray-400 mt-1">JPEG, PNG, GIF, TIFF, SVG, RAW · max 3 MB</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <input
+                                        type="text"
+                                        className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500"
+                                        value={block.caption ?? ""}
+                                        placeholder="Caption (optional) / 图片说明"
+                                        onChange={(e) => {
+                                          const nb = zhBlocks.map((b, bi) =>
+                                            bi === bIdx ? { ...b, caption: e.target.value || undefined } : b
+                                          ) as typeof zhBlocks;
+                                          updZhNewsBlocks(i, nb);
+                                        }}
+                                      />
+                                      {newsUploadError && newsUploadingIdx?.lang === "zh" && newsUploadingIdx?.newsIdx === i && (
+                                        <p className="text-xs text-red-600 mt-1">{newsUploadError}</p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nb = zhBlocks.filter((_, bi) => bi !== bIdx);
+                                    updZhNewsBlocks(i, nb.length > 0 ? nb : [{ type: "text", content: "" }]);
+                                  }}
+                                  className="text-xs text-red-400 hover:text-red-600 mt-2"
+                                  title="Remove block"
+                                >✕</button>
+                              </div>
+                            ))}
+                            <div className="flex gap-2 mt-1">
+                              <button
+                                type="button"
+                                onClick={() => updZhNewsBlocks(i, [...zhBlocks, { type: "text", content: "" }])}
+                                className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-amber-400 hover:text-amber-600 transition-colors"
+                              >
+                                + Text / 添加文本
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updZhNewsBlocks(i, [...zhBlocks, { type: "image", url: "" }])}
+                                className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-amber-400 hover:text-amber-600 transition-colors"
+                              >
+                                + Image / 添加图片
+                              </button>
+                            </div>
                           </div>
                         )}
-                        <p className="text-xs text-amber-500 italic">
-                          💡 Use the dedicated News Editor (/admin/news/{i}) for images & block editing.
-                        </p>
                       </div>
                     </EditBlock>
                   );
