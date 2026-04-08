@@ -1,12 +1,31 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import SchoolLogo from "./SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
 
+const TOOLBAR_POS_KEY = "yixin-toolbar-position";
+
 export default function Footer() {
   const { getContent, isEnglishVisible } = useContent();
   const { isAdmin } = useAuth();
+  const [toolbarAtBottom, setToolbarAtBottom] = useState(true);
+
+  // Listen for toolbar position changes
+  useEffect(() => {
+    if (!isAdmin) return;
+    try {
+      setToolbarAtBottom(sessionStorage.getItem(TOOLBAR_POS_KEY) !== "top");
+    } catch { /* ignore */ }
+    function handleChange(e: Event) {
+      const pos = (e as CustomEvent).detail;
+      setToolbarAtBottom(pos !== "top");
+    }
+    window.addEventListener("toolbar-position-change", handleChange);
+    return () => window.removeEventListener("toolbar-position-change", handleChange);
+  }, [isAdmin]);
+
   const de = getContent("de");
   const zh = getContent("zh");
 
@@ -22,7 +41,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className={`bg-[var(--school-dark)] text-white mt-auto${isAdmin ? " pb-28" : ""}`}>
+    <footer className={`bg-[var(--school-dark)] text-white mt-auto${isAdmin && toolbarAtBottom ? " pb-28" : ""}`}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid sm:grid-cols-3 gap-8">
         {/* Brand */}
         <div className="flex flex-col items-start gap-3">

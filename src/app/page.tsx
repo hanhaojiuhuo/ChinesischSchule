@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -108,6 +108,29 @@ export default function Home() {
   const [courseOffset, setCourseOffset] = useState(0);
   const [newsPage, setNewsPage] = useState(0);
   const NEWS_PER_PAGE = 4;
+
+  // Admin toolbar position — stored in sessionStorage so it resets on next login
+  type ToolbarPos = "bottom" | "top";
+  const TOOLBAR_POS_KEY = "yixin-toolbar-position";
+  const [toolbarPosition, setToolbarPositionState] = useState<ToolbarPos>("bottom");
+
+  // Read toolbar position from sessionStorage on mount (only when admin)
+  useEffect(() => {
+    if (!isAdmin) return;
+    try {
+      const stored = sessionStorage.getItem(TOOLBAR_POS_KEY) as ToolbarPos | null;
+      if (stored === "top" || stored === "bottom") {
+        setToolbarPositionState(stored);
+      }
+    } catch { /* ignore */ }
+  }, [isAdmin]);
+
+  const setToolbarPosition = useCallback((pos: ToolbarPos) => {
+    setToolbarPositionState(pos);
+    try { sessionStorage.setItem(TOOLBAR_POS_KEY, pos); } catch { /* ignore */ }
+    // Notify other components (e.g. Footer) about the position change
+    window.dispatchEvent(new CustomEvent("toolbar-position-change", { detail: pos }));
+  }, []);
 
   // Sync drafts when ContentContext loads saved data from localStorage
   useEffect(() => {
@@ -304,7 +327,7 @@ export default function Home() {
 
       <Navbar />
 
-      <main className={`flex-1${isAdmin ? " pb-28" : ""}`}>
+      <main className={`flex-1${isAdmin && toolbarPosition === "bottom" ? " pb-28" : ""}${isAdmin && toolbarPosition === "top" ? " pt-20" : ""}`}>
         {/* ── Hero ───────────────────────────────────────────── */}
         <section
           id="home"
@@ -1137,7 +1160,11 @@ export default function Home() {
 
       {/* ── Admin toolbar ─────────────────────────────────────── */}
       {isAdmin && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--school-dark)]/95 backdrop-blur-sm text-white py-3 px-4 flex items-center justify-between gap-3 flex-wrap shadow-2xl border-t-2 border-amber-400">
+        <div className={`fixed left-0 right-0 z-[60] bg-[var(--school-dark)]/95 backdrop-blur-sm text-white py-3 px-4 flex items-center justify-between gap-3 flex-wrap shadow-2xl ${
+          toolbarPosition === "top"
+            ? "top-0 border-b-2 border-amber-400"
+            : "bottom-0 border-t-2 border-amber-400"
+        }`}>
           <div className="flex items-center gap-3">
             <span className="text-amber-400 text-lg">✏</span>
             <div>
@@ -1183,6 +1210,16 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Move toolbar position toggle */}
+            <button
+              onClick={() => setToolbarPosition(toolbarPosition === "bottom" ? "top" : "bottom")}
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded transition-colors"
+              title={toolbarPosition === "bottom"
+                ? "Move toolbar to top / 移到顶部 / Nach oben verschieben"
+                : "Move toolbar to bottom / 移到底部 / Nach unten verschieben"}
+            >
+              {toolbarPosition === "bottom" ? "⬆" : "⬇"}
+            </button>
             <button
               onClick={handleSave}
               className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded transition-colors"
