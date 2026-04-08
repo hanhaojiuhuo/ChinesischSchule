@@ -41,8 +41,8 @@ function mergeWithDefaults(override: SiteContent, defaults: SiteContent): SiteCo
   return merged;
 }
 
-/** Per-section English visibility flags. Absent key = true (show English by default).
- *  The special `_global` key controls site-wide English visibility. */
+/** English visibility flags. Only the `_global` key is used (site-wide toggle).
+ *  Per-section keys are legacy and ignored. */
 export type EnglishVisibility = Record<string, boolean>;
 
 /** Raw shape stored in Vercel Blob (language overrides + English visibility metadata). */
@@ -54,11 +54,11 @@ interface ContentContextValue {
   saveAllContent: (de: SiteContent, zh: SiteContent, en: SiteContent) => Promise<void>;
   resetContent: (lang: Language) => Promise<void>;
   contentLoading: boolean;
-  /** Per-section English visibility. Missing key means English IS shown. */
+  /** Global English visibility flags. */
   showEnglish: EnglishVisibility;
-  /** Toggle English visibility for a section and persist immediately. */
+  /** Toggle English visibility globally and persist immediately. */
   updateShowEnglish: (section: string, show: boolean) => void;
-  /** Check if English is visible for a given section (respects global + per-section flags). */
+  /** Check if English is visible (uses only the global `_global` flag). */
   isEnglishVisible: (section: string) => boolean;
 }
 
@@ -144,9 +144,11 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       overridesRef.current = langOverrides;
       setOverrides(langOverrides);
       if (_showEnglish) {
-        showEnglishRef.current = _showEnglish;
-        setShowEnglishState(_showEnglish);
-        saveShowEnglishCache(_showEnglish);
+        // Only keep the _global key; discard legacy per-section keys
+        const globalOnly: EnglishVisibility = { _global: _showEnglish._global !== false };
+        showEnglishRef.current = globalOnly;
+        setShowEnglishState(globalOnly);
+        saveShowEnglishCache(globalOnly);
       }
       setContentLoading(false);
     });
@@ -184,8 +186,9 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     await persistData({ ...next, _showEnglish: showEnglishRef.current });
   }, []);
 
-  const updateShowEnglish = useCallback(async (section: string, show: boolean) => {
-    const next = { ...showEnglishRef.current, [section]: show };
+  const updateShowEnglish = useCallback(async (_: string, show: boolean) => {
+    // Always update the _global flag only (per-section toggles are no longer used).
+    const next: EnglishVisibility = { _global: show };
     showEnglishRef.current = next;
     setShowEnglishState(next);
     // Cache in localStorage so the preference is available immediately on next load.
@@ -193,15 +196,10 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     await persistData({ ...overridesRef.current, _showEnglish: next });
   }, []);
 
-  /** Check if English is visible for a given section.
-   *  Per-section flags take priority over the global toggle. If a section has
-   *  an explicit flag it is used regardless of the global setting; otherwise
-   *  the global flag (default: true) decides. */
+  /** Check if English is visible. Only the global `_global` flag is used. */
   const isEnglishVisible = useCallback(
-    (section: string): boolean => {
-      // Per-section flag has highest priority when explicitly set
-      if (section in showEnglish) return showEnglish[section] !== false;
-      // Fall back to global toggle (default: visible)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (_section: string): boolean => {
       return showEnglish._global !== false;
     },
     [showEnglish]

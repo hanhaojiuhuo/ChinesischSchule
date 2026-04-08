@@ -299,20 +299,6 @@ export default function Home() {
 
   const showEn = (section: string) => isEnglishVisible(section);
 
-  function EnToggle({ section }: { section: string }) {
-    return (
-      <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer select-none">
-        <input
-          type="checkbox"
-          checked={isEnglishVisible(section)}
-          onChange={(e) => updateShowEnglish(section, e.target.checked)}
-          className="accent-amber-500 w-3.5 h-3.5"
-        />
-        <span className="text-amber-600 font-semibold">Show English / 显示英文</span>
-      </label>
-    );
-  }
-
   /* ── Render ──────────────────────────────────────────────── */
   return (
     <>
@@ -346,7 +332,6 @@ export default function Home() {
             <div className="flex-1 animate-fade-in-up">
               {isAdmin ? (
                 <EditBlock label="School Name" className="p-3 space-y-2 bg-[var(--school-dark)] mb-3">
-                  <EnToggle section="hero" />
                   <div>
                     <label className="text-xs text-amber-300 font-semibold block mb-1">DE School Name</label>
                     <EditField
@@ -513,7 +498,6 @@ export default function Home() {
                       className="text-lg font-normal text-gray-400"
                       placeholder="ZH 标题…"
                     />
-                    <EnToggle section="courses" />
                   </>
                 ) : (
                   <>
@@ -764,7 +748,6 @@ export default function Home() {
                       className="text-lg font-normal text-gray-400"
                       placeholder="ZH 标题…"
                     />
-                    <EnToggle section="news" />
                   </>
                 ) : (
                   <>
@@ -927,7 +910,6 @@ export default function Home() {
                       className="text-lg font-normal text-gray-400"
                       placeholder="ZH 标题…"
                     />
-                    <EnToggle section="about" />
                   </>
                 ) : (
                   <>
@@ -1050,7 +1032,6 @@ export default function Home() {
                     className="text-lg font-normal text-gray-400"
                     placeholder="ZH 标题…"
                   />
-                  <EnToggle section="contact" />
                 </>
               ) : (
                 <>
