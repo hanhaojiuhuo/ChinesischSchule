@@ -1557,6 +1557,7 @@ function AdminPageContent() {
         <SessionTimeoutWarning
           remainingSeconds={remainingSeconds}
           onExtend={extendSession}
+          onLogout={auth.logout}
         />
       )}
       {/* Top bar */}
