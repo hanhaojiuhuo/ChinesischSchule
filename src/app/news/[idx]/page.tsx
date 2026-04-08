@@ -11,9 +11,9 @@ import Footer from "@/components/Footer";
 export default function NewsDetailPage() {
   const params = useParams();
   const idx = parseInt(params.idx as string, 10);
-  const { getContent, showEnglish } = useContent();
+  const { getContent, isEnglishVisible } = useContent();
   const { isAdmin } = useAuth();
-  const showEn = showEnglish.news !== false;
+  const showEn = isEnglishVisible("news");
 
   const de = getContent("de");
   const zh = getContent("zh");

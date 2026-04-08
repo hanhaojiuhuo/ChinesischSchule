@@ -4,12 +4,12 @@ import SchoolLogo from "./SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
 
 export default function Footer() {
-  const { getContent, showEnglish } = useContent();
+  const { getContent, isEnglishVisible } = useContent();
   const de = getContent("de");
   const zh = getContent("zh");
 
   const en = getContent("en");
-  const showEn = showEnglish.footer !== false;
+  const showEn = isEnglishVisible("footer");
 
   const navLinks: [string, string, string, string][] = [
     [de.nav.home, zh.nav.home, en.nav.home, "/#home"],

@@ -14,8 +14,8 @@ const navLinks = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const { showEnglish } = useContent();
-  const showEn = showEnglish.nav !== false;
+  const { isEnglishVisible } = useContent();
+  const showEn = isEnglishVisible("nav");
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b-2 border-[var(--school-red)] shadow-sm">

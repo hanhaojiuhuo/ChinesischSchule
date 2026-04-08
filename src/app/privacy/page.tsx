@@ -6,11 +6,11 @@ import Footer from "@/components/Footer";
 import { useContent } from "@/contexts/ContentContext";
 
 export default function PrivacyPage() {
-  const { getContent, showEnglish } = useContent();
+  const { getContent, isEnglishVisible } = useContent();
   const de = getContent("de");
   const zh = getContent("zh");
   const en = getContent("en");
-  const showEn = showEnglish.privacy !== false;
+  const showEn = isEnglishVisible("privacy");
 
   return (
     <>
