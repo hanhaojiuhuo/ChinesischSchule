@@ -93,7 +93,7 @@ function EditBlock({
 
 /* ─── Page ─────────────────────────────────────────────────── */
 export default function Home() {
-  const { getContent, saveContent, showEnglish, updateShowEnglish } = useContent();
+  const { getContent, saveAllContent, showEnglish, updateShowEnglish, isEnglishVisible } = useContent();
   const { isAdmin, currentUser, logout } = useAuth();
 
   // Auto-logout – shares the same persisted deadline as the admin panel
@@ -242,11 +242,7 @@ export default function Home() {
 
   /* ── Save / Discard ──────────────────────────────────────── */
   async function handleSave() {
-    await Promise.all([
-      saveContent("de", draftDe),
-      saveContent("zh", draftZh),
-      saveContent("en", draftEn),
-    ]);
+    await saveAllContent(draftDe, draftZh, draftEn);
     setIsDirty(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
@@ -278,7 +274,7 @@ export default function Home() {
     setIsDirty(true);
   }
 
-  const showEn = (section: string) => showEnglish[section] !== false;
+  const showEn = (section: string) => isEnglishVisible(section);
 
   function EnToggle({ section }: { section: string }) {
     return (
@@ -1157,6 +1153,16 @@ export default function Home() {
                 ✓ Saved!
               </span>
             )}
+            {/* Global English toggle */}
+            <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer select-none ml-2">
+              <input
+                type="checkbox"
+                checked={showEnglish._global !== false}
+                onChange={(e) => updateShowEnglish("_global", e.target.checked)}
+                className="accent-amber-500 w-3.5 h-3.5"
+              />
+              <span className="text-amber-400 font-semibold">🌐 English</span>
+            </label>
             {/* Auto-logout countdown */}
             <span
               className={`text-xs font-mono px-2 py-0.5 rounded ${

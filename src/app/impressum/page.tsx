@@ -6,11 +6,11 @@ import Footer from "@/components/Footer";
 import { useContent } from "@/contexts/ContentContext";
 
 export default function ImpressumPage() {
-  const { getContent, showEnglish } = useContent();
+  const { getContent, isEnglishVisible } = useContent();
   const de = getContent("de");
   const zh = getContent("zh");
   const en = getContent("en");
-  const showEn = showEnglish.impressum !== false;
+  const showEn = isEnglishVisible("impressum");
 
   return (
     <>

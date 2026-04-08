@@ -41,7 +41,8 @@ function mergeWithDefaults(override: SiteContent, defaults: SiteContent): SiteCo
   return merged;
 }
 
-/** Per-section English visibility flags. Absent key = true (show English by default). */
+/** Per-section English visibility flags. Absent key = true (show English by default).
+ *  The special `_global` key controls site-wide English visibility. */
 export type EnglishVisibility = Record<string, boolean>;
 
 /** Raw shape stored in Vercel Blob (language overrides + English visibility metadata). */
@@ -50,21 +51,26 @@ type RawOverrides = ContentOverrides & { _showEnglish?: EnglishVisibility };
 interface ContentContextValue {
   getContent: (lang: Language) => SiteContent;
   saveContent: (lang: Language, content: SiteContent) => Promise<void>;
+  saveAllContent: (de: SiteContent, zh: SiteContent, en: SiteContent) => Promise<void>;
   resetContent: (lang: Language) => Promise<void>;
   contentLoading: boolean;
   /** Per-section English visibility. Missing key means English IS shown. */
   showEnglish: EnglishVisibility;
   /** Toggle English visibility for a section and persist immediately. */
   updateShowEnglish: (section: string, show: boolean) => void;
+  /** Check if English is visible for a given section (respects global + per-section flags). */
+  isEnglishVisible: (section: string) => boolean;
 }
 
 const ContentContext = createContext<ContentContextValue>({
   getContent: (lang) => defaultTranslations[lang],
   saveContent: async () => {},
+  saveAllContent: async () => {},
   resetContent: async () => {},
   contentLoading: true,
   showEnglish: {},
   updateShowEnglish: () => {},
+  isEnglishVisible: () => true,
 });
 
 async function fetchRawOverrides(): Promise<RawOverrides> {
@@ -136,6 +142,14 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     await persistData({ ...next, _showEnglish: showEnglishRef.current });
   }, []);
 
+  /** Save all three languages in a single API call to avoid race conditions. */
+  const saveAllContent = useCallback(async (de: SiteContent, zh: SiteContent, en: SiteContent) => {
+    const next = { ...overridesRef.current, de, zh, en };
+    overridesRef.current = next;
+    setOverrides(next);
+    await persistData({ ...next, _showEnglish: showEnglishRef.current });
+  }, []);
+
   const resetContent = useCallback(async (lang: Language) => {
     const next = { ...overridesRef.current };
     delete next[lang];
@@ -151,9 +165,20 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     await persistData({ ...overridesRef.current, _showEnglish: next });
   }, []);
 
+  /** Check if English is visible for a given section, respecting global + per-section flags. */
+  const isEnglishVisible = useCallback(
+    (section: string): boolean => {
+      // If global English is disabled, all sections are hidden
+      if (showEnglish._global === false) return false;
+      // Otherwise check per-section flag (default: visible)
+      return showEnglish[section] !== false;
+    },
+    [showEnglish]
+  );
+
   return (
     <ContentContext.Provider
-      value={{ getContent, saveContent, resetContent, contentLoading, showEnglish, updateShowEnglish }}
+      value={{ getContent, saveContent, saveAllContent, resetContent, contentLoading, showEnglish, updateShowEnglish, isEnglishVisible }}
     >
       {children}
     </ContentContext.Provider>
