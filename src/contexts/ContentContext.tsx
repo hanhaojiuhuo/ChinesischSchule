@@ -165,13 +165,16 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     await persistData({ ...overridesRef.current, _showEnglish: next });
   }, []);
 
-  /** Check if English is visible for a given section, respecting global + per-section flags. */
+  /** Check if English is visible for a given section.
+   *  Per-section flags take priority over the global toggle. If a section has
+   *  an explicit flag it is used regardless of the global setting; otherwise
+   *  the global flag (default: true) decides. */
   const isEnglishVisible = useCallback(
     (section: string): boolean => {
-      // If global English is disabled, all sections are hidden
-      if (showEnglish._global === false) return false;
-      // Otherwise check per-section flag (default: visible)
-      return showEnglish[section] !== false;
+      // Per-section flag has highest priority when explicitly set
+      if (section in showEnglish) return showEnglish[section] !== false;
+      // Fall back to global toggle (default: visible)
+      return showEnglish._global !== false;
     },
     [showEnglish]
   );

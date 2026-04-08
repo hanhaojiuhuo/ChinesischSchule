@@ -2,9 +2,11 @@
 
 import SchoolLogo from "./SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Footer() {
   const { getContent, isEnglishVisible } = useContent();
+  const { isAdmin } = useAuth();
   const de = getContent("de");
   const zh = getContent("zh");
 
@@ -20,7 +22,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="bg-[var(--school-dark)] text-white mt-auto">
+    <footer className={`bg-[var(--school-dark)] text-white mt-auto${isAdmin ? " pb-20" : ""}`}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid sm:grid-cols-3 gap-8">
         {/* Brand */}
         <div className="flex flex-col items-start gap-3">
