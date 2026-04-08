@@ -298,6 +298,7 @@ export default function Home() {
         <SessionTimeoutWarning
           remainingSeconds={remainingSeconds}
           onExtend={extendSession}
+          onLogout={logout}
         />
       )}
 

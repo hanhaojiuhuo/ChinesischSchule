@@ -5,6 +5,7 @@ import React from "react";
 interface SessionTimeoutWarningProps {
   remainingSeconds: number;
   onExtend: () => void;
+  onLogout: () => void;
 }
 
 /**
@@ -14,6 +15,7 @@ interface SessionTimeoutWarningProps {
 export default function SessionTimeoutWarning({
   remainingSeconds,
   onExtend,
+  onLogout,
 }: SessionTimeoutWarningProps) {
   const mm = String(Math.floor(remainingSeconds / 60)).padStart(2, "0");
   const ss = String(remainingSeconds % 60).padStart(2, "0");
@@ -50,6 +52,14 @@ export default function SessionTimeoutWarning({
           className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold rounded-lg transition-colors text-base shadow-md"
         >
           延长会话 / Extend Session / Sitzung verlängern
+        </button>
+
+        {/* Quit admin mode button */}
+        <button
+          onClick={onLogout}
+          className="w-full mt-3 px-6 py-3 bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 font-semibold rounded-lg transition-colors text-sm"
+        >
+          退出管理模式 / Quit Admin Mode / Admin-Modus beenden
         </button>
       </div>
     </div>
