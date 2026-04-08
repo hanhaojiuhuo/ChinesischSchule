@@ -270,13 +270,17 @@ export default function Home() {
     setIsDirty(true);
   }
 
+  function blocksToBody(blocks: NewsBodyBlock[]): string {
+    return blocks.filter((b): b is NewsTextBlock => b.type === "text").map((b) => b.content).join("\n\n");
+  }
+
   function updDeNewsBlocks(idx: number, blocks: NewsBodyBlock[]) {
     setDraftDe((d) => ({
       ...d,
       news: {
         ...d.news,
         items: d.news.items.map((n, i) =>
-          i === idx ? { ...n, bodyBlocks: blocks, body: blocks.filter((b): b is NewsTextBlock => b.type === "text").map((b) => b.content).join("\n\n") } : n
+          i === idx ? { ...n, bodyBlocks: blocks, body: blocksToBody(blocks) } : n
         ),
       },
     }));
@@ -289,7 +293,7 @@ export default function Home() {
       news: {
         ...d.news,
         items: d.news.items.map((n, i) =>
-          i === idx ? { ...n, bodyBlocks: blocks, body: blocks.filter((b): b is NewsTextBlock => b.type === "text").map((b) => b.content).join("\n\n") } : n
+          i === idx ? { ...n, bodyBlocks: blocks, body: blocksToBody(blocks) } : n
         ),
       },
     }));
@@ -862,8 +866,10 @@ export default function Home() {
               {isAdmin ? (
                 de.news.items.map((n, i) => {
                   const zhNews = zh.news.items[i];
-                  const deBlocks = getNewsBodyBlocks(n).length > 0 ? getNewsBodyBlocks(n) : [{ type: "text" as const, content: "" }];
-                  const zhBlocks = zhNews ? (getNewsBodyBlocks(zhNews).length > 0 ? getNewsBodyBlocks(zhNews) : [{ type: "text" as const, content: "" }]) : [];
+                  const rawDeBlocks = getNewsBodyBlocks(n);
+                  const deBlocks = rawDeBlocks.length > 0 ? rawDeBlocks : [{ type: "text" as const, content: "" }];
+                  const rawZhBlocks = zhNews ? getNewsBodyBlocks(zhNews) : [];
+                  const zhBlocks = zhNews ? (rawZhBlocks.length > 0 ? rawZhBlocks : [{ type: "text" as const, content: "" }]) : [];
                   return (
                     <EditBlock
                       key={i}
