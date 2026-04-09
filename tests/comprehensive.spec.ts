@@ -69,13 +69,13 @@ test.describe("1. Navigation & Routing", () => {
 
   test("all homepage sections exist", async ({ page }) => {
     for (const id of HOMEPAGE_SECTIONS) {
-      const section = page.locator(`#${id}`);
+      const section = page.locator(`[data-testid="section-${id}"]`);
       await expect(section, `Section #${id} should exist`).toBeAttached();
     }
   });
 
   test("navbar links point to correct sections", async ({ page }) => {
-    const navLinks = await page.locator("header a[href]").evaluateAll((anchors) =>
+    const navLinks = await page.locator('[data-testid="desktop-nav"] a[href]').evaluateAll((anchors) =>
       anchors.map((a) => a.getAttribute("href") ?? "")
     );
     const expectedHashes = ["/#home", "/#courses", "/#news", "/#about", "/#contact"];
@@ -99,7 +99,7 @@ test.describe("1. Navigation & Routing", () => {
     for (const link of hashLinks) {
       const sectionId = link.href.replace("/#", "").replace("#", "");
       if (sectionId) {
-        const section = page.locator(`#${sectionId}`);
+        const section = page.locator(`[data-testid="section-${sectionId}"]`);
         await expect(
           section,
           `Section #${sectionId} should exist for link "${link.text}"`
@@ -109,7 +109,7 @@ test.describe("1. Navigation & Routing", () => {
   });
 
   test("footer links point to correct pages", async ({ page }) => {
-    const footer = page.locator("footer");
+    const footer = page.locator('[data-testid="footer"]');
     await expect(footer.locator('a[href="/impressum"]')).toBeAttached();
     await expect(footer.locator('a[href="/privacy"]')).toBeAttached();
   });
@@ -148,7 +148,7 @@ test.describe("1. Navigation & Routing", () => {
 
   test("admin page loads with login form", async ({ page }) => {
     await page.goto("/admin");
-    await expect(page.locator('input[type="text"], input[type="email"]').first()).toBeVisible();
+    await expect(page.locator('[data-testid="admin-login-username"]')).toBeVisible();
   });
 });
 
@@ -163,10 +163,10 @@ test.describe("2. Contact Form Testing", () => {
   });
 
   test("contact form fields are present and editable", async ({ page }) => {
-    const section = page.locator("#contact");
-    const nameInput = section.locator('input[type="text"]');
-    const emailInput = section.locator('input[type="email"]');
-    const messageInput = section.locator("textarea");
+    const section = page.locator('[data-testid="section-contact"]');
+    const nameInput = section.locator('[data-testid="contact-name"]');
+    const emailInput = section.locator('[data-testid="contact-email"]');
+    const messageInput = section.locator('[data-testid="contact-message"]');
 
     await expect(nameInput).toBeVisible();
     await expect(emailInput).toBeVisible();
@@ -181,22 +181,22 @@ test.describe("2. Contact Form Testing", () => {
   });
 
   test("contact form validates required fields (browser validation)", async ({ page }) => {
-    const section = page.locator("#contact");
-    const submitBtn = section.locator('button[type="submit"]');
+    const section = page.locator('[data-testid="section-contact"]');
+    const submitBtn = section.locator('[data-testid="contact-submit"]');
     await expect(submitBtn).toBeVisible();
     await expect(submitBtn).toBeEnabled();
 
     // Name field should be required
-    const nameInput = section.locator('input[type="text"]');
+    const nameInput = section.locator('[data-testid="contact-name"]');
     const isRequired = await nameInput.getAttribute("required");
     expect(isRequired !== null).toBeTruthy();
 
     // Email field should be required
-    const emailInput = section.locator('input[type="email"]');
+    const emailInput = section.locator('[data-testid="contact-email"]');
     expect(await emailInput.getAttribute("required") !== null).toBeTruthy();
 
     // Textarea should be required
-    const textarea = section.locator("textarea");
+    const textarea = section.locator('[data-testid="contact-message"]');
     expect(await textarea.getAttribute("required") !== null).toBeTruthy();
   });
 
@@ -214,14 +214,14 @@ test.describe("2. Contact Form Testing", () => {
   });
 
   test("contact form submit button exists and is enabled", async ({ page }) => {
-    const submitBtn = page.locator('#contact button[type="submit"]');
+    const submitBtn = page.locator('[data-testid="contact-submit"]');
     await expect(submitBtn).toBeVisible();
     await expect(submitBtn).toBeEnabled();
   });
 
   test("contact form shows placeholders in multiple languages", async ({ page }) => {
-    const section = page.locator("#contact");
-    const nameInput = section.locator('input[type="text"]');
+    const section = page.locator('[data-testid="section-contact"]');
+    const nameInput = section.locator('[data-testid="contact-name"]');
     const placeholder = await nameInput.getAttribute("placeholder");
     expect(placeholder).toBeTruthy();
     expect(placeholder!.length).toBeGreaterThan(3);
@@ -265,7 +265,7 @@ test.describe("3. Language Switching", () => {
   });
 
   test("all three languages are present in navigation", async ({ page }) => {
-    const header = page.locator("header");
+    const header = page.locator('[data-testid="navbar"]');
     const navText = await header.textContent();
     // Navigation shows Chinese and German
     expect(navText).toContain("首页");
@@ -281,14 +281,14 @@ test.describe("3. Language Switching", () => {
   });
 
   test("courses section shows Chinese and German labels", async ({ page }) => {
-    const coursesSection = page.locator("#courses");
+    const coursesSection = page.locator('[data-testid="section-courses"]');
     const text = await coursesSection.textContent();
     // Should contain Chinese characters
     expect(text).toMatch(/[\u4e00-\u9fff]/);
   });
 
   test("footer shows bilingual navigation", async ({ page }) => {
-    const footer = page.locator("footer");
+    const footer = page.locator('[data-testid="footer"]');
     const text = await footer.textContent();
     expect(text).toMatch(/[\u4e00-\u9fff]/);
     expect(text).toContain("Impressum");
@@ -322,12 +322,12 @@ test.describe("4. UI / Visual Testing", () => {
 
   test("homepage renders all major sections", async ({ page }) => {
     for (const id of HOMEPAGE_SECTIONS) {
-      await expect(page.locator(`#${id}`)).toBeVisible();
+      await expect(page.locator(`[data-testid="section-${id}"]`)).toBeVisible();
     }
   });
 
   test("navbar is sticky and visible after scroll", async ({ page }) => {
-    const header = page.locator("header");
+    const header = page.locator('[data-testid="navbar"]');
     await expect(header).toBeVisible();
 
     // Scroll down
@@ -340,7 +340,7 @@ test.describe("4. UI / Visual Testing", () => {
   });
 
   test("footer is present with correct structure", async ({ page }) => {
-    const footer = page.locator("footer");
+    const footer = page.locator('[data-testid="footer"]');
     await expect(footer).toBeVisible();
     // Should contain copyright notice
     const text = await footer.textContent();
@@ -349,27 +349,27 @@ test.describe("4. UI / Visual Testing", () => {
   });
 
   test("school logo renders on homepage", async ({ page }) => {
-    const logo = page.locator("#home svg, #home .logo-circle").first();
+    const logo = page.locator('[data-testid="hero-logo"]');
     await expect(logo).toBeAttached();
   });
 
   test("course section displays course cards", async ({ page }) => {
-    const courses = page.locator("#courses");
-    const cards = courses.locator('[class*="border-t-4"]');
+    const courses = page.locator('[data-testid="section-courses"]');
+    const cards = courses.locator('[data-testid="course-card"]');
     const count = await cards.count();
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
   test("news section displays content", async ({ page }) => {
-    const news = page.locator("#news");
+    const news = page.locator('[data-testid="section-news"]');
     await expect(news).toBeVisible();
     const text = await news.textContent();
     expect(text!.length).toBeGreaterThan(20);
   });
 
   test("hero section has call-to-action buttons", async ({ page }) => {
-    const hero = page.locator("#home");
-    const links = hero.locator("a");
+    const hero = page.locator('[data-testid="section-home"]');
+    const links = hero.locator('[data-testid="hero-discover-courses-link"], [data-testid="hero-contact-link"]');
     const count = await links.count();
     expect(count).toBeGreaterThanOrEqual(2);
   });
@@ -430,11 +430,11 @@ test.describe("5. Responsive Testing", () => {
     await dismissCookieConsent(page);
 
     // Hamburger menu should be visible
-    const hamburger = page.locator('button[aria-label*="Menü"]');
+    const hamburger = page.locator('[data-testid="mobile-menu-toggle"]');
     await expect(hamburger).toBeVisible();
 
     // Desktop nav should be hidden
-    const desktopNav = page.locator('nav[aria-label="Hauptnavigation"]');
+    const desktopNav = page.locator('[data-testid="desktop-nav"]');
     await expect(desktopNav).toBeHidden();
 
     // No horizontal overflow
@@ -449,11 +449,11 @@ test.describe("5. Responsive Testing", () => {
     await navigateAndWaitForLoad(page, "/");
     await dismissCookieConsent(page);
 
-    const hamburger = page.locator('button[aria-label*="Menü"]');
+    const hamburger = page.locator('[data-testid="mobile-menu-toggle"]');
     await hamburger.click();
 
     // Mobile nav should appear
-    const mobileNav = page.locator('nav[aria-label="Mobile Navigation"]');
+    const mobileNav = page.locator('[data-testid="mobile-nav"]');
     await expect(mobileNav).toBeVisible();
 
     // Close menu
@@ -466,10 +466,10 @@ test.describe("5. Responsive Testing", () => {
     await navigateAndWaitForLoad(page, "/");
     await dismissCookieConsent(page);
 
-    const hamburger = page.locator('button[aria-label*="Menü"]');
+    const hamburger = page.locator('[data-testid="mobile-menu-toggle"]');
     await hamburger.click();
 
-    const mobileNav = page.locator('nav[aria-label="Mobile Navigation"]');
+    const mobileNav = page.locator('[data-testid="mobile-nav"]');
     const links = await mobileNav.locator("a[href]").evaluateAll(
       (anchors) => anchors.map((a) => a.getAttribute("href") ?? "")
     );
@@ -486,7 +486,7 @@ test.describe("5. Responsive Testing", () => {
     await dismissCookieConsent(page);
 
     for (const id of HOMEPAGE_SECTIONS) {
-      await expect(page.locator(`#${id}`)).toBeAttached();
+      await expect(page.locator(`[data-testid="section-${id}"]`)).toBeAttached();
     }
 
     const hasOverflow = await page.evaluate(() => {
@@ -501,11 +501,11 @@ test.describe("5. Responsive Testing", () => {
     await dismissCookieConsent(page);
 
     // Desktop nav should be visible
-    const desktopNav = page.locator('nav[aria-label="Hauptnavigation"]');
+    const desktopNav = page.locator('[data-testid="desktop-nav"]');
     await expect(desktopNav).toBeVisible();
 
     for (const id of HOMEPAGE_SECTIONS) {
-      await expect(page.locator(`#${id}`)).toBeAttached();
+      await expect(page.locator(`[data-testid="section-${id}"]`)).toBeAttached();
     }
 
     const hasOverflow = await page.evaluate(() => {
@@ -655,7 +655,7 @@ test.describe("7. Accessibility (A11Y)", () => {
   });
 
   test("form inputs have associated labels with for/id binding", async ({ page }) => {
-    const contactSection = page.locator("#contact");
+    const contactSection = page.locator('[data-testid="section-contact"]');
     const labels = contactSection.locator("label");
     const labelCount = await labels.count();
     // Contact form has at least 3 field labels + privacy consent label
@@ -758,11 +758,11 @@ test.describe("7. Accessibility (A11Y)", () => {
     await expect(main).toBeAttached();
 
     // Check for header landmark
-    const header = page.locator("header");
+    const header = page.locator('[data-testid="navbar"]');
     await expect(header).toBeAttached();
 
     // Check for footer landmark
-    const footer = page.locator("footer");
+    const footer = page.locator('[data-testid="footer"]');
     await expect(footer).toBeAttached();
   });
 });
@@ -975,7 +975,7 @@ test.describe("10. Real User Scenarios", () => {
     await dismissCookieConsent(page);
 
     // 1. Parent sees the hero section with school info
-    const hero = page.locator("#home");
+    const hero = page.locator('[data-testid="section-home"]');
     await expect(hero).toBeVisible();
 
     // 2. Clicks on "Discover Courses" or navigates to courses
@@ -983,7 +983,7 @@ test.describe("10. Real User Scenarios", () => {
     await coursesLink.click();
 
     // 3. Courses section is visible
-    const courses = page.locator("#courses");
+    const courses = page.locator('[data-testid="section-courses"]');
     await expect(courses).toBeVisible();
 
     // 4. Can see course cards with age info
@@ -995,11 +995,11 @@ test.describe("10. Real User Scenarios", () => {
     await contactLink.click();
 
     // 6. Contact section is visible
-    const contact = page.locator("#contact");
+    const contact = page.locator('[data-testid="section-contact"]');
     await expect(contact).toBeVisible();
 
     // 7. Contact form is ready
-    const nameInput = contact.locator('input[type="text"]');
+    const nameInput = contact.locator('[data-testid="contact-name"]');
     await expect(nameInput).toBeVisible();
   });
 
@@ -1008,7 +1008,7 @@ test.describe("10. Real User Scenarios", () => {
     await dismissCookieConsent(page);
 
     // 1. Check that course information is available
-    const courses = page.locator("#courses");
+    const courses = page.locator('[data-testid="section-courses"]');
     await expect(courses).toBeVisible();
     const courseText = await courses.textContent();
     expect(courseText!.length).toBeGreaterThan(50);
@@ -1017,11 +1017,11 @@ test.describe("10. Real User Scenarios", () => {
     const aboutLink = page.locator('a[href="#about"], a[href="/#about"]').first();
     await aboutLink.click();
 
-    const about = page.locator("#about");
+    const about = page.locator('[data-testid="section-about"]');
     await expect(about).toBeVisible();
 
     // 3. Check contact info is accessible
-    const contact = page.locator("#contact");
+    const contact = page.locator('[data-testid="section-contact"]');
     // Contact section should have some email reference
     const contactText = await contact.textContent();
     expect(contactText).toContain("@");
@@ -1036,7 +1036,7 @@ test.describe("10. Real User Scenarios", () => {
     await newsLink.click();
 
     // 2. News section loads
-    const news = page.locator("#news");
+    const news = page.locator('[data-testid="section-news"]');
     await expect(news).toBeVisible();
 
     // 3. Check that there is content in the news section
@@ -1056,8 +1056,8 @@ test.describe("10. Real User Scenarios", () => {
 test.describe("11. Admin Login & Forms", () => {
   test("admin login form fields are editable", async ({ page }) => {
     await page.goto("/admin");
-    const usernameInput = page.locator('input[type="text"], input[type="email"]').first();
-    const passwordInput = page.locator('input[type="password"]').first();
+    const usernameInput = page.locator('[data-testid="admin-login-username"]');
+    const passwordInput = page.locator('[data-testid="admin-login-password"]');
 
     await expect(usernameInput).toBeVisible();
     await expect(passwordInput).toBeVisible();
@@ -1071,19 +1071,19 @@ test.describe("11. Admin Login & Forms", () => {
 
   test("admin login shows error for invalid credentials", async ({ page }) => {
     await page.goto("/admin");
-    const usernameInput = page.locator('input[type="text"], input[type="email"]').first();
-    const passwordInput = page.locator('input[type="password"]').first();
+    const usernameInput = page.locator('[data-testid="admin-login-username"]');
+    const passwordInput = page.locator('[data-testid="admin-login-password"]');
 
     await usernameInput.fill("invaliduser");
     await passwordInput.fill("invalidpass");
 
-    const loginBtn = page.locator('button[type="submit"]').first();
+    const loginBtn = page.locator('[data-testid="admin-login-submit"]');
     await loginBtn.click();
 
     // Should show an error message or remain on login (not navigate to dashboard)
     // The page may show error text or the login form should still be visible
     await expect(
-      page.locator('[class*="text-red"], [role="alert"], input[type="password"]').first()
+      page.locator('[class*="text-red"], [role="alert"], [data-testid="admin-login-password"]').first()
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -1273,14 +1273,14 @@ test.describe("14. GDPR Compliance", () => {
     await page.goto("/");
     await dismissCookieConsent(page);
 
-    const section = page.locator("#contact");
+    const section = page.locator('[data-testid="section-contact"]');
     // Fill in form without checking consent
-    await section.locator('input[type="text"]').fill("Test User");
-    await section.locator('input[type="email"]').fill("test@example.com");
-    await section.locator("textarea").fill("Test message");
+    await section.locator('[data-testid="contact-name"]').fill("Test User");
+    await section.locator('[data-testid="contact-email"]').fill("test@example.com");
+    await section.locator('[data-testid="contact-message"]').fill("Test message");
 
     // Try to submit — browser should block due to required checkbox
-    const submitBtn = section.locator('button[type="submit"]');
+    const submitBtn = section.locator('[data-testid="contact-submit"]');
     await submitBtn.click();
 
     // Form should not have been submitted (no success message)
@@ -1316,7 +1316,7 @@ test.describe("14. GDPR Compliance", () => {
 
   test("footer contains links to legal pages", async ({ page }) => {
     await page.goto("/");
-    const footer = page.locator("footer");
+    const footer = page.locator('[data-testid="footer"]');
     await expect(footer.locator('a[href="/impressum"]')).toBeAttached();
     await expect(footer.locator('a[href="/privacy"]')).toBeAttached();
   });
@@ -1350,7 +1350,7 @@ test.describe("15. Legal Content Review", () => {
 
   test("copyright notice is present and shows current year", async ({ page }) => {
     await page.goto("/");
-    const footer = page.locator("footer");
+    const footer = page.locator('[data-testid="footer"]');
     const text = await footer.textContent();
     expect(text).toContain("©");
     expect(text).toContain(new Date().getFullYear().toString());
@@ -1360,7 +1360,7 @@ test.describe("15. Legal Content Review", () => {
     await page.goto("/");
     await dismissCookieConsent(page);
 
-    const contact = page.locator("#contact");
+    const contact = page.locator('[data-testid="section-contact"]');
     const text = await contact.textContent();
     // Should show an email address
     expect(text).toMatch(/@/);
@@ -1387,12 +1387,12 @@ test.describe("16. Cross-viewport Layout", () => {
     await page.goto("/");
     await dismissCookieConsent(page);
 
-    const desktopNav = page.locator('nav[aria-label="Hauptnavigation"]');
+    const desktopNav = page.locator('[data-testid="desktop-nav"]');
     await expect(desktopNav).toBeVisible();
 
     // All sections exist
     for (const id of HOMEPAGE_SECTIONS) {
-      await expect(page.locator(`#${id}`)).toBeAttached();
+      await expect(page.locator(`[data-testid="section-${id}"]`)).toBeAttached();
     }
   });
 
@@ -1401,7 +1401,7 @@ test.describe("16. Cross-viewport Layout", () => {
     await page.goto("/");
 
     for (const id of HOMEPAGE_SECTIONS) {
-      await expect(page.locator(`#${id}`)).toBeAttached();
+      await expect(page.locator(`[data-testid="section-${id}"]`)).toBeAttached();
     }
   });
 
