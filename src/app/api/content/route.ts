@@ -1,7 +1,7 @@
 import { put, list } from "@vercel/blob";
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/session";
 import { logAuditEvent } from "@/lib/audit-log";
+import { requireAuthAndJson } from "@/lib/api-helpers";
 
 /** Ensure GET is never cached by Next.js or Vercel's CDN. */
 export const dynamic = "force-dynamic";
@@ -37,11 +37,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  // Require an authenticated admin session
-  const sessionUser = await getSessionUser();
-  if (!sessionUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Require an authenticated admin session and validate body size
+  const parsed = await requireAuthAndJson(request);
+  if (!parsed.ok) return parsed.response;
+  const { user: sessionUser, body: content } = parsed;
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
@@ -51,8 +50,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const content = await request.json();
-
     await put(BLOB_PATHNAME, JSON.stringify(content), {
       access: "public",
       contentType: "application/json",

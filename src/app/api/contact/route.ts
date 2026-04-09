@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { checkRateLimitPersistent } from "@/lib/rate-limit";
 import { getClientIP } from "@/lib/request-utils";
 import { contactNotificationEmail, contactConfirmationEmail } from "@/lib/email-templates";
+import { requireJson } from "@/lib/api-helpers";
 
 /** Rate-limit: max submissions per IP within 1 hour. */
 const RATE_LIMIT_MAX = 5;
@@ -10,7 +11,9 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, string>;
+    const parsed = await requireJson<Record<string, string>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const { name, email, message } = body;
 
     if (!name?.trim() || !email?.trim() || !message?.trim()) {

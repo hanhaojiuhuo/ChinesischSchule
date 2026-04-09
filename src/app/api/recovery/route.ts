@@ -5,6 +5,7 @@ import { logAuditEvent } from "@/lib/audit-log";
 import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
 import { recoveryCodeEmail } from "@/lib/email-templates";
 import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
+import { requireJson } from "@/lib/api-helpers";
 
 const CODE_SLOT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -33,7 +34,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json()) as Record<string, string>;
+  const parsed = await requireJson<Record<string, string>>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const { action, username } = body;
 
   if (!username?.trim()) {

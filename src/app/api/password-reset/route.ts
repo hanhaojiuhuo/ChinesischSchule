@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
+import type { AdminUser } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
 import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit-log";
@@ -10,6 +11,7 @@ import {
   adminPasswordResetEmail,
   passwordChangedConfirmEmail,
 } from "@/lib/email-templates";
+import { requireJson } from "@/lib/api-helpers";
 
 /** Time-slot duration for HMAC-based code validity (15 minutes). */
 const CODE_SLOT_MS = 15 * 60 * 1000;
@@ -22,10 +24,39 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const MISMATCH_MAX = 3;
 const MISMATCH_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+/**
+ * Find an admin by username and/or email from the admin list.
+ * Avoids duplicating the lookup logic across verify and reset steps.
+ */
+function findAdmin(
+  admins: AdminUser[],
+  username?: string,
+  email?: string
+): AdminUser | undefined {
+  if (username?.trim()) {
+    const trimmedUsername = username.trim();
+    const admin = admins.find((a) => a.username === trimmedUsername);
+    // Also verify email matches if both provided
+    if (admin && email?.trim() && admin.email?.toLowerCase() !== email.trim().toLowerCase()) {
+      return undefined;
+    }
+    return admin;
+  }
+  if (email?.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+    return admins.find(
+      (a) => a.email && a.email.toLowerCase() === normalizedEmail
+    );
+  }
+  return undefined;
+}
+
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, string>;
+    const parsed = await requireJson<Record<string, string>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const { action } = body;
 
     /* ── Step 1: Request a reset code (by username + email) ──────── */
@@ -161,20 +192,7 @@ export async function POST(request: Request) {
       }
 
       const admins = await readAdmins();
-      let admin;
-      if (username?.trim()) {
-        const trimmedUsername = username.trim();
-        admin = admins.find((a) => a.username === trimmedUsername);
-        // Also verify email matches if both provided
-        if (admin && email?.trim() && admin.email?.toLowerCase() !== email.trim().toLowerCase()) {
-          admin = undefined;
-        }
-      } else {
-        const normalizedEmail = email!.trim().toLowerCase();
-        admin = admins.find(
-          (a) => a.email && a.email.toLowerCase() === normalizedEmail
-        );
-      }
+      const admin = findAdmin(admins, username, email);
 
       if (!admin) {
         return NextResponse.json(
@@ -220,19 +238,7 @@ export async function POST(request: Request) {
       }
 
       const admins = await readAdmins();
-      let admin;
-      if (username?.trim()) {
-        const trimmedUsername = username.trim();
-        admin = admins.find((a) => a.username === trimmedUsername);
-        if (admin && email?.trim() && admin.email?.toLowerCase() !== email.trim().toLowerCase()) {
-          admin = undefined;
-        }
-      } else {
-        const normalizedEmail = email!.trim().toLowerCase();
-        admin = admins.find(
-          (a) => a.email && a.email.toLowerCase() === normalizedEmail
-        );
-      }
+      const admin = findAdmin(admins, username, email);
 
       if (!admin) {
         return NextResponse.json(

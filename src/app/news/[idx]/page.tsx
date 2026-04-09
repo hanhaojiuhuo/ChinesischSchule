@@ -7,6 +7,7 @@ import { getNewsBodyBlocks } from "@/i18n/translations";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { notFound } from "next/navigation";
 
 export default function NewsDetailPage() {
   const params = useParams();
@@ -21,6 +22,10 @@ export default function NewsDetailPage() {
   const news = !isNaN(idx) ? de.news.items[idx] : undefined;
   const zhNews = !isNaN(idx) ? zh.news.items[idx] : undefined;
   const enNews = !isNaN(idx) ? en.news.items[idx] : undefined;
+
+  if (isNaN(idx) || idx < 0) {
+    notFound();
+  }
 
   if (!news) {
     return (

@@ -9,6 +9,7 @@ import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
 import { loginCodeEmail } from "@/lib/email-templates";
 import { maskEmail } from "@/lib/text-utils";
 import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
+import { requireJson } from "@/lib/api-helpers";
 
 /** Max failed login attempts per account per day. */
 const MAX_ATTEMPTS_PER_ACCOUNT = 10;
@@ -31,7 +32,9 @@ const RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, string>;
+    const parsed = await requireJson<Record<string, string>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const { action } = body;
     const ip = getClientIP(request);
 

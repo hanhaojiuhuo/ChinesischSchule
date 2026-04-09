@@ -5,6 +5,7 @@ import { checkRateLimitPersistent } from "@/lib/rate-limit";
 import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
 import { passwordChangeCodeEmail } from "@/lib/email-templates";
 import { maskEmail } from "@/lib/text-utils";
+import { requireJson } from "@/lib/api-helpers";
 
 /** Time-slot duration for HMAC-based code validity (10 minutes). */
 const CODE_SLOT_MS = 10 * 60 * 1000;
@@ -25,7 +26,9 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, string>;
+    const parsed = await requireJson<Record<string, string>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const { action } = body;
 
     /* ── Request a verification code ────────────────────────── */

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { newAdminWelcomeEmail, newAdminOwnerNotificationEmail } from "@/lib/email-templates";
+import { requireJson } from "@/lib/api-helpers";
 
 /**
  * POST /api/notify-admin
@@ -9,7 +10,9 @@ import { newAdminWelcomeEmail, newAdminOwnerNotificationEmail } from "@/lib/emai
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, string>;
+    const parsed = await requireJson<Record<string, string>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const { newUsername, newEmail, addedBy } = body;
 
     if (!newUsername?.trim()) {
