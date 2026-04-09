@@ -184,7 +184,7 @@ export function SectionCard({
   onSave,
   saveStatus = "idle",
 }: {
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
   onSave?: () => void;
   saveStatus?: "idle" | "saving" | "saved";
