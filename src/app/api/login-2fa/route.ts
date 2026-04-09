@@ -167,6 +167,32 @@ export async function POST(request: Request) {
         );
       }
 
+      // Rate limit 2FA verification attempts per IP
+      const verifyIpCheck = await checkRateLimitPersistent(
+        `2fa-verify-ip:${ip}`,
+        MAX_ATTEMPTS_PER_IP,
+        RATE_LIMIT_WINDOW_MS
+      );
+      if (!verifyIpCheck.allowed) {
+        return NextResponse.json(
+          { error: "Too many verification attempts. Please try again later. / Zu viele Versuche. / 验证尝试过于频繁，请稍后重试。" },
+          { status: 429 }
+        );
+      }
+
+      // Rate limit 2FA verification per account
+      const verifyAccountCheck = await checkRateLimitPersistent(
+        `2fa-verify-account:${username.trim()}`,
+        MAX_ATTEMPTS_PER_ACCOUNT,
+        RATE_LIMIT_WINDOW_MS
+      );
+      if (!verifyAccountCheck.allowed) {
+        return NextResponse.json(
+          { error: "Too many verification attempts. Please try again later. / Zu viele Versuche. / 验证尝试过于频繁，请稍后重试。" },
+          { status: 429 }
+        );
+      }
+
       const apiKey = process.env.RESEND_API_KEY;
       if (!apiKey) {
         return NextResponse.json(

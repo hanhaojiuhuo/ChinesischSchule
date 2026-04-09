@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 /**
  * Generate an 8-character uppercase hex code tied to a username, domain, and
@@ -33,10 +33,16 @@ export function verifyHmacCode(
   slotMs: number,
 ): boolean {
   const slot = Math.floor(Date.now() / slotMs);
+  const normalizedCode = code.toUpperCase();
   for (const s of [slot, slot - 1]) {
     const mac = createHmac("sha256", secret);
     mac.update(`${domain}:${username}:${s}`);
-    if (mac.digest("hex").slice(0, 8).toUpperCase() === code.toUpperCase()) {
+    const expected = mac.digest("hex").slice(0, 8).toUpperCase();
+    // Constant-time comparison to prevent timing attacks
+    if (
+      normalizedCode.length === expected.length &&
+      timingSafeEqual(Buffer.from(normalizedCode), Buffer.from(expected))
+    ) {
       return true;
     }
   }

@@ -6,8 +6,18 @@ import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
 import { recoveryCodeEmail } from "@/lib/email-templates";
 import { setSessionCookie } from "@/lib/session";
 import { requireJson } from "@/lib/api-helpers";
+import { checkRateLimitPersistent } from "@/lib/rate-limit";
+import { getClientIP } from "@/lib/request-utils";
 
 const CODE_SLOT_MS = 10 * 60 * 1000; // 10 minutes
+
+/** Max recovery code requests per IP per hour. */
+const RECOVERY_REQUEST_MAX = 5;
+const RECOVERY_REQUEST_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+/** Max recovery code verification attempts per IP per hour. */
+const RECOVERY_VERIFY_MAX = 10;
+const RECOVERY_VERIFY_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 /**
  * Recovery login: allows an admin to log in using email verification when the
@@ -46,8 +56,23 @@ export async function POST(request: Request) {
 
     const trimmedUsername = username.trim();
 
+    const ip = getClientIP(request);
+
     /* ── Step 1: Send recovery verification code ──────────── */
     if (action === "request") {
+      // Rate limit code requests per IP
+      const rl = await checkRateLimitPersistent(
+        `recovery-request-ip:${ip}`,
+        RECOVERY_REQUEST_MAX,
+        RECOVERY_REQUEST_WINDOW_MS
+      );
+      if (!rl.allowed) {
+        return NextResponse.json(
+          { error: "Too many recovery requests. Please try again later. / Zu viele Anfragen. / 请求过于频繁，请稍后重试。" },
+          { status: 429 }
+        );
+      }
+
       const apiKey = process.env.RESEND_API_KEY;
       const notificationEmail = process.env.NOTIFICATION_EMAIL;
 
@@ -97,6 +122,19 @@ export async function POST(request: Request) {
       const { code } = body;
       if (!code?.trim()) {
         return NextResponse.json({ error: "code required" }, { status: 400 });
+      }
+
+      // Rate limit verify attempts per IP
+      const rl = await checkRateLimitPersistent(
+        `recovery-verify-ip:${ip}`,
+        RECOVERY_VERIFY_MAX,
+        RECOVERY_VERIFY_WINDOW_MS
+      );
+      if (!rl.allowed) {
+        return NextResponse.json(
+          { error: "Too many verification attempts. Please try again later. / Zu viele Versuche. / 验证尝试过于频繁，请稍后重试。" },
+          { status: 429 }
+        );
       }
 
       const apiKey = process.env.RESEND_API_KEY;
