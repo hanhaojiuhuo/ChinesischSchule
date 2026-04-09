@@ -254,10 +254,11 @@ test.describe("4. API Endpoints", () => {
     const data = await response.json();
     expect(Array.isArray(data)).toBe(true);
     expect(data.length).toBeGreaterThan(0);
-    // Each admin should have username and password
+    // Each admin should have username and a redacted password (unauthenticated)
     for (const admin of data) {
       expect(admin).toHaveProperty("username");
       expect(admin).toHaveProperty("password");
+      expect(admin.password).toBe("********");
     }
   });
 
