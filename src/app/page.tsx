@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { useContentDraft } from "@/hooks/useContentDraft";
+import { useToolbarPosition } from "@/hooks/useToolbarPosition";
 import SessionTimeoutWarning from "@/components/SessionTimeoutWarning";
 import AdminToolbar from "@/components/admin/AdminToolbar";
 import HeroSection from "@/components/sections/HeroSection";
@@ -31,26 +32,7 @@ export default function Home() {
   const [newsPage, setNewsPage] = useState(0);
 
   // Admin toolbar position — stored in sessionStorage so it resets on next login
-  type ToolbarPos = "bottom" | "top";
-  const TOOLBAR_POS_KEY = "yixin-toolbar-position";
-  const [toolbarPosition, setToolbarPositionState] = useState<ToolbarPos>("bottom");
-
-  // Read toolbar position from sessionStorage on mount (only when admin)
-  useEffect(() => {
-    if (!isAdmin) return;
-    try {
-      const stored = sessionStorage.getItem(TOOLBAR_POS_KEY) as ToolbarPos | null;
-      if (stored === "top" || stored === "bottom") {
-        setToolbarPositionState(stored);
-      }
-    } catch { /* ignore */ }
-  }, [isAdmin]);
-
-  const setToolbarPosition = useCallback((pos: ToolbarPos) => {
-    setToolbarPositionState(pos);
-    try { sessionStorage.setItem(TOOLBAR_POS_KEY, pos); } catch { /* ignore */ }
-    window.dispatchEvent(new CustomEvent("toolbar-position-change", { detail: pos }));
-  }, []);
+  const { toolbarPosition, setToolbarPosition } = useToolbarPosition(isAdmin);
 
   // When admin logs out, reset drafts to saved content
   useEffect(() => {

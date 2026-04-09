@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { checkRateLimitPersistent } from "@/lib/rate-limit";
-import { escapeHtml } from "@/lib/sanitize";
 import { getClientIP } from "@/lib/request-utils";
+import { contactNotificationEmail, contactConfirmationEmail } from "@/lib/email-templates";
+import { requireJson } from "@/lib/api-helpers";
 
 /** Rate-limit: max submissions per IP within 1 hour. */
 const RATE_LIMIT_MAX = 5;
@@ -10,7 +11,9 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, string>;
+    const parsed = await requireJson<Record<string, string>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const { name, email, message } = body;
 
     if (!name?.trim() || !email?.trim() || !message?.trim()) {
@@ -79,44 +82,7 @@ export async function POST(request: Request) {
       to: notificationEmail,
       subject: `Neue Kontaktanfrage von ${trimmedName} / New contact from ${trimmedName} / 新留言：${trimmedName}`,
       replyTo: trimmedEmail,
-      html: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
-          <h2 style="color:#c0392b">
-            YiXin 中文学校 · Chinesisch Schule Heilbronn
-          </h2>
-          <h3>Neue Kontaktanfrage / New Contact Message / 新联系留言</h3>
-          <table style="width:100%;border-collapse:collapse;margin:16px 0">
-            <tr>
-              <td style="padding:8px 12px;font-weight:bold;color:#666;border-bottom:1px solid #eee;width:100px">
-                Name
-              </td>
-              <td style="padding:8px 12px;border-bottom:1px solid #eee">
-                ${escapeHtml(trimmedName)}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:8px 12px;font-weight:bold;color:#666;border-bottom:1px solid #eee">
-                E-Mail
-              </td>
-              <td style="padding:8px 12px;border-bottom:1px solid #eee">
-                <a href="mailto:${escapeHtml(trimmedEmail)}">${escapeHtml(trimmedEmail)}</a>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:8px 12px;font-weight:bold;color:#666;vertical-align:top">
-                Nachricht
-              </td>
-              <td style="padding:8px 12px;white-space:pre-wrap">
-                ${escapeHtml(trimmedMessage)}
-              </td>
-            </tr>
-          </table>
-          <p style="color:#999;font-size:12px;margin-top:24px">
-            Diese E-Mail wurde über das Kontaktformular der Website gesendet.<br>
-            This email was sent via the website contact form.<br>
-            此邮件通过网站联系表单发送。
-          </p>
-        </div>`,
+      html: contactNotificationEmail(trimmedName, trimmedEmail, trimmedMessage),
     });
 
     if (error) {
@@ -134,27 +100,7 @@ export async function POST(request: Request) {
         to: trimmedEmail,
         subject:
           "Nachricht erhalten / Message Received / 留言已收到 — YiXin 中文学校",
-        html: `
-          <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
-            <h2 style="color:#c0392b">
-              YiXin 中文学校 · Chinesisch Schule Heilbronn
-            </h2>
-            <h3>Vielen Dank für Ihre Nachricht! / Thank you for your message! / 感谢您的留言！</h3>
-            <p>
-              <strong>DE:</strong> Liebe/r ${escapeHtml(trimmedName)}, wir haben Ihre Nachricht erhalten und werden uns so bald wie möglich bei Ihnen melden.<br><br>
-              <strong>EN:</strong> Dear ${escapeHtml(trimmedName)}, we have received your message and will get back to you as soon as possible.<br><br>
-              <strong>ZH:</strong> 亲爱的${escapeHtml(trimmedName)}，我们已收到您的留言，将会尽快回复您。
-            </p>
-            <h4 style="color:#666;margin-bottom:4px">Ihre Nachricht / Your message / 您的留言：</h4>
-            <div style="background:#f8f8f8;padding:12px 16px;border-radius:6px;white-space:pre-wrap;font-size:14px;color:#333;border-left:3px solid #c0392b">
-              ${escapeHtml(trimmedMessage)}
-            </div>
-            <p style="color:#999;font-size:12px;margin-top:24px">
-              Dies ist eine automatische Bestätigungs-E-Mail. Bitte antworten Sie nicht auf diese E-Mail.<br>
-              This is an automated confirmation email. Please do not reply to this email.<br>
-              这是一封自动确认邮件，请勿直接回复此邮件。
-            </p>
-          </div>`,
+        html: contactConfirmationEmail(trimmedName, trimmedMessage),
       });
       if (confirmError) {
         console.warn(

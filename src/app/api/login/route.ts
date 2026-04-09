@@ -4,9 +4,8 @@ import { verifyPassword } from "@/lib/password";
 import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIP } from "@/lib/request-utils";
-
-const SESSION_COOKIE = "yixin-session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
+import { requireJson } from "@/lib/api-helpers";
 
 /* ── Rate-limit configuration ───────────────────────────────────── */
 
@@ -23,10 +22,12 @@ const RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as {
+    const parsed = await requireJson<{
       username?: string;
       password?: string;
-    };
+    }>(request);
+    if (!parsed.ok) return parsed.response;
+    const { body } = parsed;
 
     const { username, password } = body;
     if (!username || !password) {

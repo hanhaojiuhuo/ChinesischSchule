@@ -8,9 +8,8 @@ import {
 } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
 import { logAuditEvent } from "@/lib/audit-log";
-
-const SESSION_COOKIE = "yixin-session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
+import { requireJson } from "@/lib/api-helpers";
 
 /**
  * GET – check whether developer mode (RECOVERY_MODE) is enabled.
@@ -41,10 +40,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json()) as {
+  const parsed = await requireJson<{
     username?: string;
     newPassword?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const username = body.username?.trim();
   const newPassword = body.newPassword;
 

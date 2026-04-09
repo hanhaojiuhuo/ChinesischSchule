@@ -1,8 +1,8 @@
 "use client";
 
 import { Tooltip, HelpIcon } from "@/components/admin/Tooltip";
-
-type ToolbarPos = "bottom" | "top";
+import { formatTimer } from "@/lib/text-utils";
+import type { ToolbarPos } from "@/lib/constants";
 
 export interface AdminToolbarProps {
   currentUser: string | null;
@@ -86,11 +86,9 @@ export default function AdminToolbar({
             }`}
             title="自动登出倒计时 / Auto-logout countdown / Automatische Abmeldung"
           >
-            ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:
-            {String(remainingSeconds % 60).padStart(2, "0")}
+            ⏱ {formatTimer(remainingSeconds)}
             {" / "}
-            {String(Math.floor(totalSeconds / 60)).padStart(2, "0")}:
-            {String(totalSeconds % 60).padStart(2, "0")}
+            {formatTimer(totalSeconds)}
           </span>
         </Tooltip>
       </div>

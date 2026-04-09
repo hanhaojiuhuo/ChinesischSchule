@@ -1,31 +1,13 @@
 import { NextResponse } from "next/server";
-import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins } from "@/lib/edge-config";
 import { logAuditEvent } from "@/lib/audit-log";
+import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
+import { recoveryCodeEmail } from "@/lib/email-templates";
+import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
+import { requireJson } from "@/lib/api-helpers";
 
-const SESSION_COOKIE = "yixin-session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 const CODE_SLOT_MS = 10 * 60 * 1000; // 10 minutes
-
-function generateRecoveryCode(username: string, secret: string): string {
-  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
-  const mac = createHmac("sha256", secret);
-  mac.update(`recovery:${username}:${slot}`);
-  return mac.digest("hex").slice(0, 8).toUpperCase();
-}
-
-function verifyRecoveryCode(username: string, secret: string, code: string): boolean {
-  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
-  for (const s of [slot, slot - 1]) {
-    const mac = createHmac("sha256", secret);
-    mac.update(`recovery:${username}:${s}`);
-    if (mac.digest("hex").slice(0, 8).toUpperCase() === code.toUpperCase()) {
-      return true;
-    }
-  }
-  return false;
-}
 
 /**
  * Recovery login: allows an admin to log in using email verification when the
@@ -52,7 +34,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json()) as Record<string, string>;
+  const parsed = await requireJson<Record<string, string>>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const { action, username } = body;
 
   if (!username?.trim()) {
@@ -81,7 +65,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const code = generateRecoveryCode(trimmedUsername, apiKey);
+    const code = generateHmacCode("recovery", trimmedUsername, apiKey, CODE_SLOT_MS);
     const fromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
     const resend = new Resend(apiKey);
 
@@ -89,31 +73,7 @@ export async function POST(request: Request) {
       from: fromEmail,
       to: targetEmail,
       subject: "Recovery Mode Verifizierungscode / Recovery Verification Code / 恢复模式验证码",
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-          <h2 style="color:#c0392b">
-            YiXin 中文学校 · Chinesisch Schule Heilbronn
-          </h2>
-          <h3>Recovery Mode / 恢复模式</h3>
-          <p>
-            <strong>DE:</strong> Ein Recovery-Mode-Login wurde für Benutzer <code>${trimmedUsername}</code> angefordert.<br>
-            <strong>EN:</strong> A recovery mode login was requested for user <code>${trimmedUsername}</code>.<br>
-            <strong>ZH:</strong> 用户 <code>${trimmedUsername}</code> 请求了恢复模式登录。
-          </p>
-          <p style="font-size:32px;letter-spacing:6px;font-weight:bold;color:#c0392b;text-align:center;font-family:monospace">
-            ${code}
-          </p>
-          <p style="color:#666;font-size:13px">
-            DE: Dieser Code ist 20 Minuten gültig.<br>
-            EN: This code is valid for 20 minutes.<br>
-            ZH: 此验证码有效期为 20 分钟。
-          </p>
-          <p style="color:#c0392b;font-weight:bold;font-size:13px">
-            ⚠️ DE: Deaktivieren Sie RECOVERY_MODE nach der Anmeldung!<br>
-            ⚠️ EN: Disable RECOVERY_MODE after logging in!<br>
-            ⚠️ ZH: 登录后请禁用 RECOVERY_MODE！
-          </p>
-        </div>`,
+      html: recoveryCodeEmail(code, trimmedUsername),
     });
 
     if (error) {
@@ -146,7 +106,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!verifyRecoveryCode(trimmedUsername, apiKey, code.trim())) {
+    if (!verifyHmacCode("recovery", trimmedUsername, apiKey, code.trim(), CODE_SLOT_MS)) {
       return NextResponse.json(
         { error: "Invalid or expired code / Ungültiger Code / 验证码无效" },
         { status: 400 }

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
+import { SESSION_COOKIE } from "@/lib/constants";
 
-export const SESSION_COOKIE = "yixin-session";
+export { SESSION_COOKIE };
 
 /** Returns the admin username stored in the session cookie, or null if unauthenticated. */
 export async function getSessionUser(): Promise<string | null> {

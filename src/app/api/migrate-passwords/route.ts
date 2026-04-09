@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/session";
 import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
 import { hashPassword, isBcryptHash } from "@/lib/password";
 import { logAuditEvent } from "@/lib/audit-log";
+import { requireAuth } from "@/lib/api-helpers";
 
 /**
  * POST /api/migrate-passwords
@@ -10,10 +10,9 @@ import { logAuditEvent } from "@/lib/audit-log";
  * Requires an authenticated admin session.
  */
 export async function POST() {
-  const sessionUser = await getSessionUser();
-  if (!sessionUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
+  const sessionUser = auth.user;
 
   try {
     const admins = await readAdmins();

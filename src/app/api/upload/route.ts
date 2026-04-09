@@ -1,14 +1,12 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/session";
 import { logAuditEvent } from "@/lib/audit-log";
+import { requireAuth } from "@/lib/api-helpers";
 
 export async function POST(request: Request) {
-  // Require an authenticated admin session
-  const sessionUser = await getSessionUser();
-  if (!sessionUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
+  const sessionUser = auth.user;
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(

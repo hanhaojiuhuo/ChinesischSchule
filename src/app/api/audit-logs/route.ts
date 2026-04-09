@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/session";
 import { readRecentAuditLogs } from "@/lib/audit-log";
+import { requireAuth } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +9,8 @@ export const dynamic = "force-dynamic";
  * Returns recent audit log entries. Requires authenticated admin session.
  */
 export async function GET() {
-  const sessionUser = await getSessionUser();
-  if (!sessionUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
 
   const logs = await readRecentAuditLogs(100);
   return NextResponse.json(logs, {

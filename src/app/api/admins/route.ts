@@ -8,6 +8,7 @@ import {
 } from "@/lib/edge-config";
 import { hashPassword, isBcryptHash } from "@/lib/password";
 import { logAuditEvent } from "@/lib/audit-log";
+import { requireAuthAndJson } from "@/lib/api-helpers";
 
 export type { AdminUser };
 
@@ -30,14 +31,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  // Require an authenticated admin session
-  const sessionUser = await getSessionUser();
-  if (!sessionUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const parsed = await requireAuthAndJson<AdminUser[]>(request);
+  if (!parsed.ok) return parsed.response;
+  const { user: sessionUser, body: admins } = parsed;
 
   try {
-    const admins = (await request.json()) as AdminUser[];
 
     // Auto-hash any plaintext passwords before persisting
     const hashedAdmins = await Promise.all(

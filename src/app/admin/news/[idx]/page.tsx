@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useContent } from "@/contexts/ContentContext";
@@ -19,6 +19,11 @@ export default function AdminNewsEditPage() {
   const parsedIdx = isNew ? -1 : parseInt(idxParam, 10);
   const idx = !isNew && isNaN(parsedIdx) ? -1 : parsedIdx;
   const isInvalid = !isNew && isNaN(parsedIdx);
+
+  // Trigger Next.js 404 for truly invalid (non-numeric, non-"new") params
+  if (isInvalid || (!isNew && parsedIdx < 0)) {
+    notFound();
+  }
 
   const { getContent, saveContent } = useContent();
   const { isAdmin } = useAuth();
