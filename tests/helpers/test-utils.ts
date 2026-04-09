@@ -1,7 +1,7 @@
 /**
  * Reusable test helpers and fixtures for Yi Xin Chinese School tests.
  */
-import { test as base, expect, type Page, type BrowserContext } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 
 /* ──────────────────────────────────────────────────────────────
    Types
@@ -36,6 +36,7 @@ export const test = base.extend<{
         });
       }
     });
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(errors);
   },
 
@@ -50,6 +51,7 @@ export const test = base.extend<{
         });
       }
     });
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(failed);
   },
 });
@@ -132,16 +134,6 @@ export async function getPerformanceMetrics(page: Page) {
   return page.evaluate(() => {
     const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
     const paint = performance.getEntriesByType("paint");
-    const lcp = new Promise<number>((resolve) => {
-      new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        if (entries.length > 0) {
-          resolve(entries[entries.length - 1].startTime);
-        }
-      }).observe({ type: "largest-contentful-paint", buffered: true });
-      // Fallback timeout
-      setTimeout(() => resolve(-1), 5000);
-    });
 
     return {
       domContentLoaded: nav?.domContentLoadedEventEnd - nav?.fetchStart,
