@@ -1,6 +1,7 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
+import { logAuditEvent } from "@/lib/audit-log";
 
 export async function POST(request: Request) {
   // Require an authenticated admin session
@@ -55,6 +56,13 @@ export async function POST(request: Request) {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
+
+    await logAuditEvent({
+      action: "FILE_UPLOAD",
+      actor: sessionUser,
+      details: `Uploaded ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+    });
+
     return NextResponse.json({ url: blob.url });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
+import { hashPassword } from "@/lib/password";
+import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit-log";
 
 /** Time-slot duration for HMAC-based code validity (15 minutes). */
 const CODE_SLOT_MS = 15 * 60 * 1000;
@@ -14,54 +17,17 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const MISMATCH_MAX = 3;
 const MISMATCH_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-/** In-memory rate-limit store (keyed by email). Reset on server restart. */
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
-
-/** In-memory mismatch counter (keyed by IP-like identifier or username). */
-const mismatchMap = new Map<string, { count: number; windowStart: number }>();
-
-function checkRateLimit(key: string): { allowed: boolean; remaining: number; retryAfterMs: number } {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(key, { count: 1, windowStart: now });
-    return { allowed: true, remaining: RATE_LIMIT_MAX - 1, retryAfterMs: 0 };
-  }
-  if (entry.count >= RATE_LIMIT_MAX) {
-    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - entry.windowStart);
-    return { allowed: false, remaining: 0, retryAfterMs };
-  }
-  entry.count++;
-  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count, retryAfterMs: 0 };
-}
-
-function checkMismatchLimit(key: string): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const entry = mismatchMap.get(key);
-  if (!entry || now - entry.windowStart > MISMATCH_WINDOW_MS) {
-    mismatchMap.set(key, { count: 1, windowStart: now });
-    return { allowed: true, remaining: MISMATCH_MAX - 1 };
-  }
-  if (entry.count >= MISMATCH_MAX) {
-    return { allowed: false, remaining: 0 };
-  }
-  entry.count++;
-  return { allowed: true, remaining: MISMATCH_MAX - entry.count };
-}
-
 
 /**
- * Generate a 6-digit HMAC-based code tied to a username and a 15-minute time
- * slot. Stateless – no server-side storage required.
- * Domain separation ("password-reset") is included in the HMAC message so the
- * raw API key can be used directly as the HMAC secret without modification.
+ * Generate an 8-character alphanumeric HMAC-based code tied to a username
+ * and a 15-minute time slot. Stateless – no server-side storage required.
+ * Domain separation ("password-reset") is included in the HMAC message.
  */
 function generateCode(username: string, secret: string): string {
   const slot = Math.floor(Date.now() / CODE_SLOT_MS);
   const mac = createHmac("sha256", secret);
   mac.update(`password-reset:${username}:${slot}`);
-  const num = parseInt(mac.digest("hex").slice(0, 8), 16);
-  return String(num % 1_000_000).padStart(6, "0");
+  return mac.digest("hex").slice(0, 8).toUpperCase();
 }
 
 /**
@@ -73,8 +39,7 @@ function verifyCode(username: string, secret: string, code: string): boolean {
   for (const s of [slot, slot - 1]) {
     const mac = createHmac("sha256", secret);
     mac.update(`password-reset:${username}:${s}`);
-    const num = parseInt(mac.digest("hex").slice(0, 8), 16);
-    if (String(num % 1_000_000).padStart(6, "0") === code) {
+    if (mac.digest("hex").slice(0, 8).toUpperCase() === code.toUpperCase()) {
       return true;
     }
   }
@@ -86,14 +51,6 @@ export async function POST(request: Request) {
     const body = (await request.json()) as Record<string, string>;
     const { action } = body;
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Email service not configured (RESEND_API_KEY missing)" },
-        { status: 503 }
-      );
-    }
-
     /* ── Step 1: Request a reset code (by username + email) ──────── */
     if (action === "request") {
       const { username, email, adminInitiated } = body;
@@ -104,12 +61,20 @@ export async function POST(request: Request) {
         );
       }
 
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { status: 503 }
+        );
+      }
+
       const trimmedUsername = username.trim();
       const normalizedEmail = email.trim().toLowerCase();
       const mismatchKey = `forgot:${trimmedUsername}`;
 
-      // Check mismatch block (3 wrong attempts → blocked)
-      const mm = checkMismatchLimit(mismatchKey);
+      // Check mismatch block (3 wrong attempts → blocked) — persistent
+      const mm = await checkRateLimitPersistent(mismatchKey, MISMATCH_MAX, MISMATCH_WINDOW_MS);
       if (!mm.allowed) {
         return NextResponse.json(
           {
@@ -120,8 +85,8 @@ export async function POST(request: Request) {
         );
       }
 
-      // Rate limit by email
-      const rl = checkRateLimit(normalizedEmail);
+      // Rate limit by email — persistent across server restarts
+      const rl = await checkRateLimitPersistent(`pw-reset:${normalizedEmail}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
       if (!rl.allowed) {
         const retryMinutes = Math.ceil(rl.retryAfterMs / 60000);
         return NextResponse.json(
@@ -160,8 +125,8 @@ export async function POST(request: Request) {
         );
       }
 
-      // Username + email match — reset the mismatch counter
-      mismatchMap.delete(mismatchKey);
+      // Username + email match — reset the mismatch counter (persistent)
+      await resetRateLimit(mismatchKey);
       const admin = adminByUsername;
 
       const code = generateCode(admin.username, apiKey);
@@ -279,6 +244,14 @@ export async function POST(request: Request) {
         );
       }
 
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { status: 503 }
+        );
+      }
+
       const admins = await readAdmins();
       let admin;
       if (username?.trim()) {
@@ -330,6 +303,14 @@ export async function POST(request: Request) {
         );
       }
 
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { status: 503 }
+        );
+      }
+
       const admins = await readAdmins();
       let admin;
       if (username?.trim()) {
@@ -361,8 +342,9 @@ export async function POST(request: Request) {
       }
 
       const idx = admins.findIndex((a) => a.username === admin.username);
+      const hashedPassword = await hashPassword(newPassword);
       const updated = admins.map((a, i) =>
-        i === idx ? { ...a, password: newPassword } : a
+        i === idx ? { ...a, password: hashedPassword } : a
       );
 
       await writeAdmins(updated);
@@ -372,6 +354,12 @@ export async function POST(request: Request) {
           `[password-reset] Edge Config persistence failed: ${persistError}`
         );
       }
+
+      await logAuditEvent({
+        action: "PASSWORD_RESET",
+        actor: admin.username,
+        details: "Password reset via email verification",
+      });
 
       // Send confirmation email (best-effort — password is already saved)
       if (admin.email) {

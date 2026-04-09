@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { readAdmins } from "@/lib/edge-config";
+import { verifyPassword } from "@/lib/password";
+import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
+import { logAuditEvent } from "@/lib/audit-log";
 
 const SESSION_COOKIE = "yixin-session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -14,40 +17,6 @@ const MAX_ATTEMPTS_PER_IP = 20;
 
 /** Window duration: 24 hours. */
 const RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-/* ── In-memory rate-limit stores (reset on server restart) ─────── */
-
-const accountAttempts = new Map<
-  string,
-  { count: number; windowStart: number }
->();
-const ipAttempts = new Map<
-  string,
-  { count: number; windowStart: number }
->();
-
-function checkRateLimit(
-  map: Map<string, { count: number; windowStart: number }>,
-  key: string,
-  maxAttempts: number
-): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const entry = map.get(key);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    // First attempt or window expired – start new window
-    map.set(key, { count: 1, windowStart: now });
-    return { allowed: true, remaining: maxAttempts - 1 };
-  }
-  if (entry.count >= maxAttempts) {
-    return { allowed: false, remaining: 0 };
-  }
-  entry.count++;
-  return { allowed: true, remaining: maxAttempts - entry.count };
-}
-
-function resetAccountAttempts(username: string) {
-  accountAttempts.delete(username);
-}
 
 function getClientIP(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -76,8 +45,12 @@ export async function POST(request: Request) {
 
     const ip = getClientIP(request);
 
-    // Check IP rate limit first (broader limit)
-    const ipCheck = checkRateLimit(ipAttempts, ip, MAX_ATTEMPTS_PER_IP);
+    // Check IP rate limit first (broader limit) — persistent across restarts
+    const ipCheck = await checkRateLimitPersistent(
+      `login-ip:${ip}`,
+      MAX_ATTEMPTS_PER_IP,
+      RATE_LIMIT_WINDOW_MS
+    );
     if (!ipCheck.allowed) {
       return NextResponse.json({
         success: false,
@@ -86,11 +59,11 @@ export async function POST(request: Request) {
       });
     }
 
-    // Check per-account rate limit
-    const accountCheck = checkRateLimit(
-      accountAttempts,
-      username,
-      MAX_ATTEMPTS_PER_ACCOUNT
+    // Check per-account rate limit — persistent across restarts
+    const accountCheck = await checkRateLimitPersistent(
+      `login-account:${username}`,
+      MAX_ATTEMPTS_PER_ACCOUNT,
+      RATE_LIMIT_WINDOW_MS
     );
     if (!accountCheck.allowed) {
       return NextResponse.json({
@@ -100,15 +73,19 @@ export async function POST(request: Request) {
       });
     }
 
-    // Verify credentials server-side
+    // Verify credentials server-side (supports bcrypt and legacy plaintext)
     const admins = await readAdmins();
-    const found = admins.find(
-      (a) => a.username === username && a.password === password
-    );
+    const found = admins.find((a) => a.username === username);
 
-    if (found) {
+    if (found && (await verifyPassword(password, found.password))) {
       // Successful login – reset account-level rate limit
-      resetAccountAttempts(username);
+      await resetRateLimit(`login-account:${username}`);
+
+      await logAuditEvent({
+        action: "LOGIN",
+        actor: username,
+        ip,
+      });
 
       const response = NextResponse.json({ success: true });
       response.cookies.set(SESSION_COOKIE, username, {
@@ -120,6 +97,12 @@ export async function POST(request: Request) {
       });
       return response;
     }
+
+    await logAuditEvent({
+      action: "LOGIN_FAILED",
+      actor: username,
+      ip,
+    });
 
     // Failed login – return remaining attempts (minimum of both limits)
     const remaining = Math.min(accountCheck.remaining, ipCheck.remaining);

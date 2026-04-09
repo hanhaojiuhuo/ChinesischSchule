@@ -1,6 +1,7 @@
 import { put, list } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
+import { logAuditEvent } from "@/lib/audit-log";
 
 /** Ensure GET is never cached by Next.js or Vercel's CDN. */
 export const dynamic = "force-dynamic";
@@ -57,6 +58,11 @@ export async function POST(request: Request) {
       contentType: "application/json",
       addRandomSuffix: false,
       token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+
+    await logAuditEvent({
+      action: "CONTENT_SAVE",
+      actor: sessionUser,
     });
 
     return NextResponse.json({ success: true });

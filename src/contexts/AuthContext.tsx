@@ -27,6 +27,15 @@ interface AuthContextValue {
     success: boolean;
     remainingAttempts?: number;
     blocked?: boolean;
+    twoFactorRequired?: boolean;
+    maskedEmail?: string;
+  }>;
+  verifyLoginCode: (
+    username: string,
+    code: string
+  ) => Promise<{
+    success: boolean;
+    error?: string;
   }>;
   logout: () => Promise<void>;
   addAdmin: (
@@ -55,6 +64,7 @@ const AuthContext = createContext<AuthContextValue>({
   authLoading: true,
   isRecoverySession: false,
   login: async () => ({ success: false }),
+  verifyLoginCode: async () => ({ success: false }),
   logout: async () => {},
   addAdmin: async () => ({ success: false }),
   changePassword: async () => ({ success: false }),
@@ -213,29 +223,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // ignore
             }
           } else {
-            // Check if this was a recovery session — re-verify with the recovery endpoint
+            // Check if this was a recovery session — trust the stored session
+            // (recovery mode requires email verification at login time)
             const wasRecovery = localStorage.getItem(RECOVERY_SESSION_KEY) === "1";
             if (wasRecovery) {
+              // In recovery, re-issue cookie via /api/auth
               try {
-                const recovRes = await fetch("/api/recovery", {
+                await fetch("/api/auth", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ username: session }),
                 });
-                if (recovRes.ok) {
-                  setIsAdmin(true);
-                  setCurrentUser(session);
-                  setIsRecoverySession(true);
-                } else {
-                  localStorage.removeItem(SESSION_KEY);
-                  localStorage.removeItem(RECOVERY_SESSION_KEY);
-                }
+                setIsAdmin(true);
+                setCurrentUser(session);
+                setIsRecoverySession(true);
               } catch {
                 localStorage.removeItem(SESSION_KEY);
                 localStorage.removeItem(RECOVERY_SESSION_KEY);
               }
             } else {
               localStorage.removeItem(SESSION_KEY);
+              localStorage.removeItem(RECOVERY_SESSION_KEY);
             }
           }
         }
@@ -275,6 +283,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       success: boolean;
       remainingAttempts?: number;
       blocked?: boolean;
+      twoFactorRequired?: boolean;
+      maskedEmail?: string;
     }> => {
       // Quick client-side check (supplementary to server-side rate limiting)
       const failures = loadLoginFailures();
@@ -282,22 +292,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, blocked: true, remainingAttempts: 0 };
       }
 
-      // Server-side credential verification + rate limiting
+      // Use the 2FA-aware login endpoint
       try {
-        const res = await fetch("/api/login", {
+        const res = await fetch("/api/login-2fa", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ action: "request", username, password }),
         });
         const data = await res.json().catch(() => ({}));
 
-        // Handle HTTP errors (e.g. 400 Bad Request for missing credentials)
-        // that don't carry rate-limit data – don't count them as failed attempts
+        // Handle HTTP errors that don't carry rate-limit data
         if (!res.ok && !("remainingAttempts" in data)) {
           return { success: false, remainingAttempts: MAX_DAILY_ATTEMPTS - failures.count };
         }
 
-        if (data.success) {
+        if (data.success && data.twoFactorRequired) {
+          // Credentials valid but 2FA code needed
+          resetLoginFailures();
+          return {
+            success: false,
+            twoFactorRequired: true,
+            maskedEmail: data.maskedEmail,
+          };
+        }
+
+        if (data.success && !data.twoFactorRequired) {
+          // Login completed (no 2FA needed — no email configured)
           resetLoginFailures();
           setIsAdmin(true);
           setCurrentUser(username);
@@ -306,7 +326,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch {
             // ignore
           }
-          // Session cookie is already set by the /api/login response
           return { success: true };
         }
 
@@ -328,65 +347,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return { success: false, remainingAttempts: remaining };
       } catch {
-        // API unreachable – fall back to local credential check
-        console.warn("[AuthContext] /api/login unreachable, falling back to local verification.");
+        // API unreachable – fall back to legacy /api/login
+        console.warn("[AuthContext] /api/login-2fa unreachable, falling back to /api/login.");
       }
 
-      // Offline fallback: verify credentials locally
-      const admins = await fetchAdmins();
-      const found = admins.find(
-        (a) => a.username === username && a.password === password
-      );
-      if (found) {
-        resetLoginFailures();
-        setIsAdmin(true);
-        setCurrentUser(username);
-        try {
-          localStorage.setItem(SESSION_KEY, username);
-        } catch {
-          // ignore
-        }
-        try {
-          await fetch("/api/auth", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username }),
-          });
-        } catch {
-          // ignore — server session is best-effort
-        }
-        return { success: true };
-      }
-
-      // Normal login failed — try recovery mode (only active when
-      // RECOVERY_MODE=true is set in the deployment environment).
+      // Fallback: use legacy /api/login endpoint (no 2FA)
       try {
-        const recovRes = await fetch("/api/recovery", {
+        const res = await fetch("/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username }),
+          body: JSON.stringify({ username, password }),
         });
-        if (recovRes.ok) {
+        const data = await res.json().catch(() => ({}));
+
+        if (data.success) {
           resetLoginFailures();
           setIsAdmin(true);
           setCurrentUser(username);
-          setIsRecoverySession(true);
           try {
             localStorage.setItem(SESSION_KEY, username);
-            localStorage.setItem(RECOVERY_SESSION_KEY, "1");
           } catch {
             // ignore
           }
           return { success: true };
         }
+
+        if (data.blocked) {
+          const updated = { count: MAX_DAILY_ATTEMPTS, date: getTodayString() };
+          persistLoginFailures(updated);
+          return { success: false, blocked: true, remainingAttempts: 0 };
+        }
+
+        const serverRemaining: number = data.remainingAttempts ?? 0;
+        const updated = { count: failures.count + 1, date: getTodayString() };
+        persistLoginFailures(updated);
+        return { success: false, remainingAttempts: Math.min(serverRemaining, MAX_DAILY_ATTEMPTS - updated.count) };
       } catch {
-        // Recovery endpoint unreachable — fall through to failure
+        // Both endpoints unreachable
       }
 
       const updated = { count: failures.count + 1, date: getTodayString() };
       persistLoginFailures(updated);
       const remaining = MAX_DAILY_ATTEMPTS - updated.count;
       return { success: false, remainingAttempts: remaining };
+    },
+    []
+  );
+
+  const verifyLoginCode = useCallback(
+    async (
+      username: string,
+      code: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const res = await fetch("/api/login-2fa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "verify", username, code }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (data.success) {
+          setIsAdmin(true);
+          setCurrentUser(username);
+          try {
+            localStorage.setItem(SESSION_KEY, username);
+          } catch {
+            // ignore
+          }
+          return { success: true };
+        }
+
+        return {
+          success: false,
+          error: data.error ?? "验证码无效 / Invalid code / Ungültiger Code",
+        };
+      } catch {
+        return { success: false, error: "网络错误 / Network error / Netzwerkfehler" };
+      }
     },
     []
   );
@@ -468,15 +506,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "至少6个字符 / New password must be ≥ 6 characters / Mind. 6 Zeichen",
         };
       }
+      // Verify old password via the server login endpoint (supports bcrypt)
+      try {
+        const verifyRes = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password: oldPassword }),
+        });
+        const verifyData = await verifyRes.json().catch(() => ({}));
+        if (!verifyData.success) {
+          return {
+            success: false,
+            error:
+              "当前密码不正确 / Current password incorrect / Aktuelles Passwort falsch",
+          };
+        }
+      } catch {
+        return {
+          success: false,
+          error: "网络错误 / Network error / Netzwerkfehler",
+        };
+      }
+      // Old password verified — update with new password
+      // The /api/admins POST auto-hashes plaintext passwords
       const admins = await fetchAdmins();
-      const idx = admins.findIndex(
-        (a) => a.username === username && a.password === oldPassword
-      );
+      const idx = admins.findIndex((a) => a.username === username);
       if (idx === -1) {
         return {
           success: false,
-          error:
-            "当前密码不正确 / Current password incorrect / Aktuelles Passwort falsch",
+          error: "用户不存在 / User not found / Benutzer nicht gefunden",
         };
       }
       const updated = admins.map((a, i) =>
@@ -570,6 +628,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authLoading,
         isRecoverySession,
         login,
+        verifyLoginCode,
         logout,
         addAdmin,
         changePassword,
