@@ -5,9 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import type { SiteContent, NewsItem, NewsTextBlock, NewsBodyBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
-import { countWords, MAX_WORDS_NEWS, validateImageFile, IMAGE_ACCEPT } from "@/lib/validation";
+import { MAX_WORDS_NEWS, validateImageFile, IMAGE_ACCEPT } from "@/lib/validation";
 import { EditField, EditBlock } from "@/components/admin/EditHelpers";
 import { ExpandButton, ExpandModal } from "@/components/admin/AdminHelpers";
+import { stripHtml } from "@/lib/sanitize-html";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 interface NewsSectionProps {
   isAdmin: boolean;
@@ -223,22 +225,21 @@ export default function NewsSection({
                                         }}
                                         onClose={() => setExpandedBlock(null)}
                                         maxWords={MAX_WORDS_NEWS}
+                                        richText
                                       />
                                     )}
-                                    <textarea
-                                      className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
+                                    <RichTextEditor
                                       value={block.content}
-                                      placeholder="Text…"
-                                      onChange={(e) => {
+                                      onChange={(html) => {
                                         const nb = deBlocks.map((b, bi) =>
-                                          bi === bIdx ? { ...b, content: e.target.value } : b
+                                          bi === bIdx ? { ...b, content: html } : b
                                         ) as typeof deBlocks;
                                         updDeNewsBlocks(i, nb);
                                       }}
+                                      maxWords={MAX_WORDS_NEWS}
+                                      placeholder="Text…"
+                                      minHeight="60px"
                                     />
-                                    <p className={`text-xs mt-0.5 text-right ${countWords(block.content) > MAX_WORDS_NEWS ? "text-red-600 font-semibold" : "text-gray-400"}`}>
-                                      {countWords(block.content)} / {MAX_WORDS_NEWS} words
-                                    </p>
                                   </div>
                                 ) : (
                                   <div className="border border-gray-200 rounded p-2 bg-gray-50">
@@ -376,22 +377,22 @@ export default function NewsSection({
                                           }}
                                           onClose={() => setExpandedBlock(null)}
                                           maxWords={MAX_WORDS_NEWS}
+                                          richText
                                         />
                                       )}
-                                      <textarea
-                                        className={`w-full border rounded px-3 py-2 text-sm font-cn focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
+                                      <RichTextEditor
                                         value={block.content}
-                                        placeholder="中文文本…"
-                                        onChange={(e) => {
+                                        onChange={(html) => {
                                           const nb = zhBlocks.map((b, bi) =>
-                                            bi === bIdx ? { ...b, content: e.target.value } : b
+                                            bi === bIdx ? { ...b, content: html } : b
                                           ) as typeof zhBlocks;
                                           updZhNewsBlocks(i, nb);
                                         }}
+                                        maxWords={MAX_WORDS_NEWS}
+                                        editorClassName="font-cn"
+                                        placeholder="中文文本…"
+                                        minHeight="60px"
                                       />
-                                      <p className={`text-xs mt-0.5 text-right ${countWords(block.content) > MAX_WORDS_NEWS ? "text-red-600 font-semibold" : "text-gray-400"}`}>
-                                        {countWords(block.content)} / {MAX_WORDS_NEWS} words
-                                      </p>
                                     </div>
                                   ) : (
                                     <div className="border border-gray-200 rounded p-2 bg-gray-50">
@@ -508,9 +509,9 @@ export default function NewsSection({
                                 {zhNews && <h3 className="font-cn font-bold text-school-dark mt-1 group-hover:text-school-red transition-colors">{zhNews.title}</h3>}
                                 {n.title.trim() && <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>}
                                 {showEn("news") && enNews && enNews.title.trim() && <h3 className="text-xs text-gray-400 mt-0.5">{enNews.title}</h3>}
-                                {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{zhNews.body}</p>}
-                                <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{firstText ? firstText.content : n.body}</p>
-                                {showEn("news") && enNews && enNews.body.trim() && <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{enNews.body}</p>}
+                                {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{stripHtml(zhNews.body)}</p>}
+                                <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{firstText ? stripHtml(firstText.content) : n.body}</p>
+                                {showEn("news") && enNews && enNews.body.trim() && <p className="mt-1 text-xs text-gray-400 leading-relaxed line-clamp-2">{stripHtml(enNews.body)}</p>}
                               </article>
                             </Link>
                           );

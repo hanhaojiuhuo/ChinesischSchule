@@ -71,3 +71,13 @@ body {
 .animate-fade-in-up {
   animation: fadeInUp 0.6s ease-out forwards;
 }
+
+/* Rich text content – ensure links and formatting display properly */
+.rich-text-content a {
+  color: var(--school-red);
+  text-decoration: underline;
+  transition: opacity 0.15s;
+}
+.rich-text-content a:hover {
+  opacity: 0.8;
+}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { countWords } from "@/lib/validation";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 /* ─── Small helpers ─────────────────────────────────────────── */
 
@@ -11,12 +12,15 @@ export function ExpandModal({
   onChange,
   onClose,
   maxWords,
+  richText,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   onClose: () => void;
   maxWords?: number;
+  /** When true, shows the rich text editor instead of a plain textarea */
+  richText?: boolean;
 }) {
   const wc = maxWords != null ? countWords(value) : 0;
   const overLimit = maxWords != null && wc > maxWords;
@@ -34,16 +38,29 @@ export function ExpandModal({
             title="Close"
           >✕</button>
         </div>
-        <textarea
-          className={`flex-1 w-full border rounded px-4 py-3 text-sm focus:outline-none resize-none min-h-[60vh] ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          autoFocus
-        />
-        {maxWords != null && (
-          <p className={`text-xs mt-1 text-right ${overLimit ? "text-red-600 font-semibold" : "text-gray-400"}`}>
-            {wc} / {maxWords} words
-          </p>
+        {richText ? (
+          <div className="flex-1 min-h-[60vh]">
+            <RichTextEditor
+              value={value}
+              onChange={onChange}
+              maxWords={maxWords}
+              minHeight="55vh"
+            />
+          </div>
+        ) : (
+          <>
+            <textarea
+              className={`flex-1 w-full border rounded px-4 py-3 text-sm focus:outline-none resize-none min-h-[60vh] ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              autoFocus
+            />
+            {maxWords != null && (
+              <p className={`text-xs mt-1 text-right ${overLimit ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+                {wc} / {maxWords} words
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
