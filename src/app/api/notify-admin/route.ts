@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { escapeHtml } from "@/lib/sanitize";
 
 /**
  * POST /api/notify-admin
@@ -143,12 +144,4 @@ export async function POST(request: Request) {
   }
 }
 
-/** Escape HTML special characters to prevent injection in email body. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+

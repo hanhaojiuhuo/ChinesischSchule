@@ -39,8 +39,8 @@ export default function CoursesSection({
         <section id="courses" className="py-16 px-4 bg-white">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-8">
-              <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
-              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] flex items-center gap-2 flex-wrap">
+              <span className="block w-8 h-1 bg-school-red rounded" />
+              <h2 className="font-cn text-2xl font-bold text-school-dark flex items-center gap-2 flex-wrap">
                 {isAdmin ? (
                   <>
                     <EditField
@@ -48,7 +48,7 @@ export default function CoursesSection({
                       onChange={(v) =>
                         setDraftDe((d) => ({ ...d, courses: { ...d.courses, sectionTitle: v } }))
                       }
-                      className="text-2xl font-bold text-[var(--school-dark)]"
+                      className="text-2xl font-bold text-school-dark"
                       placeholder="DE title…"
                     />
                     <span className="text-lg font-normal text-gray-400">·</span>
@@ -79,7 +79,7 @@ export default function CoursesSection({
                       key={i}
                       label={`Course ${i + 1}`}
                       onDelete={() => removeCourse(i)}
-                      className="border-t-4 border-[var(--school-red)] bg-[var(--school-gray)] rounded-lg p-6"
+                      className="border-t-4 border-school-red bg-school-gray rounded-lg p-6"
                     >
                       <div className="space-y-2 pt-2">
                         <div>
@@ -87,7 +87,7 @@ export default function CoursesSection({
                           <EditField
                             value={c.level}
                             onChange={(v) => { updDeCourse(i, "level", v); updZhCourse(i, "level", v); }}
-                            className="font-cn text-xl font-bold text-[var(--school-dark)] w-full"
+                            className="font-cn text-xl font-bold text-school-dark w-full"
                             placeholder="初级班…"
                           />
                         </div>
@@ -97,7 +97,7 @@ export default function CoursesSection({
                             <EditField
                               value={zhCourse.levelLabel}
                               onChange={(v) => updZhCourse(i, "levelLabel", v)}
-                              className="font-cn text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide w-full"
+                              className="font-cn text-xs font-semibold text-school-red uppercase tracking-wide w-full"
                               placeholder="初级…"
                             />
                           </div>
@@ -117,7 +117,7 @@ export default function CoursesSection({
                             <EditField
                               value={zhCourse.time ?? ""}
                               onChange={(v) => updZhCourse(i, "time", v)}
-                              className="font-cn text-xs text-[var(--school-red)] font-semibold w-full"
+                              className="font-cn text-xs text-school-red font-semibold w-full"
                               placeholder="周六 09:00–10:30…"
                             />
                           </div>
@@ -183,7 +183,7 @@ export default function CoursesSection({
                   {de.courses.items.length > 4 && (
                     <button
                       onClick={() => setCourseOffset((o) => (o - 1 + de.courses.items.length) % de.courses.items.length)}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center shadow hover:bg-[var(--school-gray)] transition-colors"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center shadow hover:bg-school-gray transition-colors"
                       aria-label="Previous courses"
                     >
                       ◀
@@ -198,13 +198,13 @@ export default function CoursesSection({
                       return (
                         <div
                           key={`${courseOffset}-${slot}`}
-                          className="border-t-4 border-[var(--school-red)] bg-[var(--school-gray)] rounded-lg p-6 hover:shadow-lg transition-shadow"
+                          className="border-t-4 border-school-red bg-school-gray rounded-lg p-6 hover:shadow-lg transition-shadow"
                         >
-                          <div className="font-cn text-xl font-bold text-[var(--school-dark)] mb-1">
+                          <div className="font-cn text-xl font-bold text-school-dark mb-1">
                             {c.level}
                           </div>
                           {zhCourse && (
-                            <div className="font-cn text-xs font-semibold text-[var(--school-red)] uppercase tracking-wide mb-0.5">
+                            <div className="font-cn text-xs font-semibold text-school-red uppercase tracking-wide mb-0.5">
                               {zhCourse.levelLabel}
                             </div>
                           )}
@@ -220,7 +220,7 @@ export default function CoursesSection({
                           )}
                           <div className="border-t border-gray-200 pt-3 mt-1">
                             {(c.time || (zhCourse && zhCourse.time)) && (
-                              <div className="text-xs text-[var(--school-red)] font-semibold mb-2 flex items-center gap-1 flex-wrap">
+                              <div className="text-xs text-school-red font-semibold mb-2 flex items-center gap-1 flex-wrap">
                                 <span>🕐</span>
                                 {zhCourse?.time && <span className="font-cn">{zhCourse.time}</span>}
                                 {zhCourse?.time && c.time && <span className="text-gray-400">·</span>}
@@ -252,7 +252,7 @@ export default function CoursesSection({
                   {de.courses.items.length > 4 && (
                     <button
                       onClick={() => setCourseOffset((o) => (o + 1) % de.courses.items.length)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center shadow hover:bg-[var(--school-gray)] transition-colors"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center shadow hover:bg-school-gray transition-colors"
                       aria-label="Next courses"
                     >
                       ▶
@@ -266,7 +266,7 @@ export default function CoursesSection({
                       <button
                         key={i}
                         onClick={() => setCourseOffset(i)}
-                        className={`w-2 h-2 rounded-full transition-colors ${i === courseOffset ? "bg-[var(--school-red)]" : "bg-gray-300 hover:bg-gray-400"}`}
+                        className={`w-2 h-2 rounded-full transition-colors ${i === courseOffset ? "bg-school-red" : "bg-gray-300 hover:bg-gray-400"}`}
                         aria-label={`Go to course ${i + 1}`}
                       />
                     ))}

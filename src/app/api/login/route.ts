@@ -3,6 +3,7 @@ import { readAdmins } from "@/lib/edge-config";
 import { verifyPassword } from "@/lib/password";
 import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit-log";
+import { getClientIP } from "@/lib/request-utils";
 
 const SESSION_COOKIE = "yixin-session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -17,14 +18,6 @@ const MAX_ATTEMPTS_PER_IP = 20;
 
 /** Window duration: 24 hours. */
 const RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-function getClientIP(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  const real = request.headers.get("x-real-ip");
-  if (real) return real;
-  return "unknown";
-}
 
 /* ── POST /api/login ────────────────────────────────────────────── */
 

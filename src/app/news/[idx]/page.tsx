@@ -29,7 +29,7 @@ export default function NewsDetailPage() {
         <main className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-700 mb-4">Artikel nicht gefunden / 文章未找到 / Article not found</h1>
-            <Link href="/#news" className="text-[var(--school-red)] underline">← Zurück / 返回 / Back</Link>
+            <Link href="/#news" className="text-school-red underline">← Zurück / 返回 / Back</Link>
           </div>
         </main>
         <Footer />
@@ -44,10 +44,10 @@ export default function NewsDetailPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[var(--school-gray)] py-12 px-4">
+      <main className="min-h-screen bg-school-gray py-12 px-4">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <Link href="/#news" className="text-sm text-[var(--school-red)] hover:opacity-80 transition-opacity">
+            <Link href="/#news" className="text-sm text-school-red hover:opacity-80 transition-opacity">
               ← {de.news.sectionTitle || "Aktuelles"} / 返回 / Back
             </Link>
             {isAdmin && (
@@ -62,10 +62,10 @@ export default function NewsDetailPage() {
 
           <article className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-8">
-              <time className="text-xs font-semibold text-[var(--school-red)] tracking-widest">
+              <time className="text-xs font-semibold text-school-red tracking-widest">
                 {news.date}
               </time>
-              {zhNews && <h1 className="font-cn text-2xl font-bold text-[var(--school-dark)] mt-2 mb-1">{zhNews.title}</h1>}
+              {zhNews && <h1 className="font-cn text-2xl font-bold text-school-dark mt-2 mb-1">{zhNews.title}</h1>}
               {news.title.trim() && <h2 className="text-lg text-gray-500 mb-1">{news.title}</h2>}
               {showEn && enNews && enNews.title.trim() && <h2 className="text-base text-gray-400 mb-6">{enNews.title}</h2>}
 

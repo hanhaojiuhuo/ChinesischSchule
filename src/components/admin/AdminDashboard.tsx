@@ -228,7 +228,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
   } = props;
 
   return (
-    <div className="min-h-screen bg-[var(--school-gray)]">
+    <div className="min-h-screen bg-school-gray">
       {/* Session timeout warning popup */}
       {showWarning && (
         <SessionTimeoutWarning
@@ -238,7 +238,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
         />
       )}
       {/* Top bar */}
-      <div className="sticky top-0 z-40 bg-[var(--school-dark)] text-white px-4 py-3 flex items-center justify-between gap-4 flex-wrap shadow-md">
+      <div className="sticky top-0 z-40 bg-school-dark text-white px-4 py-3 flex items-center justify-between gap-4 flex-wrap shadow-md">
         <div className="flex items-center gap-3">
           <span className="font-cn font-bold text-lg">管理面板</span>
           <span className="text-gray-400 text-sm hidden sm:inline">
@@ -270,7 +270,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                 onClick={() => setEditLang(l)}
                 className={`px-2 py-1 rounded transition-colors ${
                   editLang === l
-                    ? "bg-[var(--school-red)] text-white"
+                    ? "bg-school-red text-white"
                     : "bg-white/10 hover:bg-white/20 text-gray-200"
                 }`}
               >
@@ -399,7 +399,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
           ))}
           <button
             onClick={addCourse}
-            className="px-4 py-2 border-2 border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-[var(--school-red)] hover:text-[var(--school-red)] w-full transition-colors"
+            className="px-4 py-2 border-2 border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-school-red hover:text-school-red w-full transition-colors"
           >
             + Kurs hinzufügen / Add course / 添加课程
           </button>
@@ -436,7 +436,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
           />
           <button
             onClick={addNews}
-            className="mb-4 px-4 py-2 border-2 border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-[var(--school-red)] hover:text-[var(--school-red)] w-full transition-colors"
+            className="mb-4 px-4 py-2 border-2 border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-school-red hover:text-school-red w-full transition-colors"
           >
             + Neuigkeit hinzufügen / Add news / 添加新闻
           </button>
@@ -506,7 +506,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                             />
                           )}
                           <textarea
-                            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+                            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
                             value={block.content}
                             placeholder="Text…"
                             onChange={(e) => {
@@ -542,7 +542,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                               setNewsUploadingIdx({ newsIdx: idx, blockIdx: bIdx });
                               newsFileInputRef.current?.click();
                             }}
-                            className="border-2 border-dashed border-gray-300 hover:border-[var(--school-red)] rounded-lg p-3 text-center cursor-pointer transition-colors mb-1"
+                            className="border-2 border-dashed border-gray-300 hover:border-school-red rounded-lg p-3 text-center cursor-pointer transition-colors mb-1"
                           >
                             {newsUploadingIdx?.newsIdx === idx && newsUploadingIdx?.blockIdx === bIdx ? (
                               <p className="text-sm text-gray-500">⏳ Uploading… / 上传中…</p>
@@ -563,7 +563,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                           </div>
                           <input
                             type="text"
-                            className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                            className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-school-red"
                             value={block.caption ?? ""}
                             placeholder="Caption (optional) / Bildunterschrift"
                             onChange={(e) => {
@@ -594,14 +594,14 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                   <button
                     type="button"
                     onClick={() => updateNewsBlocks(idx, [...blocks, { type: "text", content: "" }])}
-                    className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-[var(--school-red)] hover:text-[var(--school-red)] transition-colors"
+                    className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-school-red hover:text-school-red transition-colors"
                   >
                     + Text / 添加文本
                   </button>
                   <button
                     type="button"
                     onClick={() => updateNewsBlocks(idx, [...blocks, { type: "image", url: "" }])}
-                    className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-[var(--school-red)] hover:text-[var(--school-red)] transition-colors"
+                    className="text-xs px-3 py-1 border border-dashed border-gray-300 rounded hover:border-school-red hover:text-school-red transition-colors"
                   >
                     + Image / 添加图片
                   </button>
@@ -625,7 +625,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
           <div className="mt-2">
             <label className="block text-xs font-semibold text-gray-600 mb-1">Address lines (one per line)</label>
             <textarea
-              className={`w-full border rounded px-3 py-2 text-sm focus:outline-none min-h-[60px] ${countWords(draft.contact.addressLines.join("\n")) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+              className={`w-full border rounded px-3 py-2 text-sm focus:outline-none min-h-[60px] ${countWords(draft.contact.addressLines.join("\n")) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
               value={draft.contact.addressLines.join("\n")}
               onChange={(e) => updateContact("addressLines", e.target.value.split("\n"))}
             />
@@ -658,7 +658,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
         {/* ── Change password ──────────────────────────────── */}
         <SectionCard title={<span className="flex items-center gap-2">🔐 修改密码 / Change Password / Passwort ändern <HelpIcon text="Change your admin login password / 修改管理员密码" /></span>}>
           {!showChangePw ? (
-            <button onClick={() => setShowChangePw(true)} className="text-sm text-[var(--school-red)] underline">
+            <button onClick={() => setShowChangePw(true)} className="text-sm text-school-red underline">
               修改密码 / Change password / Passwort ändern
             </button>
           ) : (
@@ -688,7 +688,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                 </p>
               )}
               <div className="flex gap-3">
-                <button type="submit" disabled={pwChangeLoading} className="px-4 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold rounded transition-colors">
+                <button type="submit" disabled={pwChangeLoading} className="px-4 py-2 bg-school-red hover:bg-school-red-dark disabled:opacity-60 text-white text-sm font-semibold rounded transition-colors">
                   {pwChangeLoading ? "⏳" : pwChangeStep === "verify" ? "✓ 验证并保存 / Verify & Save / Verifizieren & Speichern" : "保存 / Save / Speichern"}
                 </button>
                 <button
@@ -719,11 +719,11 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-[var(--school-dark)]">
+                        <span className="text-sm font-semibold text-school-dark">
                           {a.username}
                         </span>
                         {a.username === currentUser && (
-                          <span className="text-xs bg-[var(--school-red)] text-white px-1.5 py-0.5 rounded">
+                          <span className="text-xs bg-school-red text-white px-1.5 py-0.5 rounded">
                             当前 / you
                           </span>
                         )}
@@ -741,7 +741,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                             setEditEmailValue(a.email ?? "");
                             setEmailUpdateMsg("");
                           }}
-                          className="text-xs text-[var(--school-red)] hover:opacity-80 underline"
+                          className="text-xs text-school-red hover:opacity-80 underline"
                         >
                           ✏ Edit
                         </button>
@@ -775,7 +775,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                         value={editEmailValue}
                         onChange={(e) => setEditEmailValue(e.target.value)}
                         placeholder="email@example.com"
-                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-[var(--school-red)]"
+                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-school-red"
                       />
                       <button
                         type="button"
@@ -840,7 +840,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowAddAdmin(true)}
-                className="text-sm text-[var(--school-red)] underline"
+                className="text-sm text-school-red underline"
               >
                 + 添加管理员 / Add administrator / Administrator hinzufügen
               </button>
@@ -848,7 +848,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
             </div>
           ) : (
             <form onSubmit={handleAddAdmin} className="max-w-sm space-y-3 border-t border-gray-100 pt-4">
-              <h4 className="text-sm font-semibold text-[var(--school-dark)]">
+              <h4 className="text-sm font-semibold text-school-dark">
                 添加新管理员 / Add New Administrator / Neuen Admin hinzufügen
               </h4>
               <Field
@@ -864,7 +864,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                   <input
                     type={showNewAdminPw ? "text" : "password"}
                     autoComplete="new-password"
-                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-school-red"
                     value={newAdminPw}
                     onChange={(e) => setNewAdminPw(e.target.value)}
                   />
@@ -910,7 +910,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white text-sm font-semibold rounded transition-colors"
+                  className="px-4 py-2 bg-school-red hover:bg-school-red-dark text-white text-sm font-semibold rounded transition-colors"
                 >
                   添加 / Add / Hinzufügen
                 </button>

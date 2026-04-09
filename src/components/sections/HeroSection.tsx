@@ -33,7 +33,7 @@ export default function HeroSection({
   return (
         <section
           id="home"
-          className="relative overflow-hidden bg-[var(--school-dark)] text-white py-20 px-4"
+          className="relative overflow-hidden bg-school-dark text-white py-20 px-4"
         >
           <div
             aria-hidden="true"
@@ -47,13 +47,13 @@ export default function HeroSection({
           <div className="max-w-6xl mx-auto flex flex-col-reverse md:flex-row items-center gap-10">
             <div className="flex-1 animate-fade-in-up">
               {isAdmin ? (
-                <EditBlock label="School Name" className="p-3 space-y-2 bg-[var(--school-dark)] mb-3">
+                <EditBlock label="School Name" className="p-3 space-y-2 bg-school-dark mb-3">
                   <div>
                     <label className="text-xs text-amber-300 font-semibold block mb-1">DE School Name</label>
                     <EditField
                       value={de.schoolName}
                       onChange={(v) => { setDraftDe((d) => ({ ...d, schoolName: v })); setIsDirty(true); }}
-                      className="text-[var(--school-red)] font-semibold tracking-widest uppercase text-sm w-full"
+                      className="text-school-red font-semibold tracking-widest uppercase text-sm w-full"
                       placeholder="School name (DE)…"
                     />
                   </div>
@@ -70,7 +70,7 @@ export default function HeroSection({
               ) : (
                 <>
                   {de.schoolName.trim() && (
-                    <p className="text-[var(--school-red)] font-semibold tracking-widest uppercase text-sm mb-2">
+                    <p className="text-school-red font-semibold tracking-widest uppercase text-sm mb-2">
                       {de.schoolName}
                     </p>
                   )}
@@ -86,7 +86,7 @@ export default function HeroSection({
               )}
 
               {isAdmin ? (
-                <EditBlock label="Hero Text" className="p-4 space-y-3 bg-[var(--school-dark)]">
+                <EditBlock label="Hero Text" className="p-4 space-y-3 bg-school-dark">
                   <div>
                     <label className="text-xs text-amber-300 font-semibold block mb-1">DE Tagline</label>
                     <EditArea
@@ -162,7 +162,7 @@ export default function HeroSection({
                   <div className="flex flex-wrap gap-3">
                     <a
                       href="#courses"
-                      className="px-5 py-3 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold rounded transition-colors text-sm"
+                      className="px-5 py-3 bg-school-red hover:bg-school-red-dark text-white font-semibold rounded transition-colors text-sm"
                     >
                       <span className="font-cn">{zh.hero.discoverCourses}</span>
                       {de.hero.discoverCourses.trim() && (<><span className="mx-1 opacity-70">·</span>{de.hero.discoverCourses}</>)}

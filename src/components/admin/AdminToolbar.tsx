@@ -43,7 +43,7 @@ export default function AdminToolbar({
   onRedo,
 }: AdminToolbarProps) {
   return (
-    <div className={`fixed left-0 right-0 z-[60] bg-[var(--school-dark)]/95 backdrop-blur-sm text-white py-3 px-4 flex items-center justify-between gap-3 flex-wrap shadow-2xl ${
+    <div className={`fixed left-0 right-0 z-[60] bg-school-dark/95 backdrop-blur-sm text-white py-3 px-4 flex items-center justify-between gap-3 flex-wrap shadow-2xl ${
       toolbarPosition === "top"
         ? "top-0 border-b-2 border-amber-400"
         : "bottom-0 border-t-2 border-amber-400"

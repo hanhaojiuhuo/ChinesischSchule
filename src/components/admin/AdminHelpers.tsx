@@ -35,7 +35,7 @@ export function ExpandModal({
           >✕</button>
         </div>
         <textarea
-          className={`flex-1 w-full border rounded px-4 py-3 text-sm focus:outline-none resize-none min-h-[60vh] ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+          className={`flex-1 w-full border rounded px-4 py-3 text-sm focus:outline-none resize-none min-h-[60vh] ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           autoFocus
@@ -55,7 +55,7 @@ export function ExpandButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="ml-2 text-gray-400 hover:text-[var(--school-red)] transition-colors"
+      className="ml-2 text-gray-400 hover:text-school-red transition-colors"
       title="Expand editor / Vergrößern / 展开编辑器"
     >
       <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
@@ -137,7 +137,7 @@ export function Field({
       {multiline ? (
         <>
           <textarea
-            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[80px] ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[80px] ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />
@@ -152,7 +152,7 @@ export function Field({
           <input
             type={effectiveType}
             autoComplete={autoComplete}
-            className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+            className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-school-red"
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />
@@ -163,7 +163,7 @@ export function Field({
           <input
             type={effectiveType}
             autoComplete={autoComplete}
-            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+            className={`w-full border rounded px-3 py-2 text-sm focus:outline-none ${overLimit ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />
@@ -192,7 +192,7 @@ export function SectionCard({
   return (
     <div className="border border-gray-200 rounded-lg p-5 mb-6 bg-white shadow-sm">
       <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-4">
-        <h3 className="font-bold text-[var(--school-dark)] text-base">
+        <h3 className="font-bold text-school-dark text-base">
           {title}
         </h3>
         {onSave && (

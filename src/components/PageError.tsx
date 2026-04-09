@@ -22,9 +22,9 @@ export default function PageError({
   }, [error, label]);
 
   return (
-    <div className="min-h-screen bg-[var(--school-gray)] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-school-gray flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-md p-8 max-w-md text-center">
-        <h2 className="text-xl font-bold text-[var(--school-dark)] mb-2">
+        <h2 className="text-xl font-bold text-school-dark mb-2">
           ⚠️ Seite konnte nicht geladen werden
         </h2>
         <p className="text-sm text-gray-500 mb-4">
@@ -32,12 +32,12 @@ export default function PageError({
         </p>
         <button
           onClick={reset}
-          className="px-5 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white text-sm font-semibold rounded transition-colors"
+          className="px-5 py-2 bg-school-red hover:bg-school-red-dark text-white text-sm font-semibold rounded transition-colors"
         >
           Erneut versuchen · Try again · 重试
         </button>
         <p className="mt-4 text-xs text-gray-400">
-          <Link href="/" className="underline hover:text-[var(--school-red)]">
+          <Link href="/" className="underline hover:text-school-red">
             ← Zurück zur Startseite · Back to Home · 返回首页
           </Link>
         </p>

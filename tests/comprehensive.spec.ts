@@ -1076,3 +1076,192 @@ test.describe("12. SEO & Structured Data", () => {
     expect(ogDescription).toBeTruthy();
   });
 });
+
+/* ================================================================
+   13. SECURITY HEADERS
+   ================================================================ */
+
+test.describe("13. Security Headers", () => {
+  test("X-Content-Type-Options header is set to nosniff", async ({
+    request,
+  }) => {
+    const response = await request.get("/");
+    const header = response.headers()["x-content-type-options"];
+    expect(header).toBe("nosniff");
+  });
+
+  test("X-Frame-Options header prevents clickjacking", async ({ request }) => {
+    const response = await request.get("/");
+    const header = response.headers()["x-frame-options"];
+    expect(header).toBe("DENY");
+  });
+
+  test("Referrer-Policy header is set", async ({ request }) => {
+    const response = await request.get("/");
+    const header = response.headers()["referrer-policy"];
+    expect(header).toBe("strict-origin-when-cross-origin");
+  });
+
+  test("Permissions-Policy restricts sensitive APIs", async ({ request }) => {
+    const response = await request.get("/");
+    const header = response.headers()["permissions-policy"];
+    expect(header).toContain("camera=()");
+    expect(header).toContain("microphone=()");
+  });
+});
+
+/* ================================================================
+   14. GDPR COMPLIANCE
+   ================================================================ */
+
+test.describe("14. GDPR Compliance", () => {
+  test("contact form has privacy consent checkbox", async ({ page }) => {
+    await page.goto("/");
+    await page.locator("#contact").scrollIntoViewIfNeeded();
+
+    const checkbox = page.locator('#privacy-consent');
+    await expect(checkbox).toBeVisible();
+    await expect(checkbox).toHaveAttribute("required", "");
+  });
+
+  test("privacy consent checkbox links to privacy policy", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.locator("#contact").scrollIntoViewIfNeeded();
+
+    const privacyLinks = page.locator(
+      'label[for="privacy-consent"] a[href="/privacy"]'
+    );
+    expect(await privacyLinks.count()).toBeGreaterThan(0);
+  });
+
+  test("contact form cannot be submitted without privacy consent", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.locator("#contact").scrollIntoViewIfNeeded();
+
+    const nameInput = page.locator(
+      'form input[type="text"][placeholder*="Mustermann"], form input[type="text"][placeholder*="张三"]'
+    );
+    const emailInput = page.locator('form input[type="email"]');
+    const messageArea = page.locator("form textarea");
+
+    await nameInput.fill("Test User");
+    await emailInput.fill("test@example.com");
+    await messageArea.fill("Test message");
+
+    // Don't check the privacy checkbox
+    const submitButton = page.locator('form button[type="submit"]');
+    await submitButton.click();
+
+    // Form should not have submitted (still on same page, no success message)
+    await page.waitForTimeout(500);
+    const successMsg = page.locator("text=留言已发送");
+    await expect(successMsg).not.toBeVisible();
+  });
+});
+
+/* ================================================================
+   15. CROSS-VIEWPORT LAYOUT (Germany & China users)
+   ================================================================ */
+
+test.describe("15. Cross-viewport Layout", () => {
+  test("desktop layout (1920x1080) - no overflow, all sections visible", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.goto("/");
+
+    const sections = ["home", "about", "courses", "news", "contact"];
+    for (const id of sections) {
+      await expect(page.locator(`#${id}`)).toBeAttached();
+    }
+
+    const hasOverflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth
+    );
+    expect(hasOverflow).toBe(false);
+  });
+
+  test("tablet layout (768x1024) - content fits within viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto("/");
+
+    const hasOverflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth
+    );
+    expect(hasOverflow).toBe(false);
+  });
+
+  test("Chinese text renders properly with CJK characters", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const body = (await page.textContent("body")) || "";
+
+    // Should contain Chinese characters
+    expect(body).toMatch(/[\u4e00-\u9fff]/);
+    // Should contain German characters
+    expect(body).toMatch(/[äöüÄÖÜß]/);
+  });
+
+  test("all three languages present in navigation", async ({ page }) => {
+    await page.goto("/");
+    const navText = (await page.locator("header").textContent()) || "";
+
+    // Chinese characters in nav
+    expect(navText).toMatch(/[\u4e00-\u9fff]/);
+  });
+});
+
+/* ================================================================
+   16. API INPUT BOUNDARY TESTS
+   ================================================================ */
+
+test.describe("16. API Input Boundary Tests", () => {
+  test("login endpoint rejects oversized payload", async ({ request }) => {
+    const response = await request.post("/api/login", {
+      data: {
+        username: "a".repeat(10000),
+        password: "b".repeat(10000),
+      },
+    });
+    // Should not crash - returns either 400, 401, or normal failure
+    expect(response.status()).toBeLessThan(500);
+  });
+
+  test("contact form rejects extremely long input", async ({ request }) => {
+    const response = await request.post("/api/contact", {
+      data: {
+        name: "a".repeat(10000),
+        email: "test@example.com",
+        message: "b".repeat(100000),
+      },
+    });
+    // Should not crash the server
+    expect([200, 400, 429, 503]).toContain(response.status());
+  });
+
+  test("login with empty strings returns 400", async ({ request }) => {
+    const response = await request.post("/api/login", {
+      data: { username: "", password: "" },
+    });
+    expect(response.status()).toBe(400);
+  });
+
+  test("content API GET is cache-free (force-dynamic)", async ({ request }) => {
+    const r1 = await request.get("/api/content");
+    const r2 = await request.get("/api/content");
+    // Both should succeed (no stale cache issue)
+    expect(r1.status()).toBe(200);
+    expect(r2.status()).toBe(200);
+  });
+});

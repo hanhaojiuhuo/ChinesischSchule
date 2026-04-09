@@ -58,11 +58,11 @@ export default function NewsSection({
   newsFileInputRef,
 }: NewsSectionProps) {
   return (
-        <section id="news" className="py-16 px-4 bg-[var(--school-gray)]">
+        <section id="news" className="py-16 px-4 bg-school-gray">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-8">
-              <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
-              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] flex items-center gap-2 flex-wrap">
+              <span className="block w-8 h-1 bg-school-red rounded" />
+              <h2 className="font-cn text-2xl font-bold text-school-dark flex items-center gap-2 flex-wrap">
                 {isAdmin ? (
                   <>
                     <EditField
@@ -70,7 +70,7 @@ export default function NewsSection({
                       onChange={(v) =>
                         setDraftDe((d) => ({ ...d, news: { ...d.news, sectionTitle: v } }))
                       }
-                      className="text-2xl font-bold text-[var(--school-dark)]"
+                      className="text-2xl font-bold text-school-dark"
                       placeholder="DE title…"
                     />
                     <span className="text-lg font-normal text-gray-400">·</span>
@@ -138,7 +138,7 @@ export default function NewsSection({
                       key={i}
                       label={`News ${i + 1}`}
                       onDelete={() => removeNews(i)}
-                      className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm"
+                      className="bg-white rounded-lg p-6 border-l-4 border-school-red shadow-sm"
                     >
                       <div className="space-y-3 pt-2">
                         <div>
@@ -146,7 +146,7 @@ export default function NewsSection({
                           <EditField
                             value={n.date}
                             onChange={(v) => { updDeNews(i, "date", v); updZhNews(i, "date", v); }}
-                            className="text-xs font-semibold text-[var(--school-red)] tracking-widest w-full"
+                            className="text-xs font-semibold text-school-red tracking-widest w-full"
                             placeholder="2025-09"
                           />
                         </div>
@@ -155,7 +155,7 @@ export default function NewsSection({
                           <EditField
                             value={n.title}
                             onChange={(v) => updDeNews(i, "title", v)}
-                            className="font-bold text-[var(--school-dark)] w-full"
+                            className="font-bold text-school-dark w-full"
                             placeholder="German title…"
                           />
                         </div>
@@ -465,11 +465,11 @@ export default function NewsSection({
                               href={`/news/${actualIdx}`}
                               className="block group"
                             >
-                              <article className="bg-white rounded-lg p-6 border-l-4 border-[var(--school-red)] shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                                <time className="text-xs font-semibold text-[var(--school-red)] tracking-widest">
+                              <article className="bg-white rounded-lg p-6 border-l-4 border-school-red shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                                <time className="text-xs font-semibold text-school-red tracking-widest">
                                   {n.date}
                                 </time>
-                                {zhNews && <h3 className="font-cn font-bold text-[var(--school-dark)] mt-1 group-hover:text-[var(--school-red)] transition-colors">{zhNews.title}</h3>}
+                                {zhNews && <h3 className="font-cn font-bold text-school-dark mt-1 group-hover:text-school-red transition-colors">{zhNews.title}</h3>}
                                 {n.title.trim() && <h3 className="text-sm text-gray-500 mt-0.5">{n.title}</h3>}
                                 {showEn("news") && enNews && enNews.title.trim() && <h3 className="text-xs text-gray-400 mt-0.5">{enNews.title}</h3>}
                                 {zhNews && <p className="font-cn mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3">{zhNews.body}</p>}
@@ -485,7 +485,7 @@ export default function NewsSection({
                                 <button
                                   key={p}
                                   onClick={() => setNewsPage(p)}
-                                  className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${p === newsPage ? "bg-[var(--school-red)] text-white" : "bg-white border border-gray-200 text-gray-600 hover:border-[var(--school-red)] hover:text-[var(--school-red)]"}`}
+                                  className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${p === newsPage ? "bg-school-red text-white" : "bg-white border border-gray-200 text-gray-600 hover:border-school-red hover:text-school-red"}`}
                                 >
                                   {p + 1}
                                 </button>

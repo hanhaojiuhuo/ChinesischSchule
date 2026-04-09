@@ -6,6 +6,7 @@ export default function ContactForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -57,7 +58,7 @@ export default function ContactForm() {
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full border border-[var(--school-border)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--school-red)] transition-colors"
+          className="w-full border border-school-border rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-school-red transition-colors"
           placeholder="张三 / Max Mustermann"
           disabled={status === "sending"}
         />
@@ -73,7 +74,7 @@ export default function ContactForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-[var(--school-border)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--school-red)] transition-colors"
+          className="w-full border border-school-border rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-school-red transition-colors"
           placeholder="example@email.com"
           disabled={status === "sending"}
         />
@@ -89,10 +90,37 @@ export default function ContactForm() {
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="w-full border border-[var(--school-border)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--school-red)] transition-colors resize-y"
+          className="w-full border border-school-border rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-school-red transition-colors resize-y"
           placeholder="请输入留言内容… / Ihre Nachricht…"
           disabled={status === "sending"}
         />
+      </div>
+
+      {/* GDPR Privacy Consent */}
+      <div className="flex items-start gap-2">
+        <input
+          type="checkbox"
+          id="privacy-consent"
+          required
+          checked={privacyConsent}
+          onChange={(e) => setPrivacyConsent(e.target.checked)}
+          className="mt-1 accent-school-red"
+          disabled={status === "sending"}
+        />
+        <label htmlFor="privacy-consent" className="text-xs text-gray-600 leading-relaxed">
+          我已阅读并同意{" "}
+          <a href="/privacy" className="text-school-red underline" target="_blank" rel="noopener noreferrer" aria-label="隐私政策 (opens in new tab)">
+            隐私政策
+          </a>{" "}
+          / Ich akzeptiere die{" "}
+          <a href="/privacy" className="text-school-red underline" target="_blank" rel="noopener noreferrer" aria-label="Datenschutzerklärung (opens in new tab)">
+            Datenschutzerklärung
+          </a>{" "}
+          / I accept the{" "}
+          <a href="/privacy" className="text-school-red underline" target="_blank" rel="noopener noreferrer" aria-label="Privacy Policy (opens in new tab)">
+            Privacy Policy
+          </a>
+        </label>
       </div>
 
       {/* Status messages */}
@@ -109,7 +137,7 @@ export default function ContactForm() {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="w-full px-4 py-2.5 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold rounded transition-colors"
+        className="w-full px-4 py-2.5 bg-school-red hover:bg-school-red-dark disabled:opacity-60 text-white text-sm font-semibold rounded transition-colors"
       >
         {status === "sending"
           ? "⏳ 发送中… / Senden…"
