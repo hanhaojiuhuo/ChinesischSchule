@@ -109,15 +109,15 @@ export default function ContactForm() {
         />
         <label htmlFor="privacy-consent" className="text-xs text-gray-600 leading-relaxed">
           我已阅读并同意{" "}
-          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer">
+          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer" aria-label="隐私政策 (opens in new tab)">
             隐私政策
           </a>{" "}
           / Ich akzeptiere die{" "}
-          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer">
+          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer" aria-label="Datenschutzerklärung (opens in new tab)">
             Datenschutzerklärung
           </a>{" "}
           / I accept the{" "}
-          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer">
+          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer" aria-label="Privacy Policy (opens in new tab)">
             Privacy Policy
           </a>
         </label>
