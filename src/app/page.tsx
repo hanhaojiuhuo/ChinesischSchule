@@ -170,7 +170,6 @@ export default function Home() {
           toolbarPosition={toolbarPosition}
           setToolbarPosition={setToolbarPosition}
           handleSave={draft.handleSave}
-          handleDiscard={draft.handleDiscard}
           logout={logout}
           canUndo={draft.canUndo}
           canRedo={draft.canRedo}
