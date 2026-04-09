@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { defaultTranslations } from "@/i18n/translations";
 import type { Language, SiteContent, NewsBodyBlock, CourseItem } from "@/i18n/translations";
-import type { AdminUser } from "@/contexts/AuthContext";
+import type { AdminUser } from "@/types/auth";
 import type {
   AdminPageContextValue,
   AdminPageProviderProps,

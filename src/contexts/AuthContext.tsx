@@ -1,62 +1,20 @@
 "use client";
 
-import React, {
+import {
   createContext,
   useContext,
   useState,
   useEffect,
   useCallback,
 } from "react";
-
-export interface AdminUser {
-  username: string;
-  password: string;
-  email?: string;
-}
-
-interface AuthContextValue {
-  isAdmin: boolean;
-  currentUser: string | null;
-  authLoading: boolean;
-  /** True when the current session was established via recovery mode. */
-  isRecoverySession: boolean;
-  login: (
-    username: string,
-    password: string
-  ) => Promise<{
-    success: boolean;
-    remainingAttempts?: number;
-    blocked?: boolean;
-    twoFactorRequired?: boolean;
-    maskedEmail?: string;
-  }>;
-  verifyLoginCode: (
-    username: string,
-    code: string
-  ) => Promise<{
-    success: boolean;
-    error?: string;
-  }>;
-  logout: () => Promise<void>;
-  addAdmin: (
-    username: string,
-    password: string,
-    email?: string
-  ) => Promise<{ success: boolean; error?: string; warning?: string }>;
-  changePassword: (
-    username: string,
-    oldPassword: string,
-    newPassword: string
-  ) => Promise<{ success: boolean; error?: string; warning?: string }>;
-  updateEmail: (
-    username: string,
-    newEmail: string
-  ) => Promise<{ success: boolean; error?: string; warning?: string }>;
-  removeAdmin: (
-    username: string
-  ) => Promise<{ success: boolean; error?: string; warning?: string }>;
-  getAdmins: () => Promise<AdminUser[]>;
-}
+import type {
+  AdminUser,
+  AuthContextValue,
+  AuthProviderProps,
+  LoginFailures,
+  LoginResult,
+  SaveResult,
+} from "@/types/auth";
 
 const AuthContext = createContext<AuthContextValue>({
   isAdmin: false,
@@ -81,11 +39,6 @@ const MAX_DAILY_ATTEMPTS = 10;
 
 function getTodayString(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-interface LoginFailures {
-  count: number;
-  date: string;
 }
 
 function loadLoginFailures(): LoginFailures {
@@ -157,11 +110,6 @@ async function fetchAdmins(): Promise<AdminUser[]> {
   return loadLocalAdmins() ?? [{ username: "admin", password: "yixin" }];
 }
 
-interface SaveResult {
-  ok: boolean;
-  persistError?: string;
-}
-
 async function saveAdmins(admins: AdminUser[]): Promise<SaveResult> {
   // Always update localStorage as an offline cache.
   try {
@@ -196,7 +144,7 @@ async function saveAdmins(admins: AdminUser[]): Promise<SaveResult> {
   }
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: AuthProviderProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -279,13 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (
       username: string,
       password: string
-    ): Promise<{
-      success: boolean;
-      remainingAttempts?: number;
-      blocked?: boolean;
-      twoFactorRequired?: boolean;
-      maskedEmail?: string;
-    }> => {
+    ): Promise<LoginResult> => {
       // Quick client-side check (supplementary to server-side rate limiting)
       const failures = loadLoginFailures();
       if (failures.count >= MAX_DAILY_ATTEMPTS) {

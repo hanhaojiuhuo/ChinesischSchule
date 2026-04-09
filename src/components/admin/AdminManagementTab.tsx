@@ -2,7 +2,7 @@
 
 import { Field, SectionCard } from "@/components/admin/AdminHelpers";
 import { HelpIcon } from "@/components/admin/Tooltip";
-import type { AdminUser } from "@/contexts/AuthContext";
+import type { AdminUser } from "@/types/auth";
 
 export interface AdminManagementTabProps {
   currentUser: string | null;

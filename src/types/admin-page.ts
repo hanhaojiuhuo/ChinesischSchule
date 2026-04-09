@@ -5,7 +5,7 @@ import type {
   RefObject,
   SetStateAction,
 } from "react";
-import type { AdminUser } from "@/contexts/AuthContext";
+import type { AdminUser } from "@/types/auth";
 import type {
   CourseItem,
   Language,
