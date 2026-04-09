@@ -27,14 +27,14 @@ export default function AboutSection({
         <section id="about" className="py-16 px-4 bg-white">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-8">
-              <span className="block w-8 h-1 bg-[var(--school-red)] rounded" />
-              <h2 className="font-cn text-2xl font-bold text-[var(--school-dark)] flex items-center gap-2 flex-wrap">
+              <span className="block w-8 h-1 bg-school-red rounded" />
+              <h2 className="font-cn text-2xl font-bold text-school-dark flex items-center gap-2 flex-wrap">
                 {isAdmin ? (
                   <>
                     <EditField
                       value={de.about.sectionTitle}
                       onChange={(v) => updDe("about", { sectionTitle: v })}
-                      className="text-2xl font-bold text-[var(--school-dark)]"
+                      className="text-2xl font-bold text-school-dark"
                       placeholder="DE title…"
                     />
                     <span className="text-lg font-normal text-gray-400">·</span>
@@ -56,13 +56,13 @@ export default function AboutSection({
 
             <div className="grid md:grid-cols-2 gap-8 items-start">
               {isAdmin ? (
-                <EditBlock label="About Description" className="space-y-3 p-4 bg-[var(--school-gray)]">
+                <EditBlock label="About Description" className="space-y-3 p-4 bg-school-gray">
                   <div>
                     <label className="text-xs text-amber-600 font-semibold block mb-1">DE Description</label>
                     <EditArea
                       value={de.about.desc1}
                       onChange={(v) => updDe("about", { desc1: v })}
-                      className="text-[var(--school-dark)] leading-relaxed"
+                      className="text-school-dark leading-relaxed"
                       placeholder="German description…"
                     />
                   </div>
@@ -86,7 +86,7 @@ export default function AboutSection({
                   </div>
                 </EditBlock>
               ) : (
-                <div className="space-y-3 text-[var(--school-dark)]">
+                <div className="space-y-3 text-school-dark">
                   <p className="font-cn leading-relaxed text-sm text-gray-600">{zh.about.desc1}</p>
                   <p className="font-cn leading-relaxed text-xs text-gray-500">{zh.about.desc2}</p>
                   {de.about.desc1.trim() && <p className="leading-relaxed text-sm text-gray-600">{de.about.desc1}</p>}
@@ -105,7 +105,7 @@ export default function AboutSection({
                 ).map(({ icon, statKey, deLabelKey, zhLabelKey }) => (
                   <div
                     key={statKey}
-                    className={`bg-white rounded-lg p-5 border border-[var(--school-border)] text-center shadow-sm${isAdmin ? " ring-2 ring-amber-300" : ""}`}
+                    className={`bg-white rounded-lg p-5 border border-school-border text-center shadow-sm${isAdmin ? " ring-2 ring-amber-300" : ""}`}
                   >
                     <div className="text-3xl mb-1">{icon}</div>
                     {isAdmin ? (
@@ -113,7 +113,7 @@ export default function AboutSection({
                         <EditField
                           value={de.about[statKey] as string}
                           onChange={(v) => updDe("about", { [statKey]: v })}
-                          className="text-2xl font-bold text-[var(--school-red)] text-center w-full"
+                          className="text-2xl font-bold text-school-red text-center w-full"
                           placeholder="Stat…"
                         />
                         <EditField
@@ -131,7 +131,7 @@ export default function AboutSection({
                       </>
                     ) : (
                       <>
-                        <div className="text-2xl font-bold text-[var(--school-red)]">{de.about[statKey] as string}</div>
+                        <div className="text-2xl font-bold text-school-red">{de.about[statKey] as string}</div>
                         <div className="font-cn text-xs text-gray-500 mt-1">{zh.about[zhLabelKey] as string}</div>
                         <div className="text-xs text-gray-400">{de.about[deLabelKey] as string}</div>
                         {showEn("about") && (en.about[deLabelKey] as string).trim() && <div className="text-xs text-gray-400">{en.about[deLabelKey] as string}</div>}

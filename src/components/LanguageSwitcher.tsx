@@ -14,7 +14,7 @@ export default function LanguageSwitcher() {
 
   return (
     <div
-      className="flex items-center gap-1 rounded border border-[var(--school-border)] overflow-hidden text-xs font-semibold"
+      className="flex items-center gap-1 rounded border border-school-border overflow-hidden text-xs font-semibold"
       aria-label="Sprache wählen / 选择语言 / Select language"
     >
       {LANGS.map(({ code, label }) => (
@@ -24,8 +24,8 @@ export default function LanguageSwitcher() {
           aria-pressed={language === code}
           className={`px-2 py-1 transition-colors ${
             language === code
-              ? "bg-[var(--school-red)] text-white"
-              : "bg-white text-[var(--school-dark)] hover:bg-[var(--school-red-light)] hover:text-[var(--school-red)]"
+              ? "bg-school-red text-white"
+              : "bg-white text-school-dark hover:bg-school-red-light hover:text-school-red"
           }`}
         >
           {label}

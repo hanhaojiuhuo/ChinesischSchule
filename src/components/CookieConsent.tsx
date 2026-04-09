@@ -62,12 +62,12 @@ export default function CookieConsent() {
         role="dialog"
         aria-modal="true"
         aria-label="Cookie-Einstellungen / Cookie Settings"
-        className="fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t-2 border-[var(--school-red)] shadow-2xl px-4 py-5 sm:px-6"
+        className="fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t-2 border-school-red shadow-2xl px-4 py-5 sm:px-6"
       >
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-start gap-4">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[var(--school-dark)] mb-1">
+              <p className="text-sm font-semibold text-school-dark mb-1">
                 🍪 Datenschutz & Cookies · Privacy &amp; Cookies
               </p>
               <p className="text-xs text-gray-600 leading-relaxed">
@@ -79,7 +79,7 @@ export default function CookieConsent() {
 
               {showDetails && (
                 <div className="mt-3 p-3 bg-gray-50 rounded border border-gray-200 text-xs space-y-2">
-                  <p className="font-semibold text-[var(--school-dark)]">
+                  <p className="font-semibold text-school-dark">
                     Cookie-Details / Cookie Details
                   </p>
                   <table className="w-full text-left text-xs border-collapse">
@@ -110,16 +110,16 @@ export default function CookieConsent() {
                   </table>
                   <p className="text-gray-400 mt-1">
                     Mehr Informationen finden Sie in unserer{" "}
-                    <a href="/privacy" className="underline hover:text-[var(--school-red)]">Datenschutzerklärung</a>
+                    <a href="/privacy" className="underline hover:text-school-red">Datenschutzerklärung</a>
                     {" "}· More information in our{" "}
-                    <a href="/privacy" className="underline hover:text-[var(--school-red)]">Privacy Policy</a>.
+                    <a href="/privacy" className="underline hover:text-school-red">Privacy Policy</a>.
                   </p>
                 </div>
               )}
 
               <button
                 onClick={() => setShowDetails((v) => !v)}
-                className="mt-2 text-xs text-[var(--school-red)] underline hover:opacity-80 transition-opacity"
+                className="mt-2 text-xs text-school-red underline hover:opacity-80 transition-opacity"
               >
                 {showDetails
                   ? "Details ausblenden / Hide details"
@@ -130,7 +130,7 @@ export default function CookieConsent() {
             <div className="flex flex-row sm:flex-col gap-2 shrink-0">
               <button
                 onClick={() => saveConsent("all")}
-                className="px-5 py-2 bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white text-sm font-semibold rounded transition-colors whitespace-nowrap"
+                className="px-5 py-2 bg-school-red hover:bg-school-red-dark text-white text-sm font-semibold rounded transition-colors whitespace-nowrap"
               >
                 Alle akzeptieren · Accept All
               </button>

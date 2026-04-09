@@ -113,9 +113,9 @@ export default function LoginScreen({
   handleDevModeReset,
 }: LoginScreenProps) {
   return (
-    <div className="min-h-screen bg-[var(--school-gray)] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-school-gray flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-md p-8 w-full max-w-sm">
-        <h1 className="font-cn text-2xl font-bold text-[var(--school-dark)] mb-1 text-center">
+        <h1 className="font-cn text-2xl font-bold text-school-dark mb-1 text-center">
           管理员登录
         </h1>
         <p className="text-sm text-gray-500 text-center mb-6">
@@ -142,7 +142,7 @@ export default function LoginScreen({
                 autoComplete="one-time-code"
                 value={twoFactorCode}
                 onChange={(e) => setTwoFactorCode(e.target.value.toUpperCase())}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-[var(--school-red)]"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-school-red"
                 placeholder="8位验证码 / 8-char code / 8-Zeichen-Code"
                 maxLength={8}
                 autoFocus
@@ -154,7 +154,7 @@ export default function LoginScreen({
             <button
               type="submit"
               disabled={twoFactorLoading}
-              className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white font-semibold py-2 rounded transition-colors"
+              className="w-full bg-school-red hover:bg-school-red-dark disabled:opacity-60 text-white font-semibold py-2 rounded transition-colors"
             >
               {twoFactorLoading ? "⏳ ..." : "验证 / Verifizieren / Verify"}
             </button>
@@ -181,7 +181,7 @@ export default function LoginScreen({
               autoComplete="username"
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-school-red"
               placeholder="admin"
             />
           </div>
@@ -195,7 +195,7 @@ export default function LoginScreen({
                 autoComplete="current-password"
                 value={pwInput}
                 onChange={(e) => setPwInput(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-school-red"
                 placeholder="••••••••"
               />
               <EyeToggle show={showLoginPw} onToggle={() => setShowLoginPw(!showLoginPw)} />
@@ -207,7 +207,7 @@ export default function LoginScreen({
 
           <button
             type="submit"
-            className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] text-white font-semibold py-2 rounded transition-colors"
+            className="w-full bg-school-red hover:bg-school-red-dark text-white font-semibold py-2 rounded transition-colors"
           >
             登录 / Anmelden / Login
           </button>
@@ -226,7 +226,7 @@ export default function LoginScreen({
               setForgotPwNewPw("");
               setForgotPwNewPwConfirm("");
             }}
-            className="text-xs text-[var(--school-red)] underline hover:opacity-80 transition-opacity"
+            className="text-xs text-school-red underline hover:opacity-80 transition-opacity"
           >
             忘记密码？/ Passwort vergessen? / Forgot password?
           </button>
@@ -265,7 +265,7 @@ export default function LoginScreen({
                   value={forgotPwUsername}
                   onChange={(e) => setForgotPwUsername(e.target.value)}
                   placeholder="用户名 / Username / Benutzername"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-school-red"
                   autoComplete="username"
                   required
                 />
@@ -274,7 +274,7 @@ export default function LoginScreen({
                   value={forgotPwEmail}
                   onChange={(e) => setForgotPwEmail(e.target.value)}
                   placeholder="E-Mail / Email / 邮箱"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-school-red"
                   autoComplete="email"
                   required
                 />
@@ -289,7 +289,7 @@ export default function LoginScreen({
                 <button
                   type="submit"
                   disabled={forgotPwLoading || forgotPwCooldownSecs > 0}
-                  className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
+                  className="w-full bg-school-red hover:bg-school-red-dark disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
                 >
                   {forgotPwCooldownSecs > 0
                     ? `⏳ ${fmtCooldown(forgotPwCooldownSecs)} — 请等待 / Bitte warten / Please wait`
@@ -334,7 +334,7 @@ export default function LoginScreen({
                     value={forgotPwUsername}
                     onChange={(e) => setForgotPwUsername(e.target.value)}
                     placeholder="用户名 / Username / Benutzername"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-school-red"
                     autoComplete="username"
                     required
                   />
@@ -347,7 +347,7 @@ export default function LoginScreen({
                   value={forgotPwCode}
                   onChange={(e) => setForgotPwCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase())}
                   placeholder="8-stelliger Code / 8-char code / 8位验证码"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-[var(--school-red)]"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-school-red"
                   autoComplete="one-time-code"
                   required
                 />
@@ -355,7 +355,7 @@ export default function LoginScreen({
                 <button
                   type="submit"
                   disabled={forgotPwLoading}
-                  className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
+                  className="w-full bg-school-red hover:bg-school-red-dark disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
                 >
                   {forgotPwLoading ? "⏳ …" : "验证 / Bestätigen / Verify"}
                 </button>
@@ -365,7 +365,7 @@ export default function LoginScreen({
                     type="button"
                     disabled={forgotPwLoading || forgotPwRateLimited || forgotPwCooldownSecs > 0}
                     onClick={() => handleForgotPwResend()}
-                    className="w-full text-xs text-[var(--school-red)] underline hover:opacity-80 disabled:opacity-40"
+                    className="w-full text-xs text-school-red underline hover:opacity-80 disabled:opacity-40"
                   >
                     {forgotPwCooldownSecs > 0
                       ? `⏳ ${fmtCooldown(forgotPwCooldownSecs)} — 请等待 / Bitte warten / Please wait`
@@ -422,7 +422,7 @@ export default function LoginScreen({
                     value={forgotPwNewPw}
                     onChange={(e) => setForgotPwNewPw(e.target.value)}
                     placeholder="新密码 / Neues Passwort / New password"
-                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-school-red"
                     autoComplete="new-password"
                     minLength={6}
                     required
@@ -435,7 +435,7 @@ export default function LoginScreen({
                     value={forgotPwNewPwConfirm}
                     onChange={(e) => setForgotPwNewPwConfirm(e.target.value)}
                     placeholder="确认密码 / Passwort bestätigen / Confirm password"
-                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-school-red"
                     autoComplete="new-password"
                     required
                   />
@@ -445,7 +445,7 @@ export default function LoginScreen({
                 <button
                   type="submit"
                   disabled={forgotPwLoading}
-                  className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
+                  className="w-full bg-school-red hover:bg-school-red-dark disabled:opacity-60 text-white text-sm font-semibold py-2 rounded transition-colors"
                 >
                   {forgotPwLoading ? "⏳ …" : "保存新密码 / Speichern / Save"}
                 </button>
@@ -473,7 +473,7 @@ export default function LoginScreen({
                     setForgotPwNewPw("");
                     setForgotPwNewPwConfirm("");
                   }}
-                  className="text-xs text-[var(--school-red)] underline hover:opacity-80"
+                  className="text-xs text-school-red underline hover:opacity-80"
                 >
                   ← 返回登录 / Zurück zur Anmeldung / Back to Login
                 </button>
@@ -501,7 +501,7 @@ export default function LoginScreen({
                     setForgotPwNewPw("");
                     setForgotPwNewPwConfirm("");
                   }}
-                  className="text-xs text-[var(--school-red)] underline hover:opacity-80"
+                  className="text-xs text-school-red underline hover:opacity-80"
                 >
                   ← 返回登录 / Zurück zur Anmeldung / Back to Login
                 </button>
@@ -572,7 +572,7 @@ export default function LoginScreen({
                     setDevModeNewPw("");
                     setDevModeNewPwConfirm("");
                   }}
-                  className="text-xs text-[var(--school-red)] underline hover:opacity-80"
+                  className="text-xs text-school-red underline hover:opacity-80"
                 >
                   ← 返回登录 / Zurück zur Anmeldung / Back to Login
                 </button>
@@ -641,7 +641,7 @@ export default function LoginScreen({
         )}
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          <Link href="/" className="underline hover:text-[var(--school-red)]">
+          <Link href="/" className="underline hover:text-school-red">
             ← 返回网站 / Zurück zur Website / Back to site
           </Link>
         </p>

@@ -215,7 +215,7 @@ export default function AdminNewsEditPage() {
                       );
                     }}
                     rows={4}
-                    className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y ${lang === "zh" ? "font-cn" : ""} ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+                    className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y ${lang === "zh" ? "font-cn" : ""} ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
                     placeholder={lang === "de" ? "Text eingeben…" : "输入文本…"}
                   />
                   <p className={`text-xs mt-0.5 text-right ${countWords(block.content) > MAX_WORDS_NEWS ? "text-red-600 font-semibold" : "text-gray-400"}`}>
@@ -245,7 +245,7 @@ export default function AdminNewsEditPage() {
                       setUploadingIdx({ lang, idx: bIdx });
                       fileInputRef.current?.click();
                     }}
-                    className="border-2 border-dashed border-gray-300 hover:border-[var(--school-red)] rounded-lg p-4 text-center cursor-pointer transition-colors mb-2"
+                    className="border-2 border-dashed border-gray-300 hover:border-school-red rounded-lg p-4 text-center cursor-pointer transition-colors mb-2"
                   >
                     {uploadingIdx?.lang === lang && uploadingIdx?.idx === bIdx ? (
                       <p className="text-sm text-gray-500">⏳ Uploading… / 上传中…</p>
@@ -272,7 +272,7 @@ export default function AdminNewsEditPage() {
                         prev.map((b, i) => (i === bIdx ? { ...b, caption: e.target.value || undefined } : b))
                       );
                     }}
-                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--school-red)]"
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-school-red"
                     placeholder="Caption (optional) / Bildunterschrift"
                   />
                 </div>
@@ -293,14 +293,14 @@ export default function AdminNewsEditPage() {
           <button
             type="button"
             onClick={() => setBlocks((prev) => [...prev, { type: "text", content: "" }])}
-            className="text-xs px-3 py-1.5 border border-dashed border-gray-300 rounded hover:border-[var(--school-red)] hover:text-[var(--school-red)] transition-colors"
+            className="text-xs px-3 py-1.5 border border-dashed border-gray-300 rounded hover:border-school-red hover:text-school-red transition-colors"
           >
             + Text / 添加文本
           </button>
           <button
             type="button"
             onClick={() => setBlocks((prev) => [...prev, { type: "image", url: "" }])}
-            className="text-xs px-3 py-1.5 border border-dashed border-gray-300 rounded hover:border-[var(--school-red)] hover:text-[var(--school-red)] transition-colors"
+            className="text-xs px-3 py-1.5 border border-dashed border-gray-300 rounded hover:border-school-red hover:text-school-red transition-colors"
           >
             + Image / 添加图片
           </button>
@@ -319,8 +319,8 @@ export default function AdminNewsEditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--school-gray)]">
-      <div className="sticky top-0 z-40 bg-[var(--school-dark)] text-white px-4 py-3 flex items-center justify-between gap-4 shadow-md">
+    <div className="min-h-screen bg-school-gray">
+      <div className="sticky top-0 z-40 bg-school-dark text-white px-4 py-3 flex items-center justify-between gap-4 shadow-md">
         <div className="flex items-center gap-3">
           <span className="font-cn font-bold text-lg">
             {isNew ? "新建新闻 / Neuer Artikel" : `新闻编辑 / News bearbeiten #${idx + 1}`}
@@ -366,21 +366,21 @@ export default function AdminNewsEditPage() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--school-red)]"
+            className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-school-red"
           />
           <p className="text-xs text-gray-400 mt-1">Leave empty to use today&apos;s date when saving. / Leer lassen, um das heutige Datum beim Speichern zu verwenden. / 保存时留空以使用今天的日期。</p>
         </div>
 
         {/* DE Title + Body Blocks */}
         <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
-          <h3 className="font-semibold text-[var(--school-dark)] mb-3">🇩🇪 Deutsch</h3>
+          <h3 className="font-semibold text-school-dark mb-3">🇩🇪 Deutsch</h3>
           <div className="mb-4">
             <label className="block text-xs font-semibold text-gray-600 mb-1">Titel / Title</label>
             <input
               type="text"
               value={deTitle}
               onChange={(e) => setDeTitle(e.target.value)}
-              className={`w-full border rounded px-3 py-2 text-sm focus:outline-none ${countWords(deTitle) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+              className={`w-full border rounded px-3 py-2 text-sm focus:outline-none ${countWords(deTitle) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
               placeholder="Deutscher Titel…"
             />
             <p className={`text-xs mt-0.5 text-right ${countWords(deTitle) > MAX_WORDS_DEFAULT ? "text-red-600 font-semibold" : "text-gray-400"}`}>
@@ -393,14 +393,14 @@ export default function AdminNewsEditPage() {
 
         {/* ZH Title + Body Blocks */}
         <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
-          <h3 className="font-semibold text-[var(--school-dark)] mb-3">🇨🇳 中文</h3>
+          <h3 className="font-semibold text-school-dark mb-3">🇨🇳 中文</h3>
           <div className="mb-4">
             <label className="block text-xs font-semibold text-gray-600 mb-1">标题 / Title</label>
             <input
               type="text"
               value={zhTitle}
               onChange={(e) => setZhTitle(e.target.value)}
-              className={`w-full border rounded px-3 py-2 text-sm font-cn focus:outline-none ${countWords(zhTitle) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-[var(--school-red)]"}`}
+              className={`w-full border rounded px-3 py-2 text-sm font-cn focus:outline-none ${countWords(zhTitle) > MAX_WORDS_DEFAULT ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
               placeholder="中文标题…"
             />
             <p className={`text-xs mt-0.5 text-right ${countWords(zhTitle) > MAX_WORDS_DEFAULT ? "text-red-600 font-semibold" : "text-gray-400"}`}>
