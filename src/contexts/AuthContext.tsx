@@ -106,8 +106,8 @@ async function fetchAdmins(): Promise<AdminUser[]> {
   } catch {
     // API unreachable — fall back to local cache
   }
-  // Fallback: local cache → hardcoded default
-  return loadLocalAdmins() ?? [{ username: "admin", password: "yixin" }];
+  // Fallback: local cache → empty list (no hardcoded credentials)
+  return loadLocalAdmins() ?? [];
 }
 
 async function saveAdmins(admins: AdminUser[]): Promise<SaveResult> {
@@ -154,46 +154,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     async function restoreSession() {
       try {
-        const session = localStorage.getItem(SESSION_KEY);
-        if (session) {
-          const admins = await fetchAdmins();
-          if (admins.some((a) => a.username === session)) {
+        // Check if the server-side signed session cookie is still valid.
+        // This replaces the old approach of re-issuing cookies via POST.
+        const res = await fetch("/api/auth");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.username) {
             setIsAdmin(true);
-            setCurrentUser(session);
-            // Re-issue server-side session cookie (in case it expired)
+            setCurrentUser(data.username);
             try {
-              await fetch("/api/auth", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username: session }),
-              });
-            } catch {
-              // ignore
-            }
-          } else {
-            // Check if this was a recovery session — trust the stored session
-            // (recovery mode requires email verification at login time)
+              localStorage.setItem(SESSION_KEY, data.username);
+            } catch { /* ignore */ }
+            // Check if this was a recovery session
             const wasRecovery = localStorage.getItem(RECOVERY_SESSION_KEY) === "1";
             if (wasRecovery) {
-              // In recovery, re-issue cookie via /api/auth
-              try {
-                await fetch("/api/auth", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ username: session }),
-                });
-                setIsAdmin(true);
-                setCurrentUser(session);
-                setIsRecoverySession(true);
-              } catch {
-                localStorage.removeItem(SESSION_KEY);
-                localStorage.removeItem(RECOVERY_SESSION_KEY);
-              }
-            } else {
-              localStorage.removeItem(SESSION_KEY);
-              localStorage.removeItem(RECOVERY_SESSION_KEY);
+              setIsRecoverySession(true);
             }
+          } else {
+            // Cookie invalid or expired — clean up
+            try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+            try { localStorage.removeItem(RECOVERY_SESSION_KEY); } catch { /* ignore */ }
           }
+        } else {
+          // No valid session — clean up
+          try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+          try { localStorage.removeItem(RECOVERY_SESSION_KEY); } catch { /* ignore */ }
         }
       } catch {
         // ignore
