@@ -29,7 +29,7 @@ export default function ContactSection({
   updZhAddrLine,
 }: ContactSectionProps) {
   return (
-        <section id="contact" className="py-16 px-4 bg-white">
+        <section id="contact" data-testid="section-contact" className="py-16 px-4 bg-white">
           <div className="max-w-5xl mx-auto text-center">
             <div className="flex justify-center mb-4">
               <span className="block w-8 h-1 bg-school-red rounded" />

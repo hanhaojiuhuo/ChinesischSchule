@@ -45,11 +45,10 @@ export async function POST(request: Request) {
       RATE_LIMIT_WINDOW_MS
     );
     if (!ipCheck.allowed) {
-      return NextResponse.json({
-        success: false,
-        blocked: true,
-        remainingAttempts: 0,
-      });
+      return NextResponse.json(
+        { success: false, blocked: true, remainingAttempts: 0 },
+        { status: 429 }
+      );
     }
 
     // Check per-account rate limit — persistent across restarts
@@ -59,11 +58,10 @@ export async function POST(request: Request) {
       RATE_LIMIT_WINDOW_MS
     );
     if (!accountCheck.allowed) {
-      return NextResponse.json({
-        success: false,
-        blocked: true,
-        remainingAttempts: 0,
-      });
+      return NextResponse.json(
+        { success: false, blocked: true, remainingAttempts: 0 },
+        { status: 429 }
+      );
     }
 
     // Verify credentials server-side (supports bcrypt and legacy plaintext)
@@ -99,11 +97,10 @@ export async function POST(request: Request) {
 
     // Failed login – return remaining attempts (minimum of both limits)
     const remaining = Math.min(accountCheck.remaining, ipCheck.remaining);
-    return NextResponse.json({
-      success: false,
-      blocked: remaining <= 0,
-      remainingAttempts: remaining,
-    });
+    return NextResponse.json(
+      { success: false, blocked: remaining <= 0, remainingAttempts: remaining },
+      { status: 401 }
+    );
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

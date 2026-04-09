@@ -19,10 +19,10 @@ export default function Navbar() {
   const showEn = isEnglishVisible("nav");
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b-2 border-school-red shadow-sm">
+    <header className="sticky top-0 z-50 bg-white border-b-2 border-school-red shadow-sm" data-testid="navbar">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
         {/* Logo + school name */}
-        <Link href="/" className="flex items-center gap-3 group" aria-label="Yi Xin Schulhomepage">
+        <Link href="/" className="flex items-center gap-3 group" aria-label="Yi Xin Schulhomepage" data-testid="navbar-logo">
           <SchoolLogo size={44} />
           <div className="leading-tight">
             <p className="font-cn font-bold text-school-dark text-base sm:text-lg leading-none tracking-wide">
@@ -35,7 +35,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1" aria-label="Hauptnavigation">
+        <nav className="hidden md:flex items-center gap-1" aria-label="Hauptnavigation" data-testid="desktop-nav">
           {navLinks.map((link) => (
             <a
               key={link.href}
@@ -68,6 +68,7 @@ export default function Navbar() {
             onClick={() => setOpen((o) => !o)}
             aria-label="Menü öffnen"
             aria-expanded={open}
+            data-testid="mobile-menu-toggle"
           >
             <svg
               viewBox="0 0 24 24"
@@ -92,6 +93,7 @@ export default function Navbar() {
         <nav
           className="md:hidden border-t border-school-border bg-white"
           aria-label="Mobile Navigation"
+          data-testid="mobile-nav"
         >
           {navLinks.map((link) => (
             <a

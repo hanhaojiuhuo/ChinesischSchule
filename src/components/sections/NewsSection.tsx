@@ -58,7 +58,7 @@ export default function NewsSection({
   newsFileInputRef,
 }: NewsSectionProps) {
   return (
-        <section id="news" className="py-16 px-4 bg-school-gray">
+        <section id="news" data-testid="section-news" className="py-16 px-4 bg-school-gray">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-8">
               <span className="block w-8 h-1 bg-school-red rounded" />

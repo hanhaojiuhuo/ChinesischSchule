@@ -84,11 +84,10 @@ export async function POST(request: Request) {
         RATE_LIMIT_WINDOW_MS
       );
       if (!ipCheck.allowed) {
-        return NextResponse.json({
-          success: false,
-          blocked: true,
-          remainingAttempts: 0,
-        });
+        return NextResponse.json(
+          { success: false, blocked: true, remainingAttempts: 0 },
+          { status: 429 }
+        );
       }
 
       // Check per-account rate limit
@@ -98,11 +97,10 @@ export async function POST(request: Request) {
         RATE_LIMIT_WINDOW_MS
       );
       if (!accountCheck.allowed) {
-        return NextResponse.json({
-          success: false,
-          blocked: true,
-          remainingAttempts: 0,
-        });
+        return NextResponse.json(
+          { success: false, blocked: true, remainingAttempts: 0 },
+          { status: 429 }
+        );
       }
 
       // Verify credentials
@@ -110,21 +108,19 @@ export async function POST(request: Request) {
       const admin = admins.find((a) => a.username === username.trim());
       if (!admin) {
         const remaining = Math.min(accountCheck.remaining, ipCheck.remaining);
-        return NextResponse.json({
-          success: false,
-          blocked: remaining <= 0,
-          remainingAttempts: remaining,
-        });
+        return NextResponse.json(
+          { success: false, blocked: remaining <= 0, remainingAttempts: remaining },
+          { status: 401 }
+        );
       }
 
       const passwordValid = await verifyPassword(password, admin.password);
       if (!passwordValid) {
         const remaining = Math.min(accountCheck.remaining, ipCheck.remaining);
-        return NextResponse.json({
-          success: false,
-          blocked: remaining <= 0,
-          remainingAttempts: remaining,
-        });
+        return NextResponse.json(
+          { success: false, blocked: remaining <= 0, remainingAttempts: remaining },
+          { status: 401 }
+        );
       }
 
       // Credentials valid — now check if admin has email for 2FA

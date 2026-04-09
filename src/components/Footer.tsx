@@ -42,7 +42,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className={`bg-school-dark text-white mt-auto${isAdmin && toolbarAtBottom ? " pb-28" : ""}`}>
+    <footer className={`bg-school-dark text-white mt-auto${isAdmin && toolbarAtBottom ? " pb-28" : ""}`} data-testid="footer">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid sm:grid-cols-3 gap-8">
         {/* Brand */}
         <div className="flex flex-col items-start gap-3">
