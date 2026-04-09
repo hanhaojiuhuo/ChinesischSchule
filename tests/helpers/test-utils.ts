@@ -115,10 +115,10 @@ export async function fillContactForm(
   page: Page,
   data: { name: string; email: string; message: string; consent?: boolean }
 ) {
-  const section = page.locator("#contact");
-  await section.locator('input[type="text"]').fill(data.name);
-  await section.locator('input[type="email"]').fill(data.email);
-  await section.locator("textarea").fill(data.message);
+  const section = page.locator('[data-testid="section-contact"]');
+  await section.locator('[data-testid="contact-name"]').fill(data.name);
+  await section.locator('[data-testid="contact-email"]').fill(data.email);
+  await section.locator('[data-testid="contact-message"]').fill(data.message);
   if (data.consent !== false) {
     const checkbox = section.locator("#privacy-consent");
     if (!(await checkbox.isChecked())) {

@@ -24,7 +24,7 @@ export default function LoginForm({
   handleLogin,
 }: LoginFormProps) {
   return (
-    <form onSubmit={handleLogin} className="space-y-4">
+    <form onSubmit={handleLogin} className="space-y-4" data-testid="admin-login-form">
       <div>
         <label className="block text-xs font-semibold text-gray-600 mb-1">
           用户名 / Username / Benutzername
@@ -32,6 +32,7 @@ export default function LoginForm({
         <input
           type="text"
           autoComplete="username"
+          data-testid="admin-login-username"
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-school-red"
@@ -46,6 +47,7 @@ export default function LoginForm({
           <input
             type={showLoginPw ? "text" : "password"}
             autoComplete="current-password"
+            data-testid="admin-login-password"
             value={pwInput}
             onChange={(e) => setPwInput(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-school-red"
@@ -55,11 +57,12 @@ export default function LoginForm({
         </div>
       </div>
       {loginError && (
-        <p className="text-xs text-red-600 text-center">{loginError}</p>
+        <p data-testid="admin-login-error" className="text-xs text-red-600 text-center">{loginError}</p>
       )}
 
       <button
         type="submit"
+        data-testid="admin-login-submit"
         className="w-full bg-school-red hover:bg-school-red-dark text-white font-semibold py-2 rounded transition-colors"
       >
         登录 / Anmelden / Login

@@ -198,6 +198,7 @@ export default function CoursesSection({
                       return (
                         <div
                           key={`${courseOffset}-${slot}`}
+                          data-testid="course-card"
                           className="border-t-4 border-school-red bg-school-gray rounded-lg p-6 hover:shadow-lg transition-shadow"
                         >
                           <div className="font-cn text-xl font-bold text-school-dark mb-1">

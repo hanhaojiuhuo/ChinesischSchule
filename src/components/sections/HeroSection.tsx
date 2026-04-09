@@ -163,6 +163,7 @@ export default function HeroSection({
                   <div className="flex flex-wrap gap-3">
                     <a
                       href="#courses"
+                      data-testid="hero-discover-courses-link"
                       className="px-5 py-3 bg-school-red hover:bg-school-red-dark text-white font-semibold rounded transition-colors text-sm"
                     >
                       <span className="font-cn">{zh.hero.discoverCourses}</span>
@@ -171,6 +172,7 @@ export default function HeroSection({
                     </a>
                     <a
                       href="#contact"
+                      data-testid="hero-contact-link"
                       className="px-5 py-3 border border-white/30 hover:border-white text-white font-semibold rounded transition-colors text-sm"
                     >
                       <span className="font-cn">{zh.hero.contactUs}</span>
@@ -183,7 +185,7 @@ export default function HeroSection({
             </div>
 
             <div className="flex-shrink-0">
-              <div className="logo-circle bg-white p-4 shadow-2xl">
+              <div className="logo-circle bg-white p-4 shadow-2xl" data-testid="hero-logo">
                 <SchoolLogo size={200} />
               </div>
             </div>
