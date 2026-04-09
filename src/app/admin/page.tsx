@@ -881,7 +881,7 @@ function AdminPageContent() {
                   value={twoFactorCode}
                   onChange={(e) => setTwoFactorCode(e.target.value.toUpperCase())}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-[var(--school-red)]"
-                  placeholder="ABCD1234"
+                  placeholder="8位验证码 / 8-char code / 8-Zeichen-Code"
                   maxLength={8}
                   autoFocus
                 />

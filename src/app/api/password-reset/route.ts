@@ -3,7 +3,7 @@ import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
-import { checkRateLimitPersistent } from "@/lib/rate-limit";
+import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit-log";
 
 /** Time-slot duration for HMAC-based code validity (15 minutes). */

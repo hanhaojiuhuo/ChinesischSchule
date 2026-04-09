@@ -226,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Check if this was a recovery session — trust the stored session
             // (recovery mode requires email verification at login time)
             const wasRecovery = localStorage.getItem(RECOVERY_SESSION_KEY) === "1";
-            if (wasRecovery && process.env.NODE_ENV !== "production") {
+            if (wasRecovery) {
               // In recovery, re-issue cookie via /api/auth
               try {
                 await fetch("/api/auth", {
