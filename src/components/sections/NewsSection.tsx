@@ -207,7 +207,7 @@ export default function NewsSection({
                                   <div>
                                     <span className="text-xs text-gray-500 mb-1 block">Text</span>
                                     <textarea
-                                      className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
+                                      className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[120px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
                                       value={block.content}
                                       placeholder="Text…"
                                       onChange={(e) => {
@@ -343,7 +343,7 @@ export default function NewsSection({
                                     <div>
                                       <span className="text-xs text-gray-500 mb-1 block">Text</span>
                                       <textarea
-                                        className={`w-full border rounded px-3 py-2 text-sm font-cn focus:outline-none resize-y min-h-[60px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
+                                        className={`w-full border rounded px-3 py-2 text-sm font-cn focus:outline-none resize-y min-h-[120px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
                                         value={block.content}
                                         placeholder="中文文本…"
                                         onChange={(e) => {

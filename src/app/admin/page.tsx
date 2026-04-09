@@ -11,6 +11,7 @@ import { defaultTranslations } from "@/i18n/translations";
 import type { Language, SiteContent, NewsBodyBlock, CourseItem } from "@/i18n/translations";
 import LoginScreen from "@/components/admin/LoginScreen";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import ResetConfirmDialog from "@/components/admin/ResetConfirmDialog";
 
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
 
@@ -58,6 +59,9 @@ function AdminPageContent() {
   // Draft content for the currently edited language
   const [draft, setDraft] = useState<SiteContent>(() => defaultTranslations["de"]);
   const [editLang, setEditLang] = useState<Language>("de");
+
+  // Reset confirmation dialog state
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   // Change-password state
   const [showChangePw, setShowChangePw] = useState(false);
@@ -275,11 +279,14 @@ function AdminPageContent() {
     setTimeout(() => setSaved(false), 2500);
   }
 
-  async function handleReset() {
-    if (confirm("Alle Änderungen zurücksetzen? / Reset all changes? / 重置所有更改？")) {
-      await resetContent(editLang);
-      setDraft(defaultTranslations[editLang]);
-    }
+  function handleReset() {
+    setShowResetDialog(true);
+  }
+
+  async function confirmReset() {
+    setShowResetDialog(false);
+    await resetContent(editLang);
+    setDraft(defaultTranslations[editLang]);
   }
 
   async function handleSectionSave(sectionKey: string) {
@@ -915,6 +922,7 @@ function AdminPageContent() {
 
   /* ── Admin panel ─────────────────────────────────────────── */
   return (
+    <>
     <AdminDashboard
       currentUser={auth.currentUser}
       isRecoverySession={auth.isRecoverySession}
@@ -1012,5 +1020,11 @@ function AdminPageContent() {
       handleAddAdmin={handleAddAdmin}
       setAddAdminMsg={setAddAdminMsg}
     />
+    <ResetConfirmDialog
+      open={showResetDialog}
+      onConfirm={confirmReset}
+      onCancel={() => setShowResetDialog(false)}
+    />
+    </>
   );
 }

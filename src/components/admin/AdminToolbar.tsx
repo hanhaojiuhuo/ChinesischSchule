@@ -15,7 +15,6 @@ export interface AdminToolbarProps {
   toolbarPosition: ToolbarPos;
   setToolbarPosition: (pos: ToolbarPos) => void;
   handleSave: () => void;
-  handleDiscard: () => void;
   logout: () => void;
   /* Undo / Redo */
   canUndo?: boolean;
@@ -35,7 +34,6 @@ export default function AdminToolbar({
   toolbarPosition,
   setToolbarPosition,
   handleSave,
-  handleDiscard,
   logout,
   canUndo = false,
   canRedo = false,
@@ -138,14 +136,6 @@ export default function AdminToolbar({
             className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded transition-colors"
           >
             💾 Save / Speichern / 保存
-          </button>
-        </Tooltip>
-        <Tooltip text="Discard unsaved changes / 放弃更改 / Änderungen verwerfen" position="bottom">
-          <button
-            onClick={handleDiscard}
-            className="px-4 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold rounded transition-colors"
-          >
-            ↺ Discard / Verwerfen
           </button>
         </Tooltip>
         <Tooltip text="Open the admin dashboard / 打开管理面板 / Admin-Bereich öffnen" position="bottom">
