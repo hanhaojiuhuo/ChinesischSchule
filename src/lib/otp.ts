@@ -52,7 +52,7 @@ export function verifyHmacCode(
     // Constant-time comparison to prevent timing attacks
     if (
       normalizedCode.length === expected.length &&
-      timingSafeEqual(Buffer.from(normalizedCode), Buffer.from(expected))
+      timingSafeEqual(Buffer.from(normalizedCode, "ascii"), Buffer.from(expected, "ascii"))
     ) {
       return true;
     }

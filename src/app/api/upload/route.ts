@@ -49,12 +49,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Sanitize filename: strip path components and dangerous characters
-    const sanitizedName = file.name
+    // Sanitize filename: strip path components and dangerous characters,
+    // but preserve the file extension
+    const rawName = file.name;
+    const lastDot = rawName.lastIndexOf(".");
+    const ext = lastDot >= 0 ? rawName.slice(lastDot) : "";
+    const base = lastDot >= 0 ? rawName.slice(0, lastDot) : rawName;
+    const sanitizedBase = base
       .replace(/[/\\]/g, "_")                    // strip path separators
       .replace(/[^a-zA-Z0-9._-]/g, "_")          // only safe chars
       .replace(/\.{2,}/g, ".")                    // no double dots
-      .slice(0, 100);                             // cap length
+      .slice(0, 80);                              // cap base length
+    const sanitizedExt = ext
+      .replace(/[^a-zA-Z0-9.]/g, "")             // only safe chars in ext
+      .slice(0, 20);                              // cap ext length
+    const sanitizedName = `${sanitizedBase}${sanitizedExt}` || "upload";
 
     const blob = await put(`news/${Date.now()}-${sanitizedName}`, file, {
       access: "public",
