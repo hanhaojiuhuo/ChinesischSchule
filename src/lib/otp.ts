@@ -1,6 +1,17 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 /**
+ * Return the secret used for HMAC-based OTP codes.
+ *
+ * Prefers a dedicated OTP_SECRET env var. Falls back to RESEND_API_KEY
+ * so existing deployments continue to work, but OTP_SECRET should be
+ * set in production to avoid coupling email credentials with OTP security.
+ */
+export function getOtpSecret(): string | undefined {
+  return process.env.OTP_SECRET ?? process.env.RESEND_API_KEY;
+}
+
+/**
  * Generate an 8-character uppercase hex code tied to a username, domain, and
  * time slot via HMAC-SHA256.  Stateless — no server-side storage required.
  *

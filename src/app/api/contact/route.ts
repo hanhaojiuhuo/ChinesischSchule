@@ -77,10 +77,12 @@ export async function POST(request: Request) {
       process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
     const resend = new Resend(apiKey);
+    // Strip newlines from user-supplied name to prevent email header injection
+    const safeName = trimmedName.replace(/[\r\n]/g, " ");
     const { error } = await resend.emails.send({
       from: fromEmail,
       to: notificationEmail,
-      subject: `Neue Kontaktanfrage von ${trimmedName} / New contact from ${trimmedName} / 新留言：${trimmedName}`,
+      subject: `Neue Kontaktanfrage von ${safeName} / New contact from ${safeName} / 新留言：${safeName}`,
       replyTo: trimmedEmail,
       html: contactNotificationEmail(trimmedName, trimmedEmail, trimmedMessage),
     });

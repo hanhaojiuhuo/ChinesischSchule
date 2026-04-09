@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { readAdmins } from "@/lib/edge-config";
 import { checkRateLimitPersistent } from "@/lib/rate-limit";
-import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
+import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";
 import { passwordChangeCodeEmail } from "@/lib/email-templates";
 import { maskEmail } from "@/lib/text-utils";
 import { requireJson } from "@/lib/api-helpers";
@@ -78,7 +78,15 @@ export async function POST(request: Request) {
         );
       }
 
-      const code = generateHmacCode("password-change", trimmedUsername, apiKey, CODE_SLOT_MS);
+      const otpSecret = getOtpSecret();
+      if (!otpSecret) {
+        return NextResponse.json(
+          { error: "OTP service not configured" },
+          { status: 503 }
+        );
+      }
+
+      const code = generateHmacCode("password-change", trimmedUsername, otpSecret, CODE_SLOT_MS);
       const fromEmail =
         process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
@@ -115,14 +123,15 @@ export async function POST(request: Request) {
       }
 
       const apiKey = process.env.RESEND_API_KEY;
-      if (!apiKey) {
+      const otpVerifySecret = getOtpSecret();
+      if (!otpVerifySecret) {
         return NextResponse.json(
-          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { error: "OTP service not configured" },
           { status: 503 }
         );
       }
 
-      const valid = verifyHmacCode("password-change", username.trim(), apiKey, code.trim(), CODE_SLOT_MS);
+      const valid = verifyHmacCode("password-change", username.trim(), otpVerifySecret, code.trim(), CODE_SLOT_MS);
       if (!valid) {
         return NextResponse.json(
           {

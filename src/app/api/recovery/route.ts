@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { readAdmins } from "@/lib/edge-config";
 import { logAuditEvent } from "@/lib/audit-log";
-import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
+import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";
 import { recoveryCodeEmail } from "@/lib/email-templates";
 import { setSessionCookie } from "@/lib/session";
 import { requireJson } from "@/lib/api-helpers";
@@ -81,7 +81,8 @@ export async function POST(request: Request) {
       const admin = admins.find((a) => a.username === trimmedUsername);
       const targetEmail = admin?.email || notificationEmail;
 
-      if (!apiKey || !targetEmail) {
+      const otpSecret = getOtpSecret();
+      if (!apiKey || !targetEmail || !otpSecret) {
         return NextResponse.json(
           {
             error: "Email verification is required for recovery but email service is not configured. Set RESEND_API_KEY and NOTIFICATION_EMAIL.",
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const code = generateHmacCode("recovery", trimmedUsername, apiKey, CODE_SLOT_MS);
+      const code = generateHmacCode("recovery", trimmedUsername, otpSecret, CODE_SLOT_MS);
       const fromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
       const resend = new Resend(apiKey);
 
@@ -138,14 +139,15 @@ export async function POST(request: Request) {
       }
 
       const apiKey = process.env.RESEND_API_KEY;
-      if (!apiKey) {
+      const otpVerifySecret = getOtpSecret();
+      if (!otpVerifySecret) {
         return NextResponse.json(
-          { error: "Email service not configured" },
+          { error: "OTP service not configured" },
           { status: 503 }
         );
       }
 
-      if (!verifyHmacCode("recovery", trimmedUsername, apiKey, code.trim(), CODE_SLOT_MS)) {
+      if (!verifyHmacCode("recovery", trimmedUsername, otpVerifySecret, code.trim(), CODE_SLOT_MS)) {
         return NextResponse.json(
           { error: "Invalid or expired code / Ungültiger Code / 验证码无效" },
           { status: 400 }
