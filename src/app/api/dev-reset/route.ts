@@ -3,12 +3,11 @@ import {
   readAdmins,
   writeAdmins,
   getLastPersistError,
-  DEFAULT_ADMINS,
   type AdminUser,
 } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
 import { logAuditEvent } from "@/lib/audit-log";
-import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
+import { setSessionCookie } from "@/lib/session";
 import { requireJson } from "@/lib/api-helpers";
 
 /**
@@ -73,7 +72,7 @@ export async function POST(request: Request) {
   try {
     admins = await readAdmins();
   } catch {
-    admins = [...DEFAULT_ADMINS];
+    admins = [];
   }
 
   // Update existing user or append new entry (hash the password)
@@ -116,12 +115,6 @@ export async function POST(request: Request) {
     persisted,
     persistError: persistError ?? undefined,
   });
-  response.cookies.set(SESSION_COOKIE, username, {
-    httpOnly: true,
-    sameSite: "strict",
-    path: "/",
-    maxAge: COOKIE_MAX_AGE,
-    secure: process.env.NODE_ENV === "production",
-  });
+  setSessionCookie(response, username);
   return response;
 }

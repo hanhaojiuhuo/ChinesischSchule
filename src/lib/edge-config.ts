@@ -6,9 +6,14 @@ export interface AdminUser {
   email?: string;
 }
 
-export const DEFAULT_ADMINS: AdminUser[] = [
-  { username: "admin", password: "yixin" },
-];
+/**
+ * Empty default — no hardcoded credentials.
+ *
+ * When Edge Config is not available and no admins have been configured,
+ * this returns an empty list so that login is impossible until an admin
+ * account is created through RECOVERY_MODE.
+ */
+export const DEFAULT_ADMINS: AdminUser[] = [];
 
 export const EDGE_CONFIG_KEY = "yixin-admins";
 

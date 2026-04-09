@@ -4,7 +4,7 @@ import { readAdmins } from "@/lib/edge-config";
 import { logAuditEvent } from "@/lib/audit-log";
 import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
 import { recoveryCodeEmail } from "@/lib/email-templates";
-import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
+import { setSessionCookie } from "@/lib/session";
 import { requireJson } from "@/lib/api-helpers";
 
 const CODE_SLOT_MS = 10 * 60 * 1000; // 10 minutes
@@ -124,13 +124,7 @@ export async function POST(request: Request) {
     );
 
     const response = NextResponse.json({ success: true });
-    response.cookies.set(SESSION_COOKIE, trimmedUsername, {
-      httpOnly: true,
-      sameSite: "strict",
-      path: "/",
-      maxAge: COOKIE_MAX_AGE,
-      secure: process.env.NODE_ENV === "production",
-    });
+    setSessionCookie(response, trimmedUsername);
     return response;
   }
 

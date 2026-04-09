@@ -8,7 +8,7 @@ import { getClientIP } from "@/lib/request-utils";
 import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
 import { loginCodeEmail } from "@/lib/email-templates";
 import { maskEmail } from "@/lib/text-utils";
-import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
+import { setSessionCookie } from "@/lib/session";
 import { requireJson } from "@/lib/api-helpers";
 
 /** Max failed login attempts per account per day. */
@@ -106,13 +106,7 @@ export async function POST(request: Request) {
         });
 
         const response = NextResponse.json({ success: true, twoFactorRequired: false });
-        response.cookies.set(SESSION_COOKIE, username.trim(), {
-          httpOnly: true,
-          sameSite: "strict",
-          path: "/",
-          maxAge: COOKIE_MAX_AGE,
-          secure: process.env.NODE_ENV === "production",
-        });
+        setSessionCookie(response, username.trim());
         return response;
       }
 
@@ -129,13 +123,7 @@ export async function POST(request: Request) {
         });
 
         const response = NextResponse.json({ success: true, twoFactorRequired: false });
-        response.cookies.set(SESSION_COOKIE, username.trim(), {
-          httpOnly: true,
-          sameSite: "strict",
-          path: "/",
-          maxAge: COOKIE_MAX_AGE,
-          secure: process.env.NODE_ENV === "production",
-        });
+        setSessionCookie(response, username.trim());
         return response;
       }
 
@@ -163,13 +151,7 @@ export async function POST(request: Request) {
         });
 
         const response = NextResponse.json({ success: true, twoFactorRequired: false });
-        response.cookies.set(SESSION_COOKIE, username.trim(), {
-          httpOnly: true,
-          sameSite: "strict",
-          path: "/",
-          maxAge: COOKIE_MAX_AGE,
-          secure: process.env.NODE_ENV === "production",
-        });
+        setSessionCookie(response, username.trim());
         return response;
       }
 
@@ -225,13 +207,7 @@ export async function POST(request: Request) {
       });
 
       const response = NextResponse.json({ success: true });
-      response.cookies.set(SESSION_COOKIE, username.trim(), {
-        httpOnly: true,
-        sameSite: "strict",
-        path: "/",
-        maxAge: COOKIE_MAX_AGE,
-        secure: process.env.NODE_ENV === "production",
-      });
+      setSessionCookie(response, username.trim());
       return response;
     }
 
