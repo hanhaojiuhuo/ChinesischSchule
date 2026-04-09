@@ -200,7 +200,6 @@ export async function POST(request: Request) {
         );
       }
 
-      const apiKey = process.env.RESEND_API_KEY;
       const otpVerifySecret = getOtpSecret();
       if (!otpVerifySecret) {
         return NextResponse.json(
