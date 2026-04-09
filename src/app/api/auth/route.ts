@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-
-const SESSION_COOKIE = "yixin-session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
 
 /** Set session cookie after a successful login */
 export async function POST(request: Request) {

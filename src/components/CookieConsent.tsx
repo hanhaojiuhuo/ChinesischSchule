@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, startTransition } from "react";
+import { CONSENT_KEY } from "@/lib/constants";
 
-const CONSENT_KEY = "yixin-cookie-consent";
 /** Extra pixels below the measured banner so the footer never sits flush against it. */
 const BANNER_BOTTOM_PADDING = 24;
 

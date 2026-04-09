@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins } from "@/lib/edge-config";
 import { checkRateLimitPersistent } from "@/lib/rate-limit";
+import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
+import { passwordChangeCodeEmail } from "@/lib/email-templates";
+import { maskEmail } from "@/lib/text-utils";
 
 /** Time-slot duration for HMAC-based code validity (10 minutes). */
 const CODE_SLOT_MS = 10 * 60 * 1000;
@@ -10,34 +12,6 @@ const CODE_SLOT_MS = 10 * 60 * 1000;
 /** Rate-limit: max code requests per username within 1 hour. */
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-
-/**
- * Generate an 8-character alphanumeric HMAC-based code tied to a username and time slot.
- * Domain separation uses "password-change" to distinguish from password-reset codes.
- */
-function generateCode(username: string, secret: string): string {
-  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
-  const mac = createHmac("sha256", secret);
-  mac.update(`password-change:${username}:${slot}`);
-  return mac.digest("hex").slice(0, 8).toUpperCase();
-}
-
-/** Verify a code against the current and previous time slot. */
-function verifyCode(
-  username: string,
-  secret: string,
-  code: string
-): boolean {
-  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
-  for (const s of [slot, slot - 1]) {
-    const mac = createHmac("sha256", secret);
-    mac.update(`password-change:${username}:${s}`);
-    if (mac.digest("hex").slice(0, 8).toUpperCase() === code.toUpperCase()) {
-      return true;
-    }
-  }
-  return false;
-}
 
 /**
  * POST /api/password-change
@@ -101,7 +75,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const code = generateCode(trimmedUsername, apiKey);
+      const code = generateHmacCode("password-change", trimmedUsername, apiKey, CODE_SLOT_MS);
       const fromEmail =
         process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
@@ -111,31 +85,7 @@ export async function POST(request: Request) {
         to: admin.email,
         subject:
           "Passwortänderung Verifizierungscode / Password Change Code / 密码修改验证码",
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-            <h2 style="color:#c0392b">
-              YiXin 中文学校 · Chinesisch Schule Heilbronn
-            </h2>
-            <h3>Passwortänderung / Password Change / 密码修改</h3>
-            <p>
-              <strong>DE:</strong> Ihr Verifizierungscode für die Passwortänderung lautet:<br>
-              <strong>EN:</strong> Your password change verification code is:<br>
-              <strong>ZH:</strong> 您的密码修改验证码为：
-            </p>
-            <p style="font-size:36px;letter-spacing:8px;font-weight:bold;color:#c0392b;text-align:center">
-              ${code}
-            </p>
-            <p style="color:#666;font-size:13px">
-              DE: Dieser Code ist 20 Minuten gültig.<br>
-              EN: This code is valid for 20 minutes.<br>
-              ZH: 此验证码有效期为 20 分钟。
-            </p>
-            <p style="color:#999;font-size:12px">
-              Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.<br>
-              If you did not request this, please ignore this email.<br>
-              如非本人操作，请忽略此邮件。
-            </p>
-          </div>`,
+        html: passwordChangeCodeEmail(code),
       });
 
       if (error) {
@@ -169,7 +119,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const valid = verifyCode(username.trim(), apiKey, code.trim());
+      const valid = verifyHmacCode("password-change", username.trim(), apiKey, code.trim(), CODE_SLOT_MS);
       if (!valid) {
         return NextResponse.json(
           {
@@ -188,12 +138,4 @@ export async function POST(request: Request) {
     console.error("[password-change] Error:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-}
-
-/** Mask email for display: j***n@example.com */
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@");
-  if (!local || !domain) return "***@***";
-  if (local.length <= 2) return `${local[0]}***@${domain}`;
-  return `${local[0]}***${local[local.length - 1]}@${domain}`;
 }

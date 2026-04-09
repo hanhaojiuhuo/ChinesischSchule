@@ -8,9 +8,7 @@ import {
 } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
 import { logAuditEvent } from "@/lib/audit-log";
-
-const SESSION_COOKIE = "yixin-session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
 
 /**
  * GET – check whether developer mode (RECOVERY_MODE) is enabled.

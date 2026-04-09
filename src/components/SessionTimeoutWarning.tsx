@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { formatTimer } from "@/lib/text-utils";
 
 interface SessionTimeoutWarningProps {
   remainingSeconds: number;
@@ -17,8 +18,7 @@ export default function SessionTimeoutWarning({
   onExtend,
   onLogout,
 }: SessionTimeoutWarningProps) {
-  const mm = String(Math.floor(remainingSeconds / 60)).padStart(2, "0");
-  const ss = String(remainingSeconds % 60).padStart(2, "0");
+  const formatted = formatTimer(remainingSeconds);
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -33,7 +33,7 @@ export default function SessionTimeoutWarning({
 
         {/* Countdown */}
         <p className="text-3xl font-mono font-bold text-red-600 my-4">
-          {mm}:{ss}
+          {formatted}
         </p>
 
         {/* Description – trilingual */}

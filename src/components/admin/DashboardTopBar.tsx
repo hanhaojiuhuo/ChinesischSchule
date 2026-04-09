@@ -1,6 +1,7 @@
 "use client";
 
 import type { Language } from "@/i18n/translations";
+import { formatTimer } from "@/lib/text-utils";
 
 const langLabels: Record<Language, string> = { de: "Deutsch", zh: "中文", en: "English" };
 
@@ -49,11 +50,9 @@ export default function DashboardTopBar({
           }`}
           title="自动登出倒计时 / Auto-logout countdown / Automatische Abmeldung"
         >
-          ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:
-          {String(remainingSeconds % 60).padStart(2, "0")}
+          ⏱ {formatTimer(remainingSeconds)}
           {" / "}
-          {String(Math.floor(totalSeconds / 60)).padStart(2, "0")}:
-          {String(totalSeconds % 60).padStart(2, "0")}
+          {formatTimer(totalSeconds)}
         </span>
       </div>
       <div className="flex items-center gap-3 flex-wrap">

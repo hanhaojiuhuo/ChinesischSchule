@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import SchoolLogo from "./SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
-
-const TOOLBAR_POS_KEY = "yixin-toolbar-position";
+import { TOOLBAR_POS_KEY } from "@/lib/constants";
 
 export default function Footer() {
   const { getContent, isEnglishVisible } = useContent();

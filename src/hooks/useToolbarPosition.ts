@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { TOOLBAR_POS_KEY, type ToolbarPos } from "@/lib/constants";
 
 /**
@@ -8,18 +8,15 @@ import { TOOLBAR_POS_KEY, type ToolbarPos } from "@/lib/constants";
  * `sessionStorage` and cross-component synchronisation via a custom DOM event.
  */
 export function useToolbarPosition(isAdmin: boolean) {
-  const [toolbarPosition, setToolbarPositionState] = useState<ToolbarPos>("bottom");
-
-  // Read toolbar position from sessionStorage on mount (only when admin)
-  useEffect(() => {
-    if (!isAdmin) return;
+  // Read initial position from sessionStorage (lazy initializer — no effect needed)
+  const [toolbarPosition, setToolbarPositionState] = useState<ToolbarPos>(() => {
+    if (!isAdmin) return "bottom";
     try {
       const stored = sessionStorage.getItem(TOOLBAR_POS_KEY) as ToolbarPos | null;
-      if (stored === "top" || stored === "bottom") {
-        setToolbarPositionState(stored);
-      }
-    } catch { /* ignore */ }
-  }, [isAdmin]);
+      if (stored === "top" || stored === "bottom") return stored;
+    } catch { /* ignore – SSR / privacy mode */ }
+    return "bottom";
+  });
 
   const setToolbarPosition = useCallback((pos: ToolbarPos) => {
     setToolbarPositionState(pos);

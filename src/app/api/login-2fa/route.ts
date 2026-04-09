@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins } from "@/lib/edge-config";
 import { verifyPassword } from "@/lib/password";
 import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIP } from "@/lib/request-utils";
-
-const SESSION_COOKIE = "yixin-session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
-
-/** Time-slot duration for HMAC-based code validity (5 minutes). */
-const CODE_SLOT_MS = 5 * 60 * 1000;
+import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
+import { loginCodeEmail } from "@/lib/email-templates";
+import { maskEmail } from "@/lib/text-utils";
+import { SESSION_COOKIE, COOKIE_MAX_AGE } from "@/lib/constants";
 
 /** Max failed login attempts per account per day. */
 const MAX_ATTEMPTS_PER_ACCOUNT = 10;
@@ -19,35 +16,6 @@ const MAX_ATTEMPTS_PER_ACCOUNT = 10;
 const MAX_ATTEMPTS_PER_IP = 20;
 /** Rate limit window: 24 hours. */
 const RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Generate an 8-character alphanumeric code tied to a username and time slot.
- * Domain separation: "login-2fa"
- */
-function generateCode(username: string, secret: string): string {
-  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
-  const mac = createHmac("sha256", secret);
-  mac.update(`login-2fa:${username}:${slot}`);
-  const hex = mac.digest("hex");
-  // Take 8 alphanumeric characters from the hash
-  return hex.slice(0, 8).toUpperCase();
-}
-
-/**
- * Verify a code against the current and previous time slot.
- */
-function verifyCode(username: string, secret: string, code: string): boolean {
-  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
-  for (const s of [slot, slot - 1]) {
-    const mac = createHmac("sha256", secret);
-    mac.update(`login-2fa:${username}:${s}`);
-    const hex = mac.digest("hex");
-    if (hex.slice(0, 8).toUpperCase() === code.toUpperCase()) {
-      return true;
-    }
-  }
-  return false;
-}
 
 /**
  * POST /api/login-2fa
@@ -168,7 +136,8 @@ export async function POST(request: Request) {
         return response;
       }
 
-      const code = generateCode(admin.username, apiKey);
+      const CODE_SLOT_MS = 5 * 60 * 1000;
+      const code = generateHmacCode("login-2fa", admin.username, apiKey, CODE_SLOT_MS);
       const fromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
       const resend = new Resend(apiKey);
 
@@ -176,31 +145,7 @@ export async function POST(request: Request) {
         from: fromEmail,
         to: admin.email,
         subject: "Anmeldecode / Login Code / 登录验证码 — YiXin 中文学校",
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-            <h2 style="color:#c0392b">
-              YiXin 中文学校 · Chinesisch Schule Heilbronn
-            </h2>
-            <h3>Anmeldecode / Login Verification Code / 登录验证码</h3>
-            <p>
-              <strong>DE:</strong> Ihr Anmeldeverifizierungscode lautet:<br>
-              <strong>EN:</strong> Your login verification code is:<br>
-              <strong>ZH:</strong> 您的登录验证码为：
-            </p>
-            <p style="font-size:32px;letter-spacing:6px;font-weight:bold;color:#c0392b;text-align:center;font-family:monospace">
-              ${code}
-            </p>
-            <p style="color:#666;font-size:13px">
-              DE: Dieser Code ist 10 Minuten gültig.<br>
-              EN: This code is valid for 10 minutes.<br>
-              ZH: 此验证码有效期为 10 分钟。
-            </p>
-            <p style="color:#999;font-size:12px">
-              Falls Sie sich nicht angemeldet haben, ignorieren Sie diese E-Mail und ändern Sie Ihr Passwort.<br>
-              If you did not attempt to log in, please ignore this email and change your password.<br>
-              如非本人登录，请忽略此邮件并修改密码。
-            </p>
-          </div>`,
+        html: loginCodeEmail(code),
       });
 
       if (error) {
@@ -226,18 +171,12 @@ export async function POST(request: Request) {
       }
 
       // Mask email for client display
-      const [local, domain] = admin.email.split("@");
-      const maskedEmail =
-        !local || !domain
-          ? "***@***"
-          : local.length <= 2
-          ? `${local[0]}***@${domain}`
-          : `${local[0]}***${local[local.length - 1]}@${domain}`;
+      const maskedAddr = maskEmail(admin.email);
 
       return NextResponse.json({
         success: true,
         twoFactorRequired: true,
-        maskedEmail,
+        maskedEmail: maskedAddr,
       });
     }
 
@@ -259,7 +198,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const valid = verifyCode(username.trim(), apiKey, code.trim());
+      const valid = verifyHmacCode("login-2fa", username.trim(), apiKey, code.trim(), 5 * 60 * 1000);
       if (!valid) {
         await logAuditEvent({
           action: "LOGIN_2FA_FAILED",

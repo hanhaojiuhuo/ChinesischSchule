@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
-import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
 import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit-log";
+import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
+import {
+  passwordResetCodeEmail,
+  adminPasswordResetEmail,
+  passwordChangedConfirmEmail,
+} from "@/lib/email-templates";
 
 /** Time-slot duration for HMAC-based code validity (15 minutes). */
 const CODE_SLOT_MS = 15 * 60 * 1000;
@@ -17,34 +22,6 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const MISMATCH_MAX = 3;
 const MISMATCH_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-
-/**
- * Generate an 8-character alphanumeric HMAC-based code tied to a username
- * and a 15-minute time slot. Stateless – no server-side storage required.
- * Domain separation ("password-reset") is included in the HMAC message.
- */
-function generateCode(username: string, secret: string): string {
-  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
-  const mac = createHmac("sha256", secret);
-  mac.update(`password-reset:${username}:${slot}`);
-  return mac.digest("hex").slice(0, 8).toUpperCase();
-}
-
-/**
- * Verify a code against the current and previous time slot so codes remain
- * valid for up to 30 minutes regardless of when the user acts.
- */
-function verifyCode(username: string, secret: string, code: string): boolean {
-  const slot = Math.floor(Date.now() / CODE_SLOT_MS);
-  for (const s of [slot, slot - 1]) {
-    const mac = createHmac("sha256", secret);
-    mac.update(`password-reset:${username}:${s}`);
-    if (mac.digest("hex").slice(0, 8).toUpperCase() === code.toUpperCase()) {
-      return true;
-    }
-  }
-  return false;
-}
 
 export async function POST(request: Request) {
   try {
@@ -129,7 +106,7 @@ export async function POST(request: Request) {
       await resetRateLimit(mismatchKey);
       const admin = adminByUsername;
 
-      const code = generateCode(admin.username, apiKey);
+      const code = generateHmacCode("password-reset", admin.username, apiKey, CODE_SLOT_MS);
       const fromEmail =
         process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
@@ -142,79 +119,10 @@ export async function POST(request: Request) {
         const origin = new URL(request.url).origin;
         const resetLink = `${origin}/admin?reset=1&username=${encodeURIComponent(admin.username)}`;
         emailSubject = "Passwort-Reset durch Administrator / Admin Password Reset / 管理员重置密码";
-        emailHtml = `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-            <h2 style="color:#c0392b">
-              YiXin 中文学校 · Chinesisch Schule Heilbronn
-            </h2>
-            <h3>Passwort-Reset durch Administrator / Admin Password Reset / 管理员重置密码</h3>
-            <p>
-              <strong>DE:</strong> Ein Administrator hat einen Passwort-Reset für Ihr Konto angefordert.<br>
-              <strong>EN:</strong> An administrator has requested a password reset for your account.<br>
-              <strong>ZH:</strong> 管理员已为您的账户发起密码重置。
-            </p>
-            <p style="background:#f8f8f8;padding:10px;border-radius:6px;font-size:14px">
-              <strong>Benutzername / Username / 用户名:</strong> <code style="color:#c0392b;font-size:16px">${admin.username}</code>
-            </p>
-            <p>
-              <strong>DE:</strong> Ihr Verifizierungscode lautet:<br>
-              <strong>EN:</strong> Your verification code is:<br>
-              <strong>ZH:</strong> 您的验证码为：
-            </p>
-            <p style="font-size:36px;letter-spacing:8px;font-weight:bold;color:#c0392b;text-align:center">
-              ${code}
-            </p>
-            <p>
-              <strong>DE:</strong> Klicken Sie auf den folgenden Link, um Ihr Passwort zu ändern:<br>
-              <strong>EN:</strong> Click the link below to change your password:<br>
-              <strong>ZH:</strong> 请点击以下链接修改密码：
-            </p>
-            <p style="text-align:center;margin:16px 0">
-              <a href="${resetLink}" style="display:inline-block;background:#c0392b;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px">
-                Passwort ändern / Change Password / 修改密码
-              </a>
-            </p>
-            <p style="color:#666;font-size:12px;word-break:break-all">
-              ${resetLink}
-            </p>
-            <p style="color:#666;font-size:13px">
-              DE: Dieser Code ist 30 Minuten gültig. Danach ist eine neue Anfrage erforderlich.<br>
-              EN: This code is valid for 30 minutes. After that, a new request is required.<br>
-              ZH: 此验证码有效期为 30 分钟，过期后需重新申请。
-            </p>
-            <p style="color:#999;font-size:12px">
-              Falls Sie diese Anfrage nicht gestellt haben, kontaktieren Sie bitte sofort einen Administrator.<br>
-              If you did not request this, please contact an administrator immediately.<br>
-              如非本人操作，请立即联系管理员。
-            </p>
-          </div>`;
+        emailHtml = adminPasswordResetEmail(code, admin.username, resetLink);
       } else {
         emailSubject = "Passwort-Reset Verifizierungscode / Password Reset Code / 密码重置验证码";
-        emailHtml = `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-            <h2 style="color:#c0392b">
-              YiXin 中文学校 · Chinesisch Schule Heilbronn
-            </h2>
-            <h3>Passwort-Reset / Password Reset / 密码重置</h3>
-            <p>
-              <strong>DE:</strong> Ihr Verifizierungscode lautet:<br>
-              <strong>EN:</strong> Your verification code is:<br>
-              <strong>ZH:</strong> 您的验证码为：
-            </p>
-            <p style="font-size:36px;letter-spacing:8px;font-weight:bold;color:#c0392b;text-align:center">
-              ${code}
-            </p>
-            <p style="color:#666;font-size:13px">
-              DE: Dieser Code ist 30 Minuten gültig. Danach ist eine neue Anfrage erforderlich.<br>
-              EN: This code is valid for 30 minutes. After that, a new request is required.<br>
-              ZH: 此验证码有效期为 30 分钟，过期后需重新申请。
-            </p>
-            <p style="color:#999;font-size:12px">
-              Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.<br>
-              If you did not request this, please ignore this email.<br>
-              如非本人操作，请忽略此邮件。
-            </p>
-          </div>`;
+        emailHtml = passwordResetCodeEmail(code);
       }
 
       const { error } = await resend.emails.send({
@@ -275,7 +183,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const valid = verifyCode(admin.username, apiKey, code.trim());
+      const valid = verifyHmacCode("password-reset", admin.username, apiKey, code.trim(), CODE_SLOT_MS);
       if (!valid) {
         return NextResponse.json(
           { error: "Invalid or expired code" },
@@ -334,7 +242,7 @@ export async function POST(request: Request) {
       }
 
       // Re-verify the code before applying the change
-      if (!verifyCode(admin.username, apiKey, code.trim())) {
+      if (!verifyHmacCode("password-reset", admin.username, apiKey, code.trim(), CODE_SLOT_MS)) {
         return NextResponse.json(
           { error: "Invalid or expired code" },
           { status: 400 }
@@ -371,23 +279,7 @@ export async function POST(request: Request) {
           to: admin.email,
           subject:
             "Passwort erfolgreich geändert / Password Changed / 密码已更改",
-          html: `
-            <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-              <h2 style="color:#c0392b">
-                YiXin 中文学校 · Chinesisch Schule Heilbronn
-              </h2>
-              <h3>Passwort erfolgreich geändert / Password Changed / 密码已更改</h3>
-              <p>
-                <strong>DE:</strong> Das Passwort Ihres Admin-Kontos wurde erfolgreich geändert.<br>
-                <strong>EN:</strong> Your admin account password has been successfully changed.<br>
-                <strong>ZH:</strong> 您的管理员账户密码已成功更改。
-              </p>
-              <p style="color:#666;font-size:13px">
-                DE: Falls Sie diese Änderung nicht vorgenommen haben, wenden Sie sich sofort an einen anderen Administrator.<br>
-                EN: If you did not make this change, contact another administrator immediately.<br>
-                ZH: 如非本人操作，请立即联系其他管理员。
-              </p>
-            </div>`,
+          html: passwordChangedConfirmEmail(),
         });
         if (emailError) {
           console.warn(
