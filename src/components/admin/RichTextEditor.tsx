@@ -171,14 +171,12 @@ export default function RichTextEditor({
     restoreSelection();
     editorRef.current?.focus();
     document.execCommand("createLink", false, linkUrl.trim());
-    // Ensure links open in new tab
+    // Ensure links open in new tab with security attributes
     const el = editorRef.current;
     if (el) {
       el.querySelectorAll("a").forEach((a) => {
-        if (!a.getAttribute("target")) {
-          a.setAttribute("target", "_blank");
-          a.setAttribute("rel", "noopener noreferrer");
-        }
+        a.setAttribute("target", "_blank");
+        a.setAttribute("rel", "noopener noreferrer");
       });
     }
     handleInput();
@@ -354,7 +352,7 @@ export default function RichTextEditor({
         suppressContentEditableWarning
         onInput={handleInput}
         onPaste={handlePaste}
-        className={`px-3 py-2 text-sm focus:outline-none min-h-[${minHeight}] overflow-auto ${editorClassName}`}
+        className={`px-3 py-2 text-sm focus:outline-none overflow-auto ${editorClassName}`}
         style={{ minHeight }}
         data-placeholder={placeholder}
       />

@@ -15,12 +15,15 @@ const PURIFY_CONFIG = {
 };
 
 /**
- * Sanitise HTML produced by the rich-text editor so it is safe to render
+ * Sanitize HTML produced by the rich-text editor so it is safe to render
  * with `dangerouslySetInnerHTML`. Only the subset of elements the toolbar
  * can generate is permitted.
  */
 export function sanitizeHtml(dirty: string): string {
-  if (typeof window === "undefined") return dirty; // SSR fallback – content is escaped by caller
+  if (typeof window === "undefined") {
+    // SSR fallback: strip all HTML tags since DOMPurify requires a DOM
+    return dirty.replace(/<[^>]*>/g, "");
+  }
   return DOMPurify.sanitize(dirty, PURIFY_CONFIG) as string;
 }
 
