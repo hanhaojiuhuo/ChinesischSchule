@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useRef } from "react";
+import type { FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useContent } from "@/contexts/ContentContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -8,220 +9,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { defaultTranslations } from "@/i18n/translations";
 import type { Language, SiteContent, NewsBodyBlock, CourseItem } from "@/i18n/translations";
-import type { AdminUser } from "@/contexts/AuthContext";
+import type { AdminUser } from "@/types/auth";
+import type {
+  AdminPageContextValue,
+  AdminPageProviderProps,
+} from "@/types/admin-page";
 
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
-
-/* ─── Type definitions ──────────────────────────────────────── */
-
-export interface AuthGroup {
-  currentUser: string | null;
-  isAdmin: boolean;
-  isRecoverySession: boolean;
-  logout: () => void;
-}
-
-export interface SessionGroup {
-  remainingSeconds: number;
-  totalSeconds: number;
-  showWarning: boolean;
-  extendSession: () => void;
-}
-
-export interface LoginGroup {
-  userInput: string;
-  setUserInput: (v: string) => void;
-  pwInput: string;
-  setPwInput: (v: string) => void;
-  loginError: string;
-  showLoginPw: boolean;
-  setShowLoginPw: (v: boolean) => void;
-  handleLogin: (e: React.FormEvent) => void;
-}
-
-export interface TwoFactorGroup {
-  twoFactorStep: boolean;
-  twoFactorCode: string;
-  setTwoFactorCode: (v: string) => void;
-  twoFactorMaskedEmail: string;
-  twoFactorLoading: boolean;
-  handleTwoFactorVerify: (e: React.FormEvent) => void;
-  setTwoFactorStep: (v: boolean) => void;
-  setLoginError: (v: string) => void;
-}
-
-export interface ForgotPwGroup {
-  forgotPwStep: number;
-  setForgotPwStep: (v: number) => void;
-  forgotPwUsername: string;
-  setForgotPwUsername: (v: string) => void;
-  forgotPwEmail: string;
-  setForgotPwEmail: (v: string) => void;
-  forgotPwCode: string;
-  setForgotPwCode: (v: string) => void;
-  forgotPwNewPw: string;
-  setForgotPwNewPw: (v: string) => void;
-  forgotPwNewPwConfirm: string;
-  setForgotPwNewPwConfirm: (v: string) => void;
-  forgotPwError: string;
-  forgotPwSuccess: string;
-  forgotPwLoading: boolean;
-  showForgotPwNew: boolean;
-  setShowForgotPwNew: (v: boolean) => void;
-  showForgotPwConfirm: boolean;
-  setShowForgotPwConfirm: (v: boolean) => void;
-  forgotPwCooldownSecs: number;
-  fmtCooldown: (secs: number) => string;
-  forgotPwAdminInitiated: boolean;
-  forgotPwRateLimited: boolean;
-  handleForgotPwRequest: () => void;
-  handleForgotPwVerify: () => void;
-  handleForgotPwReset: () => void;
-  handleForgotPwResend: () => void;
-}
-
-export interface DevModeGroup {
-  failedAttempts: number;
-  DEV_MODE_THRESHOLD: number;
-  devModeOpen: boolean;
-  setDevModeOpen: (v: boolean) => void;
-  devModeUsername: string;
-  setDevModeUsername: (v: string) => void;
-  devModeNewPw: string;
-  setDevModeNewPw: (v: string) => void;
-  devModeNewPwConfirm: string;
-  setDevModeNewPwConfirm: (v: string) => void;
-  devModeError: string;
-  devModeSuccess: boolean;
-  devModePersisted: boolean;
-  devModePersistError: string;
-  devModeLoading: boolean;
-  showDevModePw: boolean;
-  setShowDevModePw: (v: boolean) => void;
-  showDevModeConfirm: boolean;
-  setShowDevModeConfirm: (v: boolean) => void;
-  handleDevModeReset: () => void;
-}
-
-export interface ContentGroup {
-  draft: SiteContent;
-  setDraft: React.Dispatch<React.SetStateAction<SiteContent>>;
-  editLang: Language;
-  setEditLang: (lang: Language) => void;
-  setLanguage: (lang: Language) => void;
-  handleSave: () => void;
-  handleReset: () => void;
-  handleSectionSave: (sectionKey: string) => void;
-  saving: boolean;
-  saved: boolean;
-  sectionStatus: Record<string, "idle" | "saving" | "saved">;
-  setField: (field: string, value: string) => void;
-  updateAbout: (key: string, value: string) => void;
-  updateHero: (key: string, value: string) => void;
-  updateNav: (key: string, value: string) => void;
-  updateContact: (key: string, value: string | string[]) => void;
-  updateCourse: (idx: number, key: keyof CourseItem, val: string) => void;
-  addCourse: () => void;
-  removeCourse: (idx: number) => void;
-  updateNews: (idx: number, key: string, val: string) => void;
-  updateNewsBlocks: (idx: number, blocks: NewsBodyBlock[]) => void;
-  handleNewsImageUpload: (file: File, newsIdx: number, blockIdx: number) => void;
-  addNews: () => void;
-  removeNews: (idx: number) => void;
-  newsUploadingIdx: { newsIdx: number; blockIdx: number } | null;
-  setNewsUploadingIdx: React.Dispatch<React.SetStateAction<{ newsIdx: number; blockIdx: number } | null>>;
-  newsUploadError: string;
-  setNewsUploadError: React.Dispatch<React.SetStateAction<string>>;
-  newsFileInputRef: React.RefObject<HTMLInputElement | null>;
-  newsExpandedBlock: { newsIdx: number; blockIdx: number } | null;
-  setNewsExpandedBlock: React.Dispatch<React.SetStateAction<{ newsIdx: number; blockIdx: number } | null>>;
-}
-
-export interface PasswordChangeGroup {
-  showChangePw: boolean;
-  setShowChangePw: (v: boolean) => void;
-  oldPw: string;
-  setOldPw: (v: string) => void;
-  newPw: string;
-  setNewPw: (v: string) => void;
-  newPwConfirm: string;
-  setNewPwConfirm: (v: string) => void;
-  pwChangeMsg: string;
-  setPwChangeMsg: (v: string) => void;
-  pwChangeMsgType: "success" | "info" | "error";
-  showChangePwOld: boolean;
-  setShowChangePwOld: React.Dispatch<React.SetStateAction<boolean>>;
-  showChangePwNew: boolean;
-  setShowChangePwNew: React.Dispatch<React.SetStateAction<boolean>>;
-  showChangePwConfirm: boolean;
-  setShowChangePwConfirm: React.Dispatch<React.SetStateAction<boolean>>;
-  pwChangeStep: "form" | "verify";
-  setPwChangeStep: (v: "form" | "verify") => void;
-  pwChangeCode: string;
-  setPwChangeCode: (v: string) => void;
-  pwChangeMaskedEmail: string;
-  pwChangeLoading: boolean;
-  handleChangePw: (e: React.FormEvent) => void;
-}
-
-export interface AdminManagementGroup {
-  adminList: AdminUser[];
-  adminListKey: number;
-  editingEmailUser: string | null;
-  setEditingEmailUser: (v: string | null) => void;
-  editEmailValue: string;
-  setEditEmailValue: (v: string) => void;
-  emailUpdateMsg: string;
-  setEmailUpdateMsg: (v: string) => void;
-  handleUpdateEmail: (username: string) => void;
-  adminResetUser: string | null;
-  setAdminResetUser: (v: string | null) => void;
-  adminResetLoading: boolean;
-  adminResetMsg: string;
-  setAdminResetMsg: (v: string) => void;
-  handleAdminResetPassword: (username: string) => void;
-  handleRemoveAdmin: (username: string) => void;
-  removeAdminMsg: string;
-}
-
-export interface AddAdminGroup {
-  showAddAdmin: boolean;
-  setShowAddAdmin: (v: boolean) => void;
-  newAdminUser: string;
-  setNewAdminUser: (v: string) => void;
-  newAdminPw: string;
-  setNewAdminPw: (v: string) => void;
-  newAdminPwConfirm: string;
-  setNewAdminPwConfirm: (v: string) => void;
-  newAdminEmail: string;
-  setNewAdminEmail: (v: string) => void;
-  showNewAdminPw: boolean;
-  setShowNewAdminPw: React.Dispatch<React.SetStateAction<boolean>>;
-  addAdminMsg: string;
-  addAdminSuccess: boolean;
-  handleAddAdmin: (e: React.FormEvent) => void;
-  setAddAdminMsg: (v: string) => void;
-}
-
-export interface ResetDialogGroup {
-  showResetDialog: boolean;
-  setShowResetDialog: (v: boolean) => void;
-  confirmReset: () => void;
-}
-
-export interface AdminPageContextValue {
-  auth: AuthGroup;
-  session: SessionGroup;
-  login: LoginGroup;
-  twoFactor: TwoFactorGroup;
-  forgotPw: ForgotPwGroup;
-  devMode: DevModeGroup;
-  content: ContentGroup;
-  passwordChange: PasswordChangeGroup;
-  adminManagement: AdminManagementGroup;
-  addAdmin: AddAdminGroup;
-  resetDialog: ResetDialogGroup;
-}
 
 /* ─── Context ───────────────────────────────────────────────── */
 
@@ -235,7 +29,7 @@ export function useAdminPage(): AdminPageContextValue {
 
 /* ─── Provider ──────────────────────────────────────────────── */
 
-export function AdminPageProvider({ children }: { children: React.ReactNode }) {
+export function AdminPageProvider({ children }: AdminPageProviderProps) {
   const { setLanguage } = useLanguage();
   const { getContent, saveContent, resetContent } = useContent();
   const authCtx = useAuth();
@@ -424,7 +218,7 @@ export function AdminPageProvider({ children }: { children: React.ReactNode }) {
 
   /* ─── Handlers ──────────────────────────────────────────── */
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setLoginError("");
     setLoginBlocked(false);
@@ -459,7 +253,7 @@ export function AdminPageProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function handleTwoFactorVerify(e: React.FormEvent) {
+  async function handleTwoFactorVerify(e: FormEvent) {
     e.preventDefault();
     setLoginError("");
     if (!twoFactorCode.trim()) {
@@ -503,7 +297,7 @@ export function AdminPageProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function handleChangePw(e: React.FormEvent) {
+  async function handleChangePw(e: FormEvent) {
     e.preventDefault();
     if (!newPw || newPw.length < 6) {
       setPwChangeMsg("Mindestens 6 Zeichen / Min 6 characters / 至少6个字符");
@@ -611,7 +405,7 @@ export function AdminPageProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function handleAddAdmin(e: React.FormEvent) {
+  async function handleAddAdmin(e: FormEvent) {
     e.preventDefault();
     if (newAdminPw !== newAdminPwConfirm) {
       setAddAdminMsg(
