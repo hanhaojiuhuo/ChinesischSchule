@@ -141,18 +141,10 @@ export async function POST(request: Request) {
 
       if (error) {
         console.error("[login-2fa] Failed to send 2FA code:", error);
-        // Fall back to login without 2FA
-        await resetRateLimit(`login-account:${username.trim()}`);
-        await logAuditEvent({
-          action: "LOGIN",
-          actor: username.trim(),
-          details: "Login without 2FA (email send failed)",
-          ip,
-        });
-
-        const response = NextResponse.json({ success: true, twoFactorRequired: false });
-        setSessionCookie(response, username.trim());
-        return response;
+        return NextResponse.json(
+          { error: "Failed to send verification email. Please try again later. / E-Mail konnte nicht gesendet werden. / 验证邮件发送失败，请稍后重试。" },
+          { status: 500 }
+        );
       }
 
       // Mask email for client display

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { requireAuth } from "@/lib/api-helpers";
 
 /**
  * GET /api/email-test
@@ -7,6 +8,7 @@ import { Resend } from "resend";
  * Diagnostic endpoint to verify that RESEND_API_KEY and NOTIFICATION_EMAIL
  * are configured correctly and that emails can be sent.
  *
+ * - Requires admin authentication.
  * - Checks that both env vars are present.
  * - Sends a test email to NOTIFICATION_EMAIL.
  * - Reports success or failure with actionable diagnostics.
@@ -20,6 +22,9 @@ let testCount = 0;
 let testWindowStart = 0;
 
 export async function GET() {
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
+
   const results: Record<string, { ok: boolean; detail: string }> = {};
 
   /* ── 1. Check env vars ─────────────────────────────────────── */
@@ -30,7 +35,7 @@ export async function GET() {
   results["RESEND_API_KEY"] = {
     ok: !!apiKey,
     detail: apiKey
-      ? `configured (${apiKey.slice(0, 6)}…)`
+      ? "configured"
       : "MISSING — add RESEND_API_KEY in Vercel → Settings → Environment Variables",
   };
 

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { newAdminWelcomeEmail, newAdminOwnerNotificationEmail } from "@/lib/email-templates";
-import { requireJson } from "@/lib/api-helpers";
+import { requireAuthAndJson } from "@/lib/api-helpers";
 
 /**
  * POST /api/notify-admin
  * Send a notification email when a new admin is added.
+ * Requires admin authentication.
  * Body: { newUsername: string, newEmail?: string, addedBy: string }
  */
 export async function POST(request: Request) {
   try {
-    const parsed = await requireJson<Record<string, string>>(request);
+    const parsed = await requireAuthAndJson<Record<string, string>>(request);
     if (!parsed.ok) return parsed.response;
     const body = parsed.body;
     const { newUsername, newEmail, addedBy } = body;
