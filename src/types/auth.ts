@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface AdminUser {
   username: string;
   password: string;
@@ -71,4 +73,3 @@ export interface AuthContextValue {
 export interface AuthProviderProps {
   children: ReactNode;
 }
-import type { ReactNode } from "react";
