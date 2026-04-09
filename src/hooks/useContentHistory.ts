@@ -17,13 +17,9 @@ const MAX_HISTORY = 30;
  * Call `undo()` / `redo()` to move through the history.
  */
 export function useContentHistory(initial: ContentSnapshot) {
-  // History stack: past snapshots (most recent at end)
-  const pastRef = useRef<ContentSnapshot[]>([]);
-  // Future stack: snapshots after undo (most recent at end)
-  const futureRef = useRef<ContentSnapshot[]>([]);
-  // Force re-render counter
-  const [, setTick] = useState(0);
-  const bump = useCallback(() => setTick((t) => t + 1), []);
+  // Use state for the stacks so React re-renders when they change
+  const [past, setPast] = useState<ContentSnapshot[]>([]);
+  const [future, setFuture] = useState<ContentSnapshot[]>([]);
 
   // Current snapshot (the one the user is looking at right now)
   const currentRef = useRef<ContentSnapshot>(initial);
@@ -31,35 +27,38 @@ export function useContentHistory(initial: ContentSnapshot) {
   /** Save the current state as a snapshot before making a new change. */
   const pushSnapshot = useCallback(
     (snapshot: ContentSnapshot) => {
-      pastRef.current = [...pastRef.current.slice(-(MAX_HISTORY - 1)), currentRef.current];
+      setPast((prev) => [...prev.slice(-(MAX_HISTORY - 1)), currentRef.current]);
       currentRef.current = snapshot;
-      futureRef.current = []; // new edit clears redo stack
-      bump();
+      setFuture([]); // new edit clears redo stack
     },
-    [bump],
+    [],
   );
 
   /** Undo: go back one step. Returns the restored snapshot, or null if nothing to undo. */
   const undo = useCallback((): ContentSnapshot | null => {
-    if (pastRef.current.length === 0) return null;
-    const prev = pastRef.current[pastRef.current.length - 1];
-    pastRef.current = pastRef.current.slice(0, -1);
-    futureRef.current = [...futureRef.current, currentRef.current];
-    currentRef.current = prev;
-    bump();
-    return prev;
-  }, [bump]);
+    let result: ContentSnapshot | null = null;
+    setPast((prev) => {
+      if (prev.length === 0) return prev;
+      result = prev[prev.length - 1];
+      setFuture((f) => [...f, currentRef.current]);
+      currentRef.current = result!;
+      return prev.slice(0, -1);
+    });
+    return result;
+  }, []);
 
   /** Redo: go forward one step. Returns the restored snapshot, or null if nothing to redo. */
   const redo = useCallback((): ContentSnapshot | null => {
-    if (futureRef.current.length === 0) return null;
-    const next = futureRef.current[futureRef.current.length - 1];
-    futureRef.current = futureRef.current.slice(0, -1);
-    pastRef.current = [...pastRef.current, currentRef.current];
-    currentRef.current = next;
-    bump();
-    return next;
-  }, [bump]);
+    let result: ContentSnapshot | null = null;
+    setFuture((prev) => {
+      if (prev.length === 0) return prev;
+      result = prev[prev.length - 1];
+      setPast((p) => [...p, currentRef.current]);
+      currentRef.current = result!;
+      return prev.slice(0, -1);
+    });
+    return result;
+  }, []);
 
   return {
     /** Push the current content state into history (call before overwriting drafts). */
@@ -69,12 +68,12 @@ export function useContentHistory(initial: ContentSnapshot) {
     /** Redo a previously undone snapshot. */
     redo,
     /** Whether undo is available. */
-    canUndo: pastRef.current.length > 0,
+    canUndo: past.length > 0,
     /** Whether redo is available. */
-    canRedo: futureRef.current.length > 0,
+    canRedo: future.length > 0,
     /** Number of undo steps available. */
-    undoCount: pastRef.current.length,
+    undoCount: past.length,
     /** Number of redo steps available. */
-    redoCount: futureRef.current.length,
+    redoCount: future.length,
   };
 }

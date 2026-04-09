@@ -14,7 +14,6 @@ interface CoursesSectionProps {
   setCourseOffset: React.Dispatch<React.SetStateAction<number>>;
   setDraftDe: React.Dispatch<React.SetStateAction<SiteContent>>;
   setDraftZh: React.Dispatch<React.SetStateAction<SiteContent>>;
-  setIsDirty: React.Dispatch<React.SetStateAction<boolean>>;
   updDeCourse: (idx: number, key: keyof CourseItem, val: string) => void;
   updZhCourse: (idx: number, key: keyof CourseItem, val: string) => void;
   addCourse: () => void;
@@ -31,7 +30,6 @@ export default function CoursesSection({
   setCourseOffset,
   setDraftDe,
   setDraftZh,
-  setIsDirty,
   updDeCourse,
   updZhCourse,
   addCourse,

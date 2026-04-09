@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { Field, SectionCard, ExpandModal, ExpandButton, EyeToggle } from "@/components/admin/AdminHelpers";
+import { Field, SectionCard, ExpandModal, ExpandButton } from "@/components/admin/AdminHelpers";
 import { HelpIcon } from "@/components/admin/Tooltip";
 import SessionTimeoutWarning from "@/components/SessionTimeoutWarning";
 import { getNewsBodyBlocks } from "@/i18n/translations";
@@ -46,7 +45,7 @@ export interface AdminDashboardProps {
   updateAbout: (key: string, value: string) => void;
   updateHero: (key: string, value: string) => void;
   updateNav: (key: string, value: string) => void;
-  updateContact: (key: string, value: any) => void;
+  updateContact: (key: string, value: string | string[]) => void;
   updateCourse: (idx: number, key: keyof CourseItem, val: string) => void;
   addCourse: () => void;
   removeCourse: (idx: number) => void;

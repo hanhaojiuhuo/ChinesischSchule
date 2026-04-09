@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { SiteContent, NewsItem, NewsTextBlock, NewsBodyBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
 import { countWords, MAX_WORDS_NEWS, validateImageFile, IMAGE_ACCEPT } from "@/lib/validation";
-import { EditField, EditArea, EditBlock } from "@/components/admin/EditHelpers";
+import { EditField, EditBlock } from "@/components/admin/EditHelpers";
 
 interface NewsSectionProps {
   isAdmin: boolean;
@@ -19,7 +19,6 @@ interface NewsSectionProps {
   NEWS_PER_PAGE: number;
   setDraftDe: React.Dispatch<React.SetStateAction<SiteContent>>;
   setDraftZh: React.Dispatch<React.SetStateAction<SiteContent>>;
-  setIsDirty: React.Dispatch<React.SetStateAction<boolean>>;
   updDeNews: (idx: number, key: keyof NewsItem, val: string) => void;
   updZhNews: (idx: number, key: keyof NewsItem, val: string) => void;
   updDeNewsBlocks: (idx: number, blocks: NewsBodyBlock[]) => void;
@@ -45,7 +44,6 @@ export default function NewsSection({
   NEWS_PER_PAGE,
   setDraftDe,
   setDraftZh,
-  setIsDirty,
   updDeNews,
   updZhNews,
   updDeNewsBlocks,

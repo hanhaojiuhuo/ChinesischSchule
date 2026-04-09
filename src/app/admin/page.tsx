@@ -135,7 +135,7 @@ function AdminPageContent() {
   const [forgotPwError, setForgotPwError] = useState("");
   const [forgotPwSuccess, setForgotPwSuccess] = useState("");
   const [forgotPwLoading, setForgotPwLoading] = useState(false);
-  const [forgotPwResendCount, setForgotPwResendCount] = useState(0);
+  const [forgotPwResendCount, setForgotPwResendCount] = useState(0); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [forgotPwRateLimited, setForgotPwRateLimited] = useState(false);
   const [showForgotPwNew, setShowForgotPwNew] = useState(false);
   const [showForgotPwConfirm, setShowForgotPwConfirm] = useState(false);
