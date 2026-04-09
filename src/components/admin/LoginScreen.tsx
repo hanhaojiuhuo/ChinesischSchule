@@ -6,115 +6,52 @@ import TwoFactorForm from "@/components/admin/TwoFactorForm";
 import LoginForm from "@/components/admin/LoginForm";
 import ForgotPasswordForm from "@/components/admin/ForgotPasswordForm";
 import DevModePanel from "@/components/admin/DevModePanel";
+import { useAdminPage } from "@/contexts/AdminPageContext";
 
-export interface LoginScreenProps {
-  // Login form
-  userInput: string;
-  setUserInput: (v: string) => void;
-  pwInput: string;
-  setPwInput: (v: string) => void;
-  loginError: string;
-  showLoginPw: boolean;
-  setShowLoginPw: (v: boolean) => void;
-  handleLogin: (e: React.FormEvent) => void;
+export default function LoginScreen() {
+  const { login, twoFactor, forgotPw, devMode } = useAdminPage();
 
-  // 2FA
-  twoFactorStep: boolean;
-  twoFactorCode: string;
-  setTwoFactorCode: (v: string) => void;
-  twoFactorMaskedEmail: string;
-  twoFactorLoading: boolean;
-  handleTwoFactorVerify: (e: React.FormEvent) => void;
-  setTwoFactorStep: (v: boolean) => void;
-  setLoginError: (v: string) => void;
+  const {
+    userInput, setUserInput,
+    pwInput, setPwInput,
+    loginError, showLoginPw, setShowLoginPw,
+    handleLogin,
+  } = login;
 
-  // Forgot password
-  forgotPwStep: number;
-  setForgotPwStep: (v: number) => void;
-  forgotPwUsername: string;
-  setForgotPwUsername: (v: string) => void;
-  forgotPwEmail: string;
-  setForgotPwEmail: (v: string) => void;
-  forgotPwCode: string;
-  setForgotPwCode: (v: string) => void;
-  forgotPwNewPw: string;
-  setForgotPwNewPw: (v: string) => void;
-  forgotPwNewPwConfirm: string;
-  setForgotPwNewPwConfirm: (v: string) => void;
-  forgotPwError: string;
-  forgotPwSuccess: string;
-  forgotPwLoading: boolean;
-  showForgotPwNew: boolean;
-  setShowForgotPwNew: (v: boolean) => void;
-  showForgotPwConfirm: boolean;
-  setShowForgotPwConfirm: (v: boolean) => void;
-  forgotPwCooldownSecs: number;
-  fmtCooldown: (secs: number) => string;
-  forgotPwAdminInitiated: boolean;
-  forgotPwRateLimited: boolean;
-  handleForgotPwRequest: () => void;
-  handleForgotPwVerify: () => void;
-  handleForgotPwReset: () => void;
-  handleForgotPwResend: () => void;
+  const {
+    twoFactorStep, twoFactorCode, setTwoFactorCode,
+    twoFactorMaskedEmail, twoFactorLoading,
+    handleTwoFactorVerify, setTwoFactorStep, setLoginError,
+  } = twoFactor;
 
-  // Dev mode
-  failedAttempts: number;
-  DEV_MODE_THRESHOLD: number;
-  devModeOpen: boolean;
-  setDevModeOpen: (v: boolean) => void;
-  devModeUsername: string;
-  setDevModeUsername: (v: string) => void;
-  devModeNewPw: string;
-  setDevModeNewPw: (v: string) => void;
-  devModeNewPwConfirm: string;
-  setDevModeNewPwConfirm: (v: string) => void;
-  devModeError: string;
-  devModeSuccess: boolean;
-  devModePersisted: boolean;
-  devModePersistError: string;
-  devModeLoading: boolean;
-  showDevModePw: boolean;
-  setShowDevModePw: (v: boolean) => void;
-  showDevModeConfirm: boolean;
-  setShowDevModeConfirm: (v: boolean) => void;
-  handleDevModeReset: () => void;
-}
+  const {
+    forgotPwStep, setForgotPwStep,
+    forgotPwUsername, setForgotPwUsername,
+    forgotPwEmail, setForgotPwEmail,
+    forgotPwCode, setForgotPwCode,
+    forgotPwNewPw, setForgotPwNewPw,
+    forgotPwNewPwConfirm, setForgotPwNewPwConfirm,
+    forgotPwError, forgotPwSuccess, forgotPwLoading,
+    showForgotPwNew, setShowForgotPwNew,
+    showForgotPwConfirm, setShowForgotPwConfirm,
+    forgotPwCooldownSecs, fmtCooldown,
+    forgotPwAdminInitiated, forgotPwRateLimited,
+    handleForgotPwRequest, handleForgotPwVerify,
+    handleForgotPwReset, handleForgotPwResend,
+  } = forgotPw;
 
-export default function LoginScreen({
-  userInput, setUserInput,
-  pwInput, setPwInput,
-  loginError, showLoginPw, setShowLoginPw,
-  handleLogin,
-
-  twoFactorStep, twoFactorCode, setTwoFactorCode,
-  twoFactorMaskedEmail, twoFactorLoading,
-  handleTwoFactorVerify, setTwoFactorStep, setLoginError,
-
-  forgotPwStep, setForgotPwStep,
-  forgotPwUsername, setForgotPwUsername,
-  forgotPwEmail, setForgotPwEmail,
-  forgotPwCode, setForgotPwCode,
-  forgotPwNewPw, setForgotPwNewPw,
-  forgotPwNewPwConfirm, setForgotPwNewPwConfirm,
-  forgotPwError, forgotPwSuccess, forgotPwLoading,
-  showForgotPwNew, setShowForgotPwNew,
-  showForgotPwConfirm, setShowForgotPwConfirm,
-  forgotPwCooldownSecs, fmtCooldown,
-  forgotPwAdminInitiated, forgotPwRateLimited,
-  handleForgotPwRequest, handleForgotPwVerify,
-  handleForgotPwReset, handleForgotPwResend,
-
-  failedAttempts, DEV_MODE_THRESHOLD,
-  devModeOpen, setDevModeOpen,
-  devModeUsername, setDevModeUsername,
-  devModeNewPw, setDevModeNewPw,
-  devModeNewPwConfirm, setDevModeNewPwConfirm,
-  devModeError, devModeSuccess,
-  devModePersisted, devModePersistError, devModeLoading,
-  showDevModePw, setShowDevModePw,
-  showDevModeConfirm, setShowDevModeConfirm,
-  handleDevModeReset,
-}: LoginScreenProps) {
+  const {
+    failedAttempts, DEV_MODE_THRESHOLD,
+    devModeOpen, setDevModeOpen,
+    devModeUsername, setDevModeUsername,
+    devModeNewPw, setDevModeNewPw,
+    devModeNewPwConfirm, setDevModeNewPwConfirm,
+    devModeError, devModeSuccess,
+    devModePersisted, devModePersistError, devModeLoading,
+    showDevModePw, setShowDevModePw,
+    showDevModeConfirm, setShowDevModeConfirm,
+    handleDevModeReset,
+  } = devMode;
   return (
     <div className="min-h-screen bg-school-gray flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-md p-8 w-full max-w-sm">

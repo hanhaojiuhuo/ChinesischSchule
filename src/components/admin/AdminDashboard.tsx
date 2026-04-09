@@ -2,224 +2,78 @@
 
 import { HelpIcon } from "@/components/admin/Tooltip";
 import SessionTimeoutWarning from "@/components/SessionTimeoutWarning";
-import type { Language, SiteContent, NewsBodyBlock, CourseItem } from "@/i18n/translations";
-import type { AdminUser } from "@/contexts/AuthContext";
+import type { Language } from "@/i18n/translations";
 import DashboardTopBar from "@/components/admin/DashboardTopBar";
 import ContentTab from "@/components/admin/ContentTab";
 import AccountTab from "@/components/admin/AccountTab";
 import AdminManagementTab from "@/components/admin/AdminManagementTab";
-
-export interface AdminDashboardProps {
-  // Auth / session
-  currentUser: string | null;
-  isRecoverySession: boolean;
-  logout: () => void;
-  remainingSeconds: number;
-  totalSeconds: number;
-  showWarning: boolean;
-  extendSession: () => void;
-
-  // Language
-  editLang: Language;
-  setEditLang: (lang: Language) => void;
-  setLanguage: (lang: Language) => void;
-
-  // Content draft
-  draft: SiteContent;
-  setDraft: React.Dispatch<React.SetStateAction<SiteContent>>;
-  handleSave: () => void;
-  handleReset: () => void;
-  handleSectionSave: (sectionKey: string) => void;
-  saving: boolean;
-  saved: boolean;
-  sectionStatus: Record<string, "idle" | "saving" | "saved">;
-
-  // Field updaters
-  setField: (field: string, value: string) => void;
-  updateAbout: (key: string, value: string) => void;
-  updateHero: (key: string, value: string) => void;
-  updateNav: (key: string, value: string) => void;
-  updateContact: (key: string, value: string | string[]) => void;
-  updateCourse: (idx: number, key: keyof CourseItem, val: string) => void;
-  addCourse: () => void;
-  removeCourse: (idx: number) => void;
-  updateNews: (idx: number, key: string, val: string) => void;
-  updateNewsBlocks: (idx: number, blocks: NewsBodyBlock[]) => void;
-  handleNewsImageUpload: (file: File, newsIdx: number, blockIdx: number) => void;
-  addNews: () => void;
-  removeNews: (idx: number) => void;
-  newsUploadingIdx: { newsIdx: number; blockIdx: number } | null;
-  setNewsUploadingIdx: React.Dispatch<React.SetStateAction<{ newsIdx: number; blockIdx: number } | null>>;
-  newsUploadError: string;
-  setNewsUploadError: React.Dispatch<React.SetStateAction<string>>;
-  newsFileInputRef: React.RefObject<HTMLInputElement | null>;
-  newsExpandedBlock: { newsIdx: number; blockIdx: number } | null;
-  setNewsExpandedBlock: React.Dispatch<React.SetStateAction<{ newsIdx: number; blockIdx: number } | null>>;
-
-  // Password change
-  showChangePw: boolean;
-  setShowChangePw: (v: boolean) => void;
-  oldPw: string;
-  setOldPw: (v: string) => void;
-  newPw: string;
-  setNewPw: (v: string) => void;
-  newPwConfirm: string;
-  setNewPwConfirm: (v: string) => void;
-  pwChangeMsg: string;
-  setPwChangeMsg: (v: string) => void;
-  pwChangeMsgType: "success" | "info" | "error";
-  showChangePwOld: boolean;
-  setShowChangePwOld: React.Dispatch<React.SetStateAction<boolean>>;
-  showChangePwNew: boolean;
-  setShowChangePwNew: React.Dispatch<React.SetStateAction<boolean>>;
-  showChangePwConfirm: boolean;
-  setShowChangePwConfirm: React.Dispatch<React.SetStateAction<boolean>>;
-  pwChangeStep: "form" | "verify";
-  setPwChangeStep: (v: "form" | "verify") => void;
-  pwChangeCode: string;
-  setPwChangeCode: (v: string) => void;
-  pwChangeMaskedEmail: string;
-  pwChangeLoading: boolean;
-  handleChangePw: (e: React.FormEvent) => void;
-
-  // Admin management
-  adminList: AdminUser[];
-  adminListKey: number;
-  editingEmailUser: string | null;
-  setEditingEmailUser: (v: string | null) => void;
-  editEmailValue: string;
-  setEditEmailValue: (v: string) => void;
-  emailUpdateMsg: string;
-  setEmailUpdateMsg: (v: string) => void;
-  handleUpdateEmail: (username: string) => void;
-  adminResetUser: string | null;
-  setAdminResetUser: (v: string | null) => void;
-  adminResetLoading: boolean;
-  adminResetMsg: string;
-  setAdminResetMsg: (v: string) => void;
-  handleAdminResetPassword: (username: string) => void;
-  handleRemoveAdmin: (username: string) => void;
-  removeAdminMsg: string;
-
-  // Add admin
-  showAddAdmin: boolean;
-  setShowAddAdmin: (v: boolean) => void;
-  newAdminUser: string;
-  setNewAdminUser: (v: string) => void;
-  newAdminPw: string;
-  setNewAdminPw: (v: string) => void;
-  newAdminPwConfirm: string;
-  setNewAdminPwConfirm: (v: string) => void;
-  newAdminEmail: string;
-  setNewAdminEmail: (v: string) => void;
-  showNewAdminPw: boolean;
-  setShowNewAdminPw: React.Dispatch<React.SetStateAction<boolean>>;
-  addAdminMsg: string;
-  addAdminSuccess: boolean;
-  handleAddAdmin: (e: React.FormEvent) => void;
-  setAddAdminMsg: (v: string) => void;
-}
+import { useAdminPage } from "@/contexts/AdminPageContext";
 
 const langLabels: Record<Language, string> = { de: "Deutsch", zh: "中文", en: "English" };
 
-export default function AdminDashboard(props: AdminDashboardProps) {
+export default function AdminDashboard() {
+  const { auth, session, content, passwordChange, adminManagement, addAdmin } = useAdminPage();
+
   const {
-    currentUser,
-    isRecoverySession,
-    logout,
-    remainingSeconds,
-    totalSeconds,
-    showWarning,
-    extendSession,
-    editLang,
-    setEditLang,
-    setLanguage,
-    draft,
-    setDraft,
-    handleSave,
-    handleReset,
-    handleSectionSave,
-    saving,
-    saved,
-    sectionStatus,
-    setField,
-    updateAbout,
-    updateHero,
-    updateNav,
-    updateContact,
-    updateCourse,
-    addCourse,
-    removeCourse,
-    updateNews,
-    updateNewsBlocks,
-    handleNewsImageUpload,
-    addNews,
-    removeNews,
-    newsUploadingIdx,
-    setNewsUploadingIdx,
-    newsUploadError,
-    setNewsUploadError,
+    currentUser, isRecoverySession, logout,
+  } = auth;
+
+  const {
+    remainingSeconds, totalSeconds, showWarning, extendSession,
+  } = session;
+
+  const {
+    editLang, setEditLang, setLanguage,
+    draft, setDraft,
+    handleSave, handleReset, handleSectionSave,
+    saving, saved, sectionStatus,
+    setField, updateAbout, updateHero, updateNav, updateContact,
+    updateCourse, addCourse, removeCourse,
+    updateNews, updateNewsBlocks, handleNewsImageUpload,
+    addNews, removeNews,
+    newsUploadingIdx, setNewsUploadingIdx,
+    newsUploadError, setNewsUploadError,
     newsFileInputRef,
-    newsExpandedBlock,
-    setNewsExpandedBlock,
-    showChangePw,
-    setShowChangePw,
-    oldPw,
-    setOldPw,
-    newPw,
-    setNewPw,
-    newPwConfirm,
-    setNewPwConfirm,
-    pwChangeMsg,
-    setPwChangeMsg,
-    pwChangeMsgType,
-    showChangePwOld,
-    setShowChangePwOld,
-    showChangePwNew,
-    setShowChangePwNew,
-    showChangePwConfirm,
-    setShowChangePwConfirm,
-    pwChangeStep,
-    setPwChangeStep,
-    pwChangeCode,
-    setPwChangeCode,
-    pwChangeMaskedEmail,
-    pwChangeLoading,
+    newsExpandedBlock, setNewsExpandedBlock,
+  } = content;
+
+  const {
+    showChangePw, setShowChangePw,
+    oldPw, setOldPw,
+    newPw, setNewPw,
+    newPwConfirm, setNewPwConfirm,
+    pwChangeMsg, setPwChangeMsg, pwChangeMsgType,
+    showChangePwOld, setShowChangePwOld,
+    showChangePwNew, setShowChangePwNew,
+    showChangePwConfirm, setShowChangePwConfirm,
+    pwChangeStep, setPwChangeStep,
+    pwChangeCode, setPwChangeCode,
+    pwChangeMaskedEmail, pwChangeLoading,
     handleChangePw,
-    adminList,
-    adminListKey,
-    editingEmailUser,
-    setEditingEmailUser,
-    editEmailValue,
-    setEditEmailValue,
-    emailUpdateMsg,
-    setEmailUpdateMsg,
+  } = passwordChange;
+
+  const {
+    adminList, adminListKey,
+    editingEmailUser, setEditingEmailUser,
+    editEmailValue, setEditEmailValue,
+    emailUpdateMsg, setEmailUpdateMsg,
     handleUpdateEmail,
-    adminResetUser,
-    setAdminResetUser,
-    adminResetLoading,
-    adminResetMsg,
-    setAdminResetMsg,
+    adminResetUser, setAdminResetUser,
+    adminResetLoading, adminResetMsg, setAdminResetMsg,
     handleAdminResetPassword,
-    handleRemoveAdmin,
-    removeAdminMsg,
-    showAddAdmin,
-    setShowAddAdmin,
-    newAdminUser,
-    setNewAdminUser,
-    newAdminPw,
-    setNewAdminPw,
-    newAdminPwConfirm,
-    setNewAdminPwConfirm,
-    newAdminEmail,
-    setNewAdminEmail,
-    showNewAdminPw,
-    setShowNewAdminPw,
-    addAdminMsg,
-    addAdminSuccess,
-    handleAddAdmin,
-    setAddAdminMsg,
-  } = props;
+    handleRemoveAdmin, removeAdminMsg,
+  } = adminManagement;
+
+  const {
+    showAddAdmin, setShowAddAdmin,
+    newAdminUser, setNewAdminUser,
+    newAdminPw, setNewAdminPw,
+    newAdminPwConfirm, setNewAdminPwConfirm,
+    newAdminEmail, setNewAdminEmail,
+    showNewAdminPw, setShowNewAdminPw,
+    addAdminMsg, addAdminSuccess,
+    handleAddAdmin, setAddAdminMsg,
+  } = addAdmin;
 
   return (
     <div className="min-h-screen bg-school-gray">
