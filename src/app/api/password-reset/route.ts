@@ -86,14 +86,6 @@ export async function POST(request: Request) {
     const body = (await request.json()) as Record<string, string>;
     const { action } = body;
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Email service not configured (RESEND_API_KEY missing)" },
-        { status: 503 }
-      );
-    }
-
     /* ── Step 1: Request a reset code (by username + email) ──────── */
     if (action === "request") {
       const { username, email, adminInitiated } = body;
@@ -101,6 +93,14 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: "Username and email are required / Benutzername und E-Mail erforderlich / 用户名和邮箱为必填项" },
           { status: 400 }
+        );
+      }
+
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { status: 503 }
         );
       }
 
@@ -279,6 +279,14 @@ export async function POST(request: Request) {
         );
       }
 
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { status: 503 }
+        );
+      }
+
       const admins = await readAdmins();
       let admin;
       if (username?.trim()) {
@@ -327,6 +335,14 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: "Password must be at least 6 characters" },
           { status: 400 }
+        );
+      }
+
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { status: 503 }
         );
       }
 

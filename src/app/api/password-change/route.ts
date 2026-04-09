@@ -79,14 +79,6 @@ export async function POST(request: Request) {
     const body = (await request.json()) as Record<string, string>;
     const { action } = body;
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Email service not configured (RESEND_API_KEY missing)" },
-        { status: 503 }
-      );
-    }
-
     /* ── Request a verification code ────────────────────────── */
     if (action === "request") {
       const { username } = body;
@@ -94,6 +86,14 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: "Username is required" },
           { status: 400 }
+        );
+      }
+
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { status: 503 }
         );
       }
 
@@ -183,6 +183,14 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: "Username and code are required" },
           { status: 400 }
+        );
+      }
+
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { status: 503 }
         );
       }
 
