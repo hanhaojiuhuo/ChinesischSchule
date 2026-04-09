@@ -30,10 +30,7 @@ import {
   HOMEPAGE_SECTIONS,
   ALL_ROUTES,
   VIEWPORTS,
-  fillContactForm,
   getPerformanceMetrics,
-  getImagesWithoutAlt,
-  getFormFieldsWithoutLabels,
   filterBenignConsoleErrors,
   getHeapSize,
 } from "./helpers/test-utils";
@@ -1025,7 +1022,6 @@ test.describe("10. Real User Scenarios", () => {
 
     // 3. Check contact info is accessible
     const contact = page.locator("#contact");
-    const emailLink = contact.locator('a[href^="mailto:"]').first();
     // Contact section should have some email reference
     const contactText = await contact.textContent();
     expect(contactText).toContain("@");
