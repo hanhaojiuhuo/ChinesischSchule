@@ -71,7 +71,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[notify-admin] Error:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { status: 500 }
+    );
   }
 }
 

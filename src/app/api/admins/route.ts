@@ -65,6 +65,10 @@ export async function POST(request: Request) {
       persistError: persistError ?? undefined,
     });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("[admins] Error:", err);
+    return NextResponse.json(
+      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { status: 500 }
+    );
   }
 }

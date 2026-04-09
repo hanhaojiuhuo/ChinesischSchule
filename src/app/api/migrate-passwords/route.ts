@@ -55,6 +55,10 @@ export async function POST() {
       persistError: persistError ?? undefined,
     });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("[migrate-passwords] Error:", err);
+    return NextResponse.json(
+      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { status: 500 }
+    );
   }
 }
