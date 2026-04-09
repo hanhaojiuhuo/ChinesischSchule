@@ -57,7 +57,7 @@ export default function LoginForm({
         </div>
       </div>
       {loginError && (
-        <p className="text-xs text-red-600 text-center">{loginError}</p>
+        <p data-testid="admin-login-error" className="text-xs text-red-600 text-center">{loginError}</p>
       )}
 
       <button

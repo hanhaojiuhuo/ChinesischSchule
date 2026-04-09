@@ -63,7 +63,11 @@ export default function Home() {
 
       <Navbar />
 
-      <main id="main-content" className={`flex-1${isAdmin && toolbarPosition === "bottom" ? " pb-28" : ""}${isAdmin && toolbarPosition === "top" ? " pt-20" : ""}`}>
+      <main
+        id="main-content"
+        data-testid="section-main-content"
+        className={`flex-1${isAdmin && toolbarPosition === "bottom" ? " pb-28" : ""}${isAdmin && toolbarPosition === "top" ? " pt-20" : ""}`}
+      >
         <HeroSection
           isAdmin={isAdmin}
           de={draft.de}

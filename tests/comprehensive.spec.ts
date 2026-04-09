@@ -1083,7 +1083,7 @@ test.describe("11. Admin Login & Forms", () => {
     // Should show an error message or remain on login (not navigate to dashboard)
     // The page may show error text or the login form should still be visible
     await expect(
-      page.locator('[class*="text-red"], [role="alert"], [data-testid="admin-login-password"]').first()
+      page.locator('[data-testid="admin-login-error"], [data-testid="admin-login-password"]').first()
     ).toBeVisible({ timeout: 5000 });
   });
 
