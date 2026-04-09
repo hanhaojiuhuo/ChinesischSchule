@@ -35,6 +35,9 @@ import {
    GLOBAL HOOKS
    ================================================================ */
 
+/** Contact-form success message text (trilingual). */
+const CONTACT_SUCCESS_TEXT = "留言已发送";
+
 test.afterEach(async ({ page }, testInfo) => {
   if (testInfo.status !== testInfo.expectedStatus) {
     await captureScreenshotOnFailure(page, testInfo, "audit");
@@ -206,7 +209,7 @@ test.describe("C. Contact Form – Error States", () => {
     await submitBtn.click();
 
     // Should NOT show success message
-    const success = page.locator('text="留言已发送"');
+    const success = page.locator(`text="${CONTACT_SUCCESS_TEXT}"`);
     await expect(success).toBeHidden({ timeout: 1000 });
 
     // Name input should still be empty (form was not submitted)
@@ -229,7 +232,7 @@ test.describe("C. Contact Form – Error States", () => {
     await section.locator('[data-testid="contact-submit"]').click();
 
     // Browser should block – no success message
-    const success = page.locator('text="留言已发送"');
+    const success = page.locator(`text="${CONTACT_SUCCESS_TEXT}"`);
     await expect(success).toBeHidden({ timeout: 1000 });
   });
 
@@ -252,7 +255,7 @@ test.describe("C. Contact Form – Error States", () => {
     await section.locator('[data-testid="contact-submit"]').click();
 
     // Should NOT succeed
-    const success = page.locator('text="留言已发送"');
+    const success = page.locator(`text="${CONTACT_SUCCESS_TEXT}"`);
     await expect(success).toBeHidden({ timeout: 1000 });
   });
 
@@ -703,13 +706,16 @@ test.describe("I. A11Y – Focus & Keyboard Navigation", () => {
     expect(h1s.length).toBeGreaterThanOrEqual(1);
     expect(h2s.length).toBeGreaterThanOrEqual(1);
 
-    // No heading should skip more than one level (h1 → h3 without h2)
+    // Heading levels should not skip when increasing (h1 → h3 without h2),
+    // but decreasing (h3 → h2) is valid and should not trigger a failure.
     for (let i = 1; i < headings.length; i++) {
       const jump = headings[i].level - headings[i - 1].level;
-      expect(
-        jump,
-        `Heading level jumps from h${headings[i - 1].level} to h${headings[i].level}`
-      ).toBeLessThanOrEqual(1);
+      if (jump > 0) {
+        expect(
+          jump,
+          `Heading level jumps from h${headings[i - 1].level} to h${headings[i].level}`
+        ).toBeLessThanOrEqual(1);
+      }
     }
   });
 
