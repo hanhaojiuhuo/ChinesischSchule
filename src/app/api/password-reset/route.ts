@@ -300,6 +300,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("[password-reset] Error:", err);
+    return NextResponse.json(
+      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { status: 500 }
+    );
   }
 }

@@ -27,110 +27,118 @@ const CODE_SLOT_MS = 10 * 60 * 1000; // 10 minutes
  *   - (legacy, no action): attempt login — now requires email verification.
  */
 export async function POST(request: Request) {
-  if (process.env.RECOVERY_MODE !== "true") {
+  try {
+    if (process.env.RECOVERY_MODE !== "true") {
+      return NextResponse.json(
+        { error: "Recovery mode is not enabled" },
+        { status: 403 }
+      );
+    }
+
+    const parsed = await requireJson<Record<string, string>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
+    const { action, username } = body;
+
+    if (!username?.trim()) {
+      return NextResponse.json({ error: "username required" }, { status: 400 });
+    }
+
+    const trimmedUsername = username.trim();
+
+    /* ── Step 1: Send recovery verification code ──────────── */
+    if (action === "request") {
+      const apiKey = process.env.RESEND_API_KEY;
+      const notificationEmail = process.env.NOTIFICATION_EMAIL;
+
+      // Try to find the admin's email, or use NOTIFICATION_EMAIL
+      const admins = await readAdmins();
+      const admin = admins.find((a) => a.username === trimmedUsername);
+      const targetEmail = admin?.email || notificationEmail;
+
+      if (!apiKey || !targetEmail) {
+        return NextResponse.json(
+          {
+            error: "Email verification is required for recovery but email service is not configured. Set RESEND_API_KEY and NOTIFICATION_EMAIL.",
+            noEmail: true,
+          },
+          { status: 503 }
+        );
+      }
+
+      const code = generateHmacCode("recovery", trimmedUsername, apiKey, CODE_SLOT_MS);
+      const fromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+      const resend = new Resend(apiKey);
+
+      const { error } = await resend.emails.send({
+        from: fromEmail,
+        to: targetEmail,
+        subject: "Recovery Mode Verifizierungscode / Recovery Verification Code / 恢复模式验证码",
+        html: recoveryCodeEmail(code, trimmedUsername),
+      });
+
+      if (error) {
+        console.error("[recovery] Failed to send code:", error);
+        return NextResponse.json(
+          { error: "Failed to send verification email" },
+          { status: 500 }
+        );
+      }
+
+      console.warn(
+        `[Recovery] Recovery code sent for user "${trimmedUsername}". Disable RECOVERY_MODE after use.`
+      );
+
+      return NextResponse.json({ success: true, codeSent: true });
+    }
+
+    /* ── Step 2: Verify code and complete recovery login ──── */
+    if (action === "verify") {
+      const { code } = body;
+      if (!code?.trim()) {
+        return NextResponse.json({ error: "code required" }, { status: 400 });
+      }
+
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: "Email service not configured" },
+          { status: 503 }
+        );
+      }
+
+      if (!verifyHmacCode("recovery", trimmedUsername, apiKey, code.trim(), CODE_SLOT_MS)) {
+        return NextResponse.json(
+          { error: "Invalid or expired code / Ungültiger Code / 验证码无效" },
+          { status: 400 }
+        );
+      }
+
+      await logAuditEvent({
+        action: "RECOVERY_LOGIN",
+        actor: trimmedUsername,
+        details: "Recovery mode login with email verification",
+      });
+
+      console.warn(
+        `[Recovery] Recovery mode login verified for user "${trimmedUsername}". Disable RECOVERY_MODE after creating a new admin account.`
+      );
+
+      const response = NextResponse.json({ success: true });
+      setSessionCookie(response, trimmedUsername);
+      return response;
+    }
+
+    /* ── Legacy: no action field — reject (no longer accept any password) ── */
     return NextResponse.json(
-      { error: "Recovery mode is not enabled" },
-      { status: 403 }
+      { error: "Recovery mode now requires email verification. Use action: 'request' then 'verify'.", requiresVerification: true },
+      { status: 400 }
+    );
+  } catch (err) {
+    console.error("[recovery] Error:", err);
+    return NextResponse.json(
+      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { status: 500 }
     );
   }
-
-  const parsed = await requireJson<Record<string, string>>(request);
-  if (!parsed.ok) return parsed.response;
-  const body = parsed.body;
-  const { action, username } = body;
-
-  if (!username?.trim()) {
-    return NextResponse.json({ error: "username required" }, { status: 400 });
-  }
-
-  const trimmedUsername = username.trim();
-
-  /* ── Step 1: Send recovery verification code ──────────── */
-  if (action === "request") {
-    const apiKey = process.env.RESEND_API_KEY;
-    const notificationEmail = process.env.NOTIFICATION_EMAIL;
-
-    // Try to find the admin's email, or use NOTIFICATION_EMAIL
-    const admins = await readAdmins();
-    const admin = admins.find((a) => a.username === trimmedUsername);
-    const targetEmail = admin?.email || notificationEmail;
-
-    if (!apiKey || !targetEmail) {
-      return NextResponse.json(
-        {
-          error: "Email verification is required for recovery but email service is not configured. Set RESEND_API_KEY and NOTIFICATION_EMAIL.",
-          noEmail: true,
-        },
-        { status: 503 }
-      );
-    }
-
-    const code = generateHmacCode("recovery", trimmedUsername, apiKey, CODE_SLOT_MS);
-    const fromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
-    const resend = new Resend(apiKey);
-
-    const { error } = await resend.emails.send({
-      from: fromEmail,
-      to: targetEmail,
-      subject: "Recovery Mode Verifizierungscode / Recovery Verification Code / 恢复模式验证码",
-      html: recoveryCodeEmail(code, trimmedUsername),
-    });
-
-    if (error) {
-      console.error("[recovery] Failed to send code:", error);
-      return NextResponse.json(
-        { error: "Failed to send verification email" },
-        { status: 500 }
-      );
-    }
-
-    console.warn(
-      `[Recovery] Recovery code sent for user "${trimmedUsername}". Disable RECOVERY_MODE after use.`
-    );
-
-    return NextResponse.json({ success: true, codeSent: true });
-  }
-
-  /* ── Step 2: Verify code and complete recovery login ──── */
-  if (action === "verify") {
-    const { code } = body;
-    if (!code?.trim()) {
-      return NextResponse.json({ error: "code required" }, { status: 400 });
-    }
-
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Email service not configured" },
-        { status: 503 }
-      );
-    }
-
-    if (!verifyHmacCode("recovery", trimmedUsername, apiKey, code.trim(), CODE_SLOT_MS)) {
-      return NextResponse.json(
-        { error: "Invalid or expired code / Ungültiger Code / 验证码无效" },
-        { status: 400 }
-      );
-    }
-
-    await logAuditEvent({
-      action: "RECOVERY_LOGIN",
-      actor: trimmedUsername,
-      details: "Recovery mode login with email verification",
-    });
-
-    console.warn(
-      `[Recovery] Recovery mode login verified for user "${trimmedUsername}". Disable RECOVERY_MODE after creating a new admin account.`
-    );
-
-    const response = NextResponse.json({ success: true });
-    setSessionCookie(response, trimmedUsername);
-    return response;
-  }
-
-  /* ── Legacy: no action field — reject (no longer accept any password) ── */
-  return NextResponse.json(
-    { error: "Recovery mode now requires email verification. Use action: 'request' then 'verify'.", requiresVerification: true },
-    { status: 400 }
-  );
 }
