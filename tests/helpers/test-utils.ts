@@ -189,3 +189,28 @@ export async function getFormFieldsWithoutLabels(page: Page) {
         }))
   );
 }
+
+/* ──────────────────────────────────────────────────────────────
+   Console error filter — removes benign/expected messages
+   ────────────────────────────────────────────────────────────── */
+export function filterBenignConsoleErrors(errors: ConsoleEntry[]): ConsoleEntry[] {
+  return errors.filter(
+    (e) =>
+      !e.text.includes("favicon") &&
+      !e.text.includes("Download the React DevTools") &&
+      !e.text.includes("Third-party cookie")
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   JS heap size helper (Chromium-only)
+   ────────────────────────────────────────────────────────────── */
+export async function getHeapSize(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const perf = performance as unknown as Record<string, unknown>;
+    if (perf.memory) {
+      return (perf.memory as { usedJSHeapSize: number }).usedJSHeapSize;
+    }
+    return -1;
+  });
+}

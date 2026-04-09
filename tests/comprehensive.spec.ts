@@ -34,6 +34,8 @@ import {
   getPerformanceMetrics,
   getImagesWithoutAlt,
   getFormFieldsWithoutLabels,
+  filterBenignConsoleErrors,
+  getHeapSize,
 } from "./helpers/test-utils";
 
 /* ================================================================
@@ -581,13 +583,7 @@ test.describe("6. Performance Testing", () => {
     await page.goto("/");
     await dismissCookieConsent(page);
 
-    // Get initial heap size
-    const initialHeap = await page.evaluate(() => {
-      if ((performance as unknown as Record<string, unknown>).memory) {
-        return (performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize;
-      }
-      return -1;
-    });
+    const initialHeap = await getHeapSize(page);
 
     if (initialHeap === -1) {
       // Memory API not available, skip
@@ -600,12 +596,7 @@ test.describe("6. Performance Testing", () => {
       await page.goto("/");
     }
 
-    const finalHeap = await page.evaluate(() => {
-      if ((performance as unknown as Record<string, unknown>).memory) {
-        return (performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize;
-      }
-      return -1;
-    });
+    const finalHeap = await getHeapSize(page);
 
     if (finalHeap > 0 && initialHeap > 0) {
       const growth = (finalHeap - initialHeap) / initialHeap;
@@ -906,13 +897,7 @@ test.describe("8. Security Testing", () => {
 test.describe("9. Error Handling", () => {
   test("no console errors on homepage load", async ({ page, consoleErrors }) => {
     await page.goto("/", { waitUntil: "load" });
-    // Filter out known benign errors (e.g., favicon, third-party)
-    const realErrors = consoleErrors.filter(
-      (e) =>
-        !e.text.includes("favicon") &&
-        !e.text.includes("Download the React DevTools") &&
-        !e.text.includes("Third-party cookie")
-    );
+    const realErrors = filterBenignConsoleErrors(consoleErrors);
     expect(
       realErrors,
       `Console errors found: ${JSON.stringify(realErrors)}`
@@ -921,12 +906,7 @@ test.describe("9. Error Handling", () => {
 
   test("no console errors on admin page", async ({ page, consoleErrors }) => {
     await page.goto("/admin", { waitUntil: "load" });
-    const realErrors = consoleErrors.filter(
-      (e) =>
-        !e.text.includes("favicon") &&
-        !e.text.includes("Download the React DevTools") &&
-        !e.text.includes("Third-party cookie")
-    );
+    const realErrors = filterBenignConsoleErrors(consoleErrors);
     expect(
       realErrors,
       `Console errors on admin page: ${JSON.stringify(realErrors)}`
@@ -935,23 +915,13 @@ test.describe("9. Error Handling", () => {
 
   test("no console errors on impressum page", async ({ page, consoleErrors }) => {
     await page.goto("/impressum", { waitUntil: "load" });
-    const realErrors = consoleErrors.filter(
-      (e) =>
-        !e.text.includes("favicon") &&
-        !e.text.includes("Download the React DevTools") &&
-        !e.text.includes("Third-party cookie")
-    );
+    const realErrors = filterBenignConsoleErrors(consoleErrors);
     expect(realErrors).toHaveLength(0);
   });
 
   test("no console errors on privacy page", async ({ page, consoleErrors }) => {
     await page.goto("/privacy", { waitUntil: "load" });
-    const realErrors = consoleErrors.filter(
-      (e) =>
-        !e.text.includes("favicon") &&
-        !e.text.includes("Download the React DevTools") &&
-        !e.text.includes("Third-party cookie")
-    );
+    const realErrors = filterBenignConsoleErrors(consoleErrors);
     expect(realErrors).toHaveLength(0);
   });
 
