@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { Resend } from "resend";
 import { readAdmins } from "@/lib/edge-config";
+import { checkRateLimitPersistent } from "@/lib/rate-limit";
 
 /** Time-slot duration for HMAC-based code validity (10 minutes). */
 const CODE_SLOT_MS = 10 * 60 * 1000;
@@ -10,40 +11,15 @@ const CODE_SLOT_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
-/** In-memory rate-limit store. */
-const rateLimitMap = new Map<
-  string,
-  { count: number; windowStart: number }
->();
-
-function checkRateLimit(key: string): {
-  allowed: boolean;
-  retryAfterMs: number;
-} {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(key, { count: 1, windowStart: now });
-    return { allowed: true, retryAfterMs: 0 };
-  }
-  if (entry.count >= RATE_LIMIT_MAX) {
-    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - entry.windowStart);
-    return { allowed: false, retryAfterMs };
-  }
-  entry.count++;
-  return { allowed: true, retryAfterMs: 0 };
-}
-
 /**
- * Generate a 6-digit HMAC-based code tied to a username and time slot.
+ * Generate an 8-character alphanumeric HMAC-based code tied to a username and time slot.
  * Domain separation uses "password-change" to distinguish from password-reset codes.
  */
 function generateCode(username: string, secret: string): string {
   const slot = Math.floor(Date.now() / CODE_SLOT_MS);
   const mac = createHmac("sha256", secret);
   mac.update(`password-change:${username}:${slot}`);
-  const num = parseInt(mac.digest("hex").slice(0, 8), 16);
-  return String(num % 1_000_000).padStart(6, "0");
+  return mac.digest("hex").slice(0, 8).toUpperCase();
 }
 
 /** Verify a code against the current and previous time slot. */
@@ -56,8 +32,7 @@ function verifyCode(
   for (const s of [slot, slot - 1]) {
     const mac = createHmac("sha256", secret);
     mac.update(`password-change:${username}:${s}`);
-    const num = parseInt(mac.digest("hex").slice(0, 8), 16);
-    if (String(num % 1_000_000).padStart(6, "0") === code) {
+    if (mac.digest("hex").slice(0, 8).toUpperCase() === code.toUpperCase()) {
       return true;
     }
   }
@@ -99,8 +74,8 @@ export async function POST(request: Request) {
 
       const trimmedUsername = username.trim();
 
-      // Rate limit by username
-      const rl = checkRateLimit(`pw-change:${trimmedUsername}`);
+      // Rate limit by username — persistent across server restarts
+      const rl = await checkRateLimitPersistent(`pw-change:${trimmedUsername}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
       if (!rl.allowed) {
         const retryMinutes = Math.ceil(rl.retryAfterMs / 60000);
         return NextResponse.json(

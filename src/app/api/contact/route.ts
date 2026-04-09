@@ -1,33 +1,10 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { checkRateLimitPersistent } from "@/lib/rate-limit";
 
 /** Rate-limit: max submissions per IP within 1 hour. */
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-
-/** In-memory rate-limit store (keyed by IP). Reset on server restart. */
-const rateLimitMap = new Map<
-  string,
-  { count: number; windowStart: number }
->();
-
-function checkRateLimit(key: string): {
-  allowed: boolean;
-  retryAfterMs: number;
-} {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(key, { count: 1, windowStart: now });
-    return { allowed: true, retryAfterMs: 0 };
-  }
-  if (entry.count >= RATE_LIMIT_MAX) {
-    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - entry.windowStart);
-    return { allowed: false, retryAfterMs };
-  }
-  entry.count++;
-  return { allowed: true, retryAfterMs: 0 };
-}
 
 export async function POST(request: Request) {
   try {
@@ -77,11 +54,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Rate limit by IP
+    // Rate limit by IP — persistent across server restarts
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       "unknown";
-    const rl = checkRateLimit(ip);
+    const rl = await checkRateLimitPersistent(`contact-ip:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
     if (!rl.allowed) {
       const retryMinutes = Math.ceil(rl.retryAfterMs / 60000);
       return NextResponse.json(

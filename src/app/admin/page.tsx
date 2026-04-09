@@ -259,6 +259,11 @@ function AdminPageContent() {
   const [loginError, setLoginError] = useState("");
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [, setLoginBlocked] = useState(false);
+  // Two-factor authentication state
+  const [twoFactorStep, setTwoFactorStep] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorMaskedEmail, setTwoFactorMaskedEmail] = useState("");
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
 
   // Pre-fill username from last session (runs once on mount)
   useEffect(() => {
@@ -441,6 +446,13 @@ function AdminPageContent() {
       return;
     }
     const result = await auth.login(userInput.trim(), pwInput);
+    if (result.twoFactorRequired) {
+      // Credentials valid — 2FA code sent to email
+      setTwoFactorStep(true);
+      setTwoFactorMaskedEmail(result.maskedEmail ?? "");
+      setLoginError("");
+      return;
+    }
     if (!result.success) {
       setFailedAttempts((c) => c + 1);
       if (result.blocked) {
@@ -457,6 +469,22 @@ function AdminPageContent() {
         );
       }
     }
+  }
+
+  async function handleTwoFactorVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setLoginError("");
+    if (!twoFactorCode.trim()) {
+      setLoginError("请输入验证码 / Please enter the code / Bitte Code eingeben");
+      return;
+    }
+    setTwoFactorLoading(true);
+    const result = await auth.verifyLoginCode(userInput.trim(), twoFactorCode.trim());
+    setTwoFactorLoading(false);
+    if (!result.success) {
+      setLoginError(result.error ?? "验证码无效 / Invalid code / Ungültiger Code");
+    }
+    // If successful, auth.isAdmin will become true and the UI will switch
   }
 
   async function handleSave() {
@@ -831,6 +859,56 @@ function AdminPageContent() {
           <p className="text-sm text-gray-500 text-center mb-6">
             Administrator Login · Admin-Anmeldung
           </p>
+
+          {/* Two-factor authentication step */}
+          {twoFactorStep ? (
+            <form onSubmit={handleTwoFactorVerify} className="space-y-4">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded text-center">
+                <p className="text-xs text-blue-700 font-semibold mb-1">
+                  🔐 两步验证 / Zwei-Faktor-Authentifizierung / Two-Factor Authentication
+                </p>
+                <p className="text-xs text-blue-600">
+                  验证码已发送至 / Code gesendet an / Code sent to: <strong>{twoFactorMaskedEmail}</strong>
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  验证码 / Verification Code / Verifizierungscode
+                </label>
+                <input
+                  type="text"
+                  autoComplete="one-time-code"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.toUpperCase())}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-[var(--school-red)]"
+                  placeholder="ABCD1234"
+                  maxLength={8}
+                  autoFocus
+                />
+              </div>
+              {loginError && (
+                <p className="text-xs text-red-600 text-center">{loginError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={twoFactorLoading}
+                className="w-full bg-[var(--school-red)] hover:bg-[var(--school-red-dark)] disabled:opacity-60 text-white font-semibold py-2 rounded transition-colors"
+              >
+                {twoFactorLoading ? "⏳ ..." : "验证 / Verifizieren / Verify"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTwoFactorStep(false);
+                  setTwoFactorCode("");
+                  setLoginError("");
+                }}
+                className="w-full text-xs text-gray-500 hover:text-gray-700 py-1"
+              >
+                ← 返回 / Zurück / Back
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -872,6 +950,7 @@ function AdminPageContent() {
               登录 / Anmelden / Login
             </button>
           </form>
+          )}
 
           {/* Forgot password */}
           <div className="mt-4 text-center">
@@ -1045,9 +1124,9 @@ function AdminPageContent() {
                 >
                   {forgotPwAdminInitiated ? (
                     <p className="text-xs text-gray-600">
-                      DE: Ein Administrator hat einen Passwort-Reset für Ihr Konto angefordert. Bitte geben Sie Ihren Benutzernamen und den per E-Mail erhaltenen 6-stelligen Verifizierungscode ein.<br />
-                      EN: An administrator has requested a password reset for your account. Please enter your username and the 6-digit verification code you received by email.<br />
-                      ZH: 管理员已为您的账户发起密码重置。请输入您的用户名和通过邮件收到的6位验证码。
+                      DE: Ein Administrator hat einen Passwort-Reset für Ihr Konto angefordert. Bitte geben Sie Ihren Benutzernamen und den per E-Mail erhaltenen 8-stelligen Verifizierungscode ein.<br />
+                      EN: An administrator has requested a password reset for your account. Please enter your username and the 8-character verification code you received by email.<br />
+                      ZH: 管理员已为您的账户发起密码重置。请输入您的用户名和通过邮件收到的8位验证码。
                     </p>
                   ) : (
                     <p className="text-xs text-gray-600">
@@ -1077,13 +1156,13 @@ function AdminPageContent() {
                   )}
                   <input
                     type="text"
-                    inputMode="numeric"
-                    pattern="\d{6}"
-                    maxLength={6}
+                    inputMode="text"
+                    pattern="[A-Za-z0-9]{8}"
+                    maxLength={8}
                     value={forgotPwCode}
-                    onChange={(e) => setForgotPwCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder="6-stelliger Code / 6-digit code / 6位验证码"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center tracking-widest focus:outline-none focus:border-[var(--school-red)]"
+                    onChange={(e) => setForgotPwCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase())}
+                    placeholder="8-stelliger Code / 8-char code / 8位验证码"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-[var(--school-red)]"
                     autoComplete="one-time-code"
                     required
                   />

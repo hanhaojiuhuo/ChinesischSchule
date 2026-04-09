@@ -6,6 +6,8 @@ import {
   DEFAULT_ADMINS,
   type AdminUser,
 } from "@/lib/edge-config";
+import { hashPassword } from "@/lib/password";
+import { logAuditEvent } from "@/lib/audit-log";
 
 const SESSION_COOKIE = "yixin-session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -73,12 +75,13 @@ export async function POST(request: Request) {
     admins = [...DEFAULT_ADMINS];
   }
 
-  // Update existing user or append new entry
+  // Update existing user or append new entry (hash the password)
+  const hashedPassword = await hashPassword(newPassword);
   const idx = admins.findIndex((a) => a.username === username);
   if (idx >= 0) {
-    admins[idx] = { ...admins[idx], password: newPassword };
+    admins[idx] = { ...admins[idx], password: hashedPassword };
   } else {
-    admins.push({ username, password: newPassword });
+    admins.push({ username, password: hashedPassword });
   }
 
   // Persist to Vercel Edge Config (also saves to in-memory store)
@@ -91,6 +94,12 @@ export async function POST(request: Request) {
       `[Dev-Reset] Edge Config persistence failed: ${persistError}`
     );
   }
+
+  await logAuditEvent({
+    action: "DEV_RESET_PASSWORD",
+    actor: username,
+    details: "Password reset via developer/recovery mode (hashed)",
+  });
 
   console.warn(
     `[Dev-Reset] Password reset via developer mode for user "${username}". ` +

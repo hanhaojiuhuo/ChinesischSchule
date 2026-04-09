@@ -6,6 +6,8 @@ import {
   getLastPersistError,
   type AdminUser,
 } from "@/lib/edge-config";
+import { hashPassword, isBcryptHash } from "@/lib/password";
+import { logAuditEvent } from "@/lib/audit-log";
 
 export type { AdminUser };
 
@@ -37,8 +39,27 @@ export async function POST(request: Request) {
   try {
     const admins = (await request.json()) as AdminUser[];
 
-    await writeAdmins(admins);
+    // Auto-hash any plaintext passwords before persisting
+    const hashedAdmins = await Promise.all(
+      admins.map(async (admin) => {
+        if (isBcryptHash(admin.password)) {
+          return admin; // Already hashed
+        }
+        return {
+          ...admin,
+          password: await hashPassword(admin.password),
+        };
+      })
+    );
+
+    await writeAdmins(hashedAdmins);
     const persistError = getLastPersistError();
+
+    await logAuditEvent({
+      action: "UPDATE_ADMIN_LIST",
+      actor: sessionUser,
+      details: `Admin list updated (${hashedAdmins.length} entries)`,
+    });
 
     return NextResponse.json({
       success: true,
