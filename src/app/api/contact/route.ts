@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { checkRateLimitPersistent } from "@/lib/rate-limit";
+import { escapeHtml } from "@/lib/sanitize";
+import { getClientIP } from "@/lib/request-utils";
 
 /** Rate-limit: max submissions per IP within 1 hour. */
 const RATE_LIMIT_MAX = 5;
@@ -55,9 +57,7 @@ export async function POST(request: Request) {
     }
 
     // Rate limit by IP — persistent across server restarts
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      "unknown";
+    const ip = getClientIP(request);
     const rl = await checkRateLimitPersistent(`contact-ip:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
     if (!rl.allowed) {
       const retryMinutes = Math.ceil(rl.retryAfterMs / 60000);
@@ -176,12 +176,4 @@ export async function POST(request: Request) {
   }
 }
 
-/** Escape HTML special characters to prevent injection in email body. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+

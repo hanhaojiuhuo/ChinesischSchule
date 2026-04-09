@@ -6,6 +6,7 @@ export default function ContactForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -93,6 +94,33 @@ export default function ContactForm() {
           placeholder="请输入留言内容… / Ihre Nachricht…"
           disabled={status === "sending"}
         />
+      </div>
+
+      {/* GDPR Privacy Consent */}
+      <div className="flex items-start gap-2">
+        <input
+          type="checkbox"
+          id="privacy-consent"
+          required
+          checked={privacyConsent}
+          onChange={(e) => setPrivacyConsent(e.target.checked)}
+          className="mt-1 accent-[var(--school-red)]"
+          disabled={status === "sending"}
+        />
+        <label htmlFor="privacy-consent" className="text-xs text-gray-600 leading-relaxed">
+          我已阅读并同意{" "}
+          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer">
+            隐私政策
+          </a>{" "}
+          / Ich akzeptiere die{" "}
+          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer">
+            Datenschutzerklärung
+          </a>{" "}
+          / I accept the{" "}
+          <a href="/privacy" className="text-[var(--school-red)] underline" target="_blank" rel="noopener noreferrer">
+            Privacy Policy
+          </a>
+        </label>
       </div>
 
       {/* Status messages */}
