@@ -8,6 +8,7 @@ import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { notFound } from "next/navigation";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 export default function NewsDetailPage() {
   const params = useParams();
@@ -79,9 +80,9 @@ export default function NewsDetailPage() {
                 <div className="mb-4">
                   {zhBlocks.map((block, i) =>
                     block.type === "text" ? (
-                      <div key={i} className="font-cn text-base text-gray-700 leading-loose mb-4 whitespace-pre-wrap">
-                        {block.content}
-                      </div>
+                      <div key={i} className="font-cn text-base text-gray-700 leading-loose mb-4 whitespace-pre-wrap rich-text-content"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }}
+                      />
                     ) : (
                       <figure key={i} className="mb-4">
                         <Image
@@ -105,9 +106,9 @@ export default function NewsDetailPage() {
               {deBlocks.length > 0 ? (
                 deBlocks.map((block, i) =>
                   block.type === "text" ? (
-                    <div key={i} className="text-sm text-gray-500 leading-relaxed mb-4 whitespace-pre-wrap">
-                      {block.content}
-                    </div>
+                    <div key={i} className="text-sm text-gray-500 leading-relaxed mb-4 whitespace-pre-wrap rich-text-content"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }}
+                    />
                   ) : (
                     <figure key={i} className="mb-4">
                       <Image
@@ -135,9 +136,9 @@ export default function NewsDetailPage() {
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   {enBlocks.map((block, i) =>
                     block.type === "text" ? (
-                      <div key={i} className="text-sm text-gray-400 leading-relaxed mb-4 whitespace-pre-wrap">
-                        {block.content}
-                      </div>
+                      <div key={i} className="text-sm text-gray-400 leading-relaxed mb-4 whitespace-pre-wrap rich-text-content"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }}
+                      />
                     ) : (
                       <figure key={i} className="mb-4">
                         <Image

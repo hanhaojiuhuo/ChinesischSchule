@@ -10,6 +10,8 @@ import { getNewsBodyBlocks } from "@/i18n/translations";
 import {
   IMAGE_ACCEPT,
 } from "@/lib/validation";
+import { stripHtml } from "@/lib/sanitize-html";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 export default function AdminNewsEditPage() {
   const params = useParams();
@@ -71,7 +73,7 @@ export default function AdminNewsEditPage() {
   function blocksToBody(blocks: NewsBodyBlock[]): string {
     return blocks
       .filter((b): b is Extract<NewsBodyBlock, { type: "text" }> => b.type === "text")
-      .map((b) => b.content)
+      .map((b) => stripHtml(b.content))
       .join("\n\n");
   }
 
@@ -132,9 +134,10 @@ export default function AdminNewsEditPage() {
   const MAX_WORDS_DEFAULT = 200;
 
   function countWords(text: string): number {
-    if (!text.trim()) return 0;
-    const cjk = text.match(/[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}]/gu);
-    const stripped = text.replace(/[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}]/gu, " ");
+    const plain = stripHtml(text);
+    if (!plain.trim()) return 0;
+    const cjk = plain.match(/[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}]/gu);
+    const stripped = plain.replace(/[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}]/gu, " ");
     const latin = stripped.trim().split(/\s+/).filter(Boolean);
     return (cjk?.length ?? 0) + latin.length;
   }
@@ -212,20 +215,18 @@ export default function AdminNewsEditPage() {
               {block.type === "text" ? (
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">📝 Text</label>
-                  <textarea
+                  <RichTextEditor
                     value={block.content}
-                    onChange={(e) => {
+                    onChange={(html) => {
                       setBlocks((prev) =>
-                        prev.map((b, i) => (i === bIdx ? { ...b, content: e.target.value } : b))
+                        prev.map((b, i) => (i === bIdx ? { ...b, content: html } : b))
                       );
                     }}
-                    rows={4}
-                    className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y ${lang === "zh" ? "font-cn" : ""} ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-school-red"}`}
+                    maxWords={MAX_WORDS_NEWS}
+                    editorClassName={lang === "zh" ? "font-cn" : ""}
                     placeholder={lang === "de" ? "Text eingeben…" : "输入文本…"}
+                    minHeight="100px"
                   />
-                  <p className={`text-xs mt-0.5 text-right ${countWords(block.content) > MAX_WORDS_NEWS ? "text-red-600 font-semibold" : "text-gray-400"}`}>
-                    {countWords(block.content)} / {MAX_WORDS_NEWS} words
-                  </p>
                 </div>
               ) : (
                 <div className="border border-gray-200 rounded p-3 bg-gray-50">
