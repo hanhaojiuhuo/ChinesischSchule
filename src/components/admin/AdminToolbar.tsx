@@ -67,7 +67,7 @@ export default function AdminToolbar({
           <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer select-none ml-2">
             <input
               type="checkbox"
-              checked={showEnglish._global !== false}
+              checked={showEnglish._global === true}
               onChange={(e) => updateShowEnglish("_global", e.target.checked)}
               className="accent-amber-500 w-3.5 h-3.5"
             />

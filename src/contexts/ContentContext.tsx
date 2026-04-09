@@ -70,7 +70,7 @@ const ContentContext = createContext<ContentContextValue>({
   contentLoading: true,
   showEnglish: {},
   updateShowEnglish: () => {},
-  isEnglishVisible: () => true,
+  isEnglishVisible: () => false,
 });
 
 async function fetchRawOverrides(): Promise<RawOverrides> {
@@ -145,7 +145,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       setOverrides(langOverrides);
       if (_showEnglish) {
         // Only keep the _global key; discard legacy per-section keys
-        const globalOnly: EnglishVisibility = { _global: _showEnglish._global !== false };
+        const globalOnly: EnglishVisibility = { _global: _showEnglish._global === true };
         showEnglishRef.current = globalOnly;
         setShowEnglishState(globalOnly);
         saveShowEnglishCache(globalOnly);
@@ -200,7 +200,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const isEnglishVisible = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_section: string): boolean => {
-      return showEnglish._global !== false;
+      return showEnglish._global === true;
     },
     [showEnglish]
   );
