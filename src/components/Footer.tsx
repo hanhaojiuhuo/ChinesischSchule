@@ -10,14 +10,15 @@ const TOOLBAR_POS_KEY = "yixin-toolbar-position";
 export default function Footer() {
   const { getContent, isEnglishVisible } = useContent();
   const { isAdmin } = useAuth();
-  const [toolbarAtBottom, setToolbarAtBottom] = useState(true);
+  const [toolbarAtBottom, setToolbarAtBottom] = useState(() => {
+    try {
+      return sessionStorage.getItem(TOOLBAR_POS_KEY) !== "top";
+    } catch { return true; /* SSR / privacy mode */ }
+  });
 
   // Listen for toolbar position changes
   useEffect(() => {
     if (!isAdmin) return;
-    try {
-      setToolbarAtBottom(sessionStorage.getItem(TOOLBAR_POS_KEY) !== "top");
-    } catch { /* ignore */ }
     function handleChange(e: Event) {
       const pos = (e as CustomEvent).detail;
       setToolbarAtBottom(pos !== "top");

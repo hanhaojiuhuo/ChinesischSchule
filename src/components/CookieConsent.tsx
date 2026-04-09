@@ -30,7 +30,8 @@ export default function CookieConsent() {
   // Measure the banner height so the spacer keeps footer content accessible
   useEffect(() => {
     if (!visible || !bannerRef.current) {
-      setBannerHeight(0);
+      // When not visible the component returns null, so the spacer is not
+      // rendered and resetting bannerHeight is unnecessary.
       return;
     }
     const ro = new ResizeObserver(([entry]) => {
