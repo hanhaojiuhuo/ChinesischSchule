@@ -1,12 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { SiteContent, NewsItem, NewsTextBlock, NewsBodyBlock } from "@/i18n/translations";
 import { getNewsBodyBlocks } from "@/i18n/translations";
 import { countWords, MAX_WORDS_NEWS, validateImageFile, IMAGE_ACCEPT } from "@/lib/validation";
 import { EditField, EditBlock } from "@/components/admin/EditHelpers";
+import { ExpandButton, ExpandModal } from "@/components/admin/AdminHelpers";
 
 interface NewsSectionProps {
   isAdmin: boolean;
@@ -57,6 +58,7 @@ export default function NewsSection({
   setNewsUploadError,
   newsFileInputRef,
 }: NewsSectionProps) {
+  const [expandedBlock, setExpandedBlock] = useState<{ lang: "de" | "zh"; newsIdx: number; blockIdx: number } | null>(null);
   return (
         <section id="news" data-testid="section-news" className="py-16 px-4 bg-school-gray">
           <div className="max-w-6xl mx-auto">
@@ -205,7 +207,24 @@ export default function NewsSection({
                               <div className="flex-1">
                                 {block.type === "text" ? (
                                   <div>
-                                    <span className="text-xs text-gray-500 mb-1 block">Text</span>
+                                    <div className="flex items-center mb-1">
+                                      <span className="text-xs text-gray-500">Text</span>
+                                      <ExpandButton onClick={() => setExpandedBlock({ lang: "de", newsIdx: i, blockIdx: bIdx })} />
+                                    </div>
+                                    {expandedBlock?.lang === "de" && expandedBlock?.newsIdx === i && expandedBlock?.blockIdx === bIdx && (
+                                      <ExpandModal
+                                        label={`News ${i + 1} – DE Text block ${bIdx + 1}`}
+                                        value={block.content}
+                                        onChange={(v) => {
+                                          const nb = deBlocks.map((b, bi) =>
+                                            bi === bIdx ? { ...b, content: v } : b
+                                          ) as typeof deBlocks;
+                                          updDeNewsBlocks(i, nb);
+                                        }}
+                                        onClose={() => setExpandedBlock(null)}
+                                        maxWords={MAX_WORDS_NEWS}
+                                      />
+                                    )}
                                     <textarea
                                       className={`w-full border rounded px-3 py-2 text-sm focus:outline-none resize-y min-h-[120px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
                                       value={block.content}
@@ -341,7 +360,24 @@ export default function NewsSection({
                                 <div className="flex-1">
                                   {block.type === "text" ? (
                                     <div>
-                                      <span className="text-xs text-gray-500 mb-1 block">Text</span>
+                                      <div className="flex items-center mb-1">
+                                        <span className="text-xs text-gray-500">Text</span>
+                                        <ExpandButton onClick={() => setExpandedBlock({ lang: "zh", newsIdx: i, blockIdx: bIdx })} />
+                                      </div>
+                                      {expandedBlock?.lang === "zh" && expandedBlock?.newsIdx === i && expandedBlock?.blockIdx === bIdx && (
+                                        <ExpandModal
+                                          label={`News ${i + 1} – ZH Text block ${bIdx + 1}`}
+                                          value={block.content}
+                                          onChange={(v) => {
+                                            const nb = zhBlocks.map((b, bi) =>
+                                              bi === bIdx ? { ...b, content: v } : b
+                                            ) as typeof zhBlocks;
+                                            updZhNewsBlocks(i, nb);
+                                          }}
+                                          onClose={() => setExpandedBlock(null)}
+                                          maxWords={MAX_WORDS_NEWS}
+                                        />
+                                      )}
                                       <textarea
                                         className={`w-full border rounded px-3 py-2 text-sm font-cn focus:outline-none resize-y min-h-[120px] ${countWords(block.content) > MAX_WORDS_NEWS ? "border-red-400 focus:border-red-500" : "border-gray-300 focus:border-amber-500"}`}
                                         value={block.content}
