@@ -50,8 +50,8 @@ export default function ImpressumPage() {
 
   const showEn = (section: string) => draft.isEnglishVisible(section);
 
-  // Expand modal state
-  const [expandedField, setExpandedField] = useState<{ lang: "de" | "zh" | "en"; field: "pageTitle" | "content" } | null>(null);
+  // Expand modal state (DE/ZH only — English content is read-only)
+  const [expandedField, setExpandedField] = useState<{ lang: "de" | "zh"; field: "pageTitle" | "content" } | null>(null);
 
   return (
     <>
@@ -69,13 +69,11 @@ export default function ImpressumPage() {
           value={
             expandedField.lang === "de"
               ? draft.de.impressum[expandedField.field]
-              : expandedField.lang === "zh"
-              ? draft.zh.impressum[expandedField.field]
-              : draft.en.impressum[expandedField.field]
+              : draft.zh.impressum[expandedField.field]
           }
           onChange={(v) => {
             if (expandedField.lang === "de") draft.updDe("impressum", { [expandedField.field]: v });
-            else if (expandedField.lang === "zh") draft.updZh("impressum", { [expandedField.field]: v });
+            else draft.updZh("impressum", { [expandedField.field]: v });
           }}
           onClose={() => setExpandedField(null)}
         />

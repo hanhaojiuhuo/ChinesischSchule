@@ -50,8 +50,8 @@ export default function PrivacyPage() {
 
   const showEn = (section: string) => draft.isEnglishVisible(section);
 
-  // Expand modal state
-  const [expandedField, setExpandedField] = useState<{ lang: "de" | "zh" | "en"; field: "pageTitle" | "content" } | null>(null);
+  // Expand modal state (DE/ZH only — English content is read-only)
+  const [expandedField, setExpandedField] = useState<{ lang: "de" | "zh"; field: "pageTitle" | "content" } | null>(null);
 
   return (
     <>
@@ -69,13 +69,11 @@ export default function PrivacyPage() {
           value={
             expandedField.lang === "de"
               ? draft.de.privacy[expandedField.field]
-              : expandedField.lang === "zh"
-              ? draft.zh.privacy[expandedField.field]
-              : draft.en.privacy[expandedField.field]
+              : draft.zh.privacy[expandedField.field]
           }
           onChange={(v) => {
             if (expandedField.lang === "de") draft.updDe("privacy", { [expandedField.field]: v });
-            else if (expandedField.lang === "zh") draft.updZh("privacy", { [expandedField.field]: v });
+            else draft.updZh("privacy", { [expandedField.field]: v });
           }}
           onClose={() => setExpandedField(null)}
         />
