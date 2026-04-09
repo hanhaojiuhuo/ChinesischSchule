@@ -33,6 +33,7 @@ export default function HeroSection({
   return (
         <section
           id="home"
+          data-testid="section-home"
           className="relative overflow-hidden bg-school-dark text-white py-20 px-4"
         >
           <div

@@ -402,23 +402,23 @@ test.describe("4. UI / Visual Testing", () => {
     await page.evaluate(() => localStorage.removeItem("yixin-cookie-consent"));
     await page.reload();
 
-    const acceptBtn = page.locator('button:has-text("Alle akzeptieren")');
+    const acceptBtn = page.locator('[data-testid="cookie-accept-all"]');
     await expect(acceptBtn).toBeVisible({ timeout: 5000 });
     await acceptBtn.click();
 
     // Banner should disappear
-    await expect(page.locator('[role="dialog"]')).toBeHidden({ timeout: 3000 });
+    await expect(page.locator('[data-testid="cookie-consent-banner"]')).toBeHidden({ timeout: 3000 });
   });
 
   test("cookie consent essential-only option works", async ({ page }) => {
     await page.evaluate(() => localStorage.removeItem("yixin-cookie-consent"));
     await page.reload();
 
-    const essentialBtn = page.locator('button:has-text("Nur Notwendige")');
+    const essentialBtn = page.locator('[data-testid="cookie-essential-only"]');
     await expect(essentialBtn).toBeVisible({ timeout: 5000 });
     await essentialBtn.click();
 
-    await expect(page.locator('[role="dialog"]')).toBeHidden({ timeout: 3000 });
+    await expect(page.locator('[data-testid="cookie-consent-banner"]')).toBeHidden({ timeout: 3000 });
   });
 });
 
@@ -638,6 +638,13 @@ test.describe("7. Accessibility (A11Y)", () => {
     expect(["de", "zh", "en"]).toContain(lang);
   });
 
+  test("skip-to-content link is present and targets main content", async ({ page }) => {
+    const skipLink = page.locator('a[href="#main-content"]');
+    await expect(skipLink).toBeAttached();
+    const mainContent = page.locator("#main-content");
+    await expect(mainContent).toBeAttached();
+  });
+
   test("page has a proper title", async ({ page }) => {
     const title = await page.title();
     expect(title.length).toBeGreaterThan(10);
@@ -650,18 +657,18 @@ test.describe("7. Accessibility (A11Y)", () => {
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
-  test("form inputs have associated labels or preceding label elements", async ({ page }) => {
-    // The contact form uses label elements as siblings above each input.
-    // Verify each input in the contact form has a preceding <label> sibling.
+  test("form inputs have associated labels with for/id binding", async ({ page }) => {
     const contactSection = page.locator("#contact");
     const labels = contactSection.locator("label");
     const labelCount = await labels.count();
     // Contact form has at least 3 field labels + privacy consent label
     expect(labelCount).toBeGreaterThanOrEqual(3);
 
-    // Verify privacy-consent checkbox has a proper label with for attribute
-    const privacyLabel = page.locator('label[for="privacy-consent"]');
-    await expect(privacyLabel).toBeAttached();
+    // Verify field labels are properly associated via htmlFor/id
+    await expect(page.locator('label[for="contact-name"]')).toBeAttached();
+    await expect(page.locator('label[for="contact-email"]')).toBeAttached();
+    await expect(page.locator('label[for="contact-message"]')).toBeAttached();
+    await expect(page.locator('label[for="privacy-consent"]')).toBeAttached();
   });
 
   test("all buttons have accessible text", async ({ page }) => {
@@ -714,6 +721,29 @@ test.describe("7. Accessibility (A11Y)", () => {
     // Should have at least one h1
     const h1Count = headings.filter((h) => h.tag === "h1").length;
     expect(h1Count).toBeGreaterThanOrEqual(1);
+  });
+
+  test("key interactive elements have data-testid attributes", async ({ page }) => {
+    const requiredTestIds = [
+      "navbar",
+      "contact-form",
+      "contact-name",
+      "contact-email",
+      "contact-message",
+      "contact-submit",
+      "section-home",
+      "section-courses",
+      "section-news",
+      "section-about",
+      "section-contact",
+      "footer",
+    ];
+    for (const id of requiredTestIds) {
+      await expect(
+        page.locator(`[data-testid="${id}"]`),
+        `Missing data-testid="${id}"`
+      ).toBeAttached();
+    }
   });
 
   test("keyboard navigation: Tab moves through interactive elements", async ({ page }) => {
@@ -796,41 +826,28 @@ test.describe("8. Security Testing", () => {
       const response = await request.post("/api/login", {
         data: payload,
       });
-      // The login API returns 200 with { success: false } for failed auth
-      // or 400 for missing fields. It must NOT return success: true
-      if (response.status() === 200) {
-        const json = await response.json();
-        expect(
-          json.success,
-          `Injection payload should not authenticate: ${JSON.stringify(payload)}`
-        ).not.toBe(true);
-      }
+      // Login API returns 401 for bad credentials, 429 for rate-limited
+      // Must NOT return 200 (authenticated)
+      expect(
+        [401, 429],
+        `Injection payload should not authenticate: ${JSON.stringify(payload)}`
+      ).toContain(response.status());
     }
   });
 
   test("rate limiting on login endpoint", async ({ request }) => {
-    const results: { status: number; blocked?: boolean }[] = [];
+    const statuses: number[] = [];
     for (let i = 0; i < 25; i++) {
       const response = await request.post("/api/login", {
         data: { username: `ratelimit_test_${Date.now()}`, password: "wrong" },
       });
-      const status = response.status();
-      if (status === 200) {
-        const json = await response.json();
-        results.push({ status, blocked: json.blocked });
-        if (json.blocked) break;
-      } else {
-        results.push({ status });
-        if (status === 429) break;
-      }
+      statuses.push(response.status());
+      if (response.status() === 429) break;
     }
-    // Should eventually get blocked (blocked: true) or rate limited (429)
-    const wasBlocked = results.some((r) => r.blocked === true || r.status === 429);
-    const allRejected = results.every((r) => {
-      if (r.status === 200) return r.blocked !== undefined; // has success: false
-      return r.status >= 400;
-    });
-    expect(wasBlocked || allRejected).toBeTruthy();
+    // Should eventually get 429 rate limited, or all be 401 rejected
+    const hasRateLimit = statuses.includes(429);
+    const allRejected = statuses.every((s) => s === 401 || s === 429);
+    expect(hasRateLimit || allRejected).toBeTruthy();
   });
 
   test("rate limiting on contact form", async ({ request }) => {
@@ -879,14 +896,8 @@ test.describe("8. Security Testing", () => {
         password: "B".repeat(100000),
       },
     });
-    // The login API returns 200 with { success: false } on failed auth,
-    // or could return 413/500 for oversized payloads
-    if (response.status() === 200) {
-      const json = await response.json();
-      expect(json.success).not.toBe(true);
-    } else {
-      expect([400, 401, 413, 429, 500]).toContain(response.status());
-    }
+    // Should return 401 (failed auth), 429 (rate limited), or 413/500 for oversized
+    expect([401, 413, 429, 500]).toContain(response.status());
   });
 });
 
@@ -1297,12 +1308,13 @@ test.describe("14. GDPR Compliance", () => {
     await page.reload();
 
     // Click show details
-    const detailsBtn = page.locator('button:has-text("Details anzeigen")');
+    const detailsBtn = page.locator('[data-testid="cookie-details-toggle"]');
     if (await detailsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await detailsBtn.click();
-      const detailsText = await page.locator('[role="dialog"]').textContent();
+      const detailsText = await page.locator('[data-testid="cookie-consent-banner"]').textContent();
       expect(detailsText).toContain("Notwendig");
       expect(detailsText).toContain("Essential");
+      expect(detailsText).toContain("必要");
     }
   });
 
@@ -1450,6 +1462,14 @@ test.describe("17. Security Headers", () => {
       expect(server.toLowerCase()).not.toContain("express");
       expect(server.toLowerCase()).not.toContain("apache");
     }
+  });
+
+  test("Content-Security-Policy header is present", async ({ request }) => {
+    const response = await request.get("/");
+    const csp = response.headers()["content-security-policy"];
+    expect(csp).toBeTruthy();
+    expect(csp).toContain("default-src");
+    expect(csp).toContain("frame-ancestors 'none'");
   });
 });
 

@@ -80,7 +80,7 @@ export async function navigateAndWaitForLoad(page: Page, url: string) {
 }
 
 export async function dismissCookieConsent(page: Page) {
-  const acceptBtn = page.locator('button:has-text("Alle akzeptieren")');
+  const acceptBtn = page.locator('[data-testid="cookie-accept-all"]');
   if (await acceptBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
     await acceptBtn.click();
     await acceptBtn.waitFor({ state: "hidden", timeout: 3000 }).catch(() => {});

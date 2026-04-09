@@ -36,7 +36,13 @@ function sanitiseKey(key: string): string {
  */
 async function readEntry(key: string): Promise<RateLimitEntry | null> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) return memoryStore.get(key) ?? null;
+  if (!token) {
+    if (!memoryStore.has("__warned_no_blob")) {
+      console.warn("[rate-limit] BLOB_READ_WRITE_TOKEN not set — using in-memory fallback. Rate limits will reset on cold start.");
+      memoryStore.set("__warned_no_blob", { count: 0, windowStart: 0 });
+    }
+    return memoryStore.get(key) ?? null;
+  }
 
   try {
     const { blobs } = await list({

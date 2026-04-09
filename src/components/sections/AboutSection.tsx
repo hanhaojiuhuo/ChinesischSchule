@@ -24,7 +24,7 @@ export default function AboutSection({
   updZh,
 }: AboutSectionProps) {
   return (
-        <section id="about" className="py-16 px-4 bg-white">
+        <section id="about" data-testid="section-about" className="py-16 px-4 bg-white">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-8">
               <span className="block w-8 h-1 bg-school-red rounded" />

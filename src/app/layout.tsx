@@ -188,6 +188,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-[10000] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-school-red focus:text-white focus:rounded focus:text-sm focus:font-semibold"
+        >
+          Zum Inhalt springen / Skip to content / 跳到内容
+        </a>
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
