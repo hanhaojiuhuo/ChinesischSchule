@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { newAdminWelcomeEmail, newAdminOwnerNotificationEmail } from "@/lib/email-templates";
 import { requireAuthAndJson } from "@/lib/api-helpers";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
+
+/** Max notification emails per admin per hour. */
+const NOTIFY_RATE_LIMIT_MAX = 10;
+const NOTIFY_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 /**
  * POST /api/notify-admin
@@ -15,6 +20,10 @@ export async function POST(request: Request) {
     if (!parsed.ok) return parsed.response;
     const body = parsed.body;
     const { newUsername, newEmail, addedBy } = body;
+
+    // Rate limit notification emails per admin
+    const rl = await enforceRateLimit(`notify:${parsed.user}`, NOTIFY_RATE_LIMIT_MAX, NOTIFY_RATE_LIMIT_WINDOW_MS);
+    if (!rl.ok) return rl.response;
 
     if (!newUsername?.trim()) {
       return NextResponse.json(

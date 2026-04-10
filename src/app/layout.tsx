@@ -48,6 +48,7 @@ export const metadata: Metadata = {
     languages: {
       de: siteUrl,
       zh: siteUrl,
+      en: siteUrl,
     },
   },
   openGraph: {
@@ -61,7 +62,15 @@ export const metadata: Metadata = {
       "Chinese language school near Heilbronn, Baden-Württemberg, Germany. " +
       "Kurse für alle Altersgruppen. 课程面向6岁至成人。",
     locale: "de_DE",
-    alternateLocale: ["zh_CN"],
+    alternateLocale: ["zh_CN", "en_US"],
+    images: [
+      {
+        url: `${siteUrl}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: "Yi Xin Chinesische Sprachschule Heilbronn – 海尔布隆一心中文学校",
+      },
+    ],
   },
   twitter: {
     card: "summary",
@@ -182,6 +191,10 @@ export default function RootLayout({
   return (
     <html lang="de" className="h-full antialiased">
       <head>
+        <link rel="alternate" hrefLang="de" href={siteUrl} />
+        <link rel="alternate" hrefLang="zh" href={siteUrl} />
+        <link rel="alternate" hrefLang="en" href={siteUrl} />
+        <link rel="alternate" hrefLang="x-default" href={siteUrl} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

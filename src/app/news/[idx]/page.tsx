@@ -52,6 +52,17 @@ export default function NewsDetailPage() {
       <Navbar />
       <main className="min-h-screen bg-school-gray py-12 px-4">
         <div className="max-w-3xl mx-auto">
+          {/* Breadcrumb navigation */}
+          <nav aria-label="Breadcrumb" className="mb-4">
+            <ol className="flex items-center text-xs text-gray-500 gap-1">
+              <li><Link href="/" className="hover:text-school-red transition-colors">Home</Link></li>
+              <li aria-hidden="true">/</li>
+              <li><Link href="/#news" className="hover:text-school-red transition-colors">{de.news.sectionTitle || "Aktuelles"}</Link></li>
+              <li aria-hidden="true">/</li>
+              <li className="text-gray-700 font-medium truncate max-w-[200px]" aria-current="page">{zhNews?.title || news.title}</li>
+            </ol>
+          </nav>
+
           <div className="flex items-center justify-between mb-6">
             <Link href="/#news" className="text-sm text-school-red hover:opacity-80 transition-opacity">
               ← {de.news.sectionTitle || "Aktuelles"} / 返回 / Back
@@ -87,10 +98,10 @@ export default function NewsDetailPage() {
                       <figure key={i} className="mb-4">
                         <Image
                           src={block.url}
-                          alt={block.caption ?? news.title}
+                          alt={block.caption || `${zhNews?.title || news.title} – 图片 ${i + 1}`}
                           width={800}
                           height={400}
-                          unoptimized
+                          loading="lazy"
                           className="w-full h-auto rounded"
                         />
                         {block.caption && (
@@ -113,10 +124,10 @@ export default function NewsDetailPage() {
                     <figure key={i} className="mb-4">
                       <Image
                         src={block.url}
-                        alt={block.caption ?? news.title}
+                        alt={block.caption || `${news.title} – Bild ${i + 1}`}
                         width={800}
                         height={400}
-                        unoptimized
+                        loading="lazy"
                         className="w-full h-auto rounded"
                       />
                       {block.caption && (
@@ -143,10 +154,10 @@ export default function NewsDetailPage() {
                       <figure key={i} className="mb-4">
                         <Image
                           src={block.url}
-                          alt={block.caption ?? (enNews?.title || news.title)}
+                          alt={block.caption || `${enNews?.title || news.title} – Image ${i + 1}`}
                           width={800}
                           height={400}
-                          unoptimized
+                          loading="lazy"
                           className="w-full h-auto rounded"
                         />
                         {block.caption && (

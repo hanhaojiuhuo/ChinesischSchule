@@ -76,9 +76,17 @@ function loadLocalAdmins(): AdminUser[] | null {
   try {
     const stored = localStorage.getItem(LOCAL_ADMINS_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored) as AdminUser[];
+      const parsed = JSON.parse(stored) as unknown;
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        // New format: array of username strings
+        if (typeof parsed[0] === "string") {
+          return (parsed as string[]).map((u) => ({
+            username: u,
+            password: "********",
+          }));
+        }
+        // Legacy format: array of AdminUser objects (migrate on next fetch)
+        return parsed as AdminUser[];
       }
     }
   } catch {
@@ -93,10 +101,11 @@ async function fetchAdmins(): Promise<AdminUser[]> {
     if (res.ok) {
       const apiAdmins = (await res.json()) as AdminUser[];
       if (Array.isArray(apiAdmins) && apiAdmins.length > 0) {
-        // Server (Vercel Edge Config) is the source of truth.
-        // Update localStorage as an offline cache.
+        // Server is the source of truth.
+        // Cache only usernames (no passwords/hashes/emails) for offline display.
         try {
-          localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(apiAdmins));
+          const usernamesOnly = apiAdmins.map((a) => a.username);
+          localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(usernamesOnly));
         } catch {
           // ignore
         }
@@ -111,14 +120,8 @@ async function fetchAdmins(): Promise<AdminUser[]> {
 }
 
 async function saveAdmins(admins: AdminUser[]): Promise<SaveResult> {
-  // Always update localStorage as an offline cache.
-  try {
-    localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(admins));
-  } catch {
-    console.warn("[AuthContext] Failed to update localStorage cache.");
-  }
-
   // Persist to the server (Vercel Edge Config) — this is the source of truth.
+  // Never cache full admin objects (passwords/hashes/emails) in localStorage.
   try {
     const res = await fetch("/api/admins", {
       method: "POST",
@@ -132,6 +135,13 @@ async function saveAdmins(admins: AdminUser[]): Promise<SaveResult> {
       return { ok: false };
     }
     const data = await res.json().catch(() => ({}));
+    // Update username-only cache after successful save
+    try {
+      const usernamesOnly = admins.map((a) => a.username);
+      localStorage.setItem(LOCAL_ADMINS_KEY, JSON.stringify(usernamesOnly));
+    } catch {
+      // ignore
+    }
     return {
       ok: true,
       persistError: data.persistError ?? undefined,

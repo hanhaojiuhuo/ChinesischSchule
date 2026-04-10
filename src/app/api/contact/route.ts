@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { checkRateLimitPersistent } from "@/lib/rate-limit";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 import { getClientIP } from "@/lib/request-utils";
 import { contactNotificationEmail, contactConfirmationEmail } from "@/lib/email-templates";
 import { requireJson } from "@/lib/api-helpers";
+import { ErrorMessages } from "@/lib/error-messages";
 
 /** Rate-limit: max submissions per IP within 1 hour. */
 const RATE_LIMIT_MAX = 5;
@@ -61,17 +62,8 @@ export async function POST(request: Request) {
 
     // Rate limit by IP — persistent across server restarts
     const ip = getClientIP(request);
-    const rl = await checkRateLimitPersistent(`contact-ip:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
-    if (!rl.allowed) {
-      const retryMinutes = Math.ceil(rl.retryAfterMs / 60000);
-      return NextResponse.json(
-        {
-          error: `Zu viele Anfragen. Bitte versuchen Sie es in ${retryMinutes} Minute(n) erneut. / Too many requests. Please try again in ${retryMinutes} minute(s). / 请求过于频繁，请在 ${retryMinutes} 分钟后重试。`,
-          rateLimited: true,
-        },
-        { status: 429 }
-      );
-    }
+    const rl = await enforceRateLimit(`contact-ip:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+    if (!rl.ok) return rl.response;
 
     const fromEmail =
       process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
@@ -121,7 +113,7 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("[contact] Error:", err);
     return NextResponse.json(
-      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { error: ErrorMessages.INTERNAL_SERVER_ERROR },
       { status: 500 }
     );
   }

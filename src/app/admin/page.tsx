@@ -1,10 +1,18 @@
 "use client";
 
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import { AdminPageProvider, useAdminPage } from "@/contexts/AdminPageContext";
 import LoginScreen from "@/components/admin/LoginScreen";
-import AdminDashboard from "@/components/admin/AdminDashboard";
-import ResetConfirmDialog from "@/components/admin/ResetConfirmDialog";
+
+/* Dynamic imports for admin components — keep them out of the main bundle */
+const AdminDashboard = dynamic(
+  () => import("@/components/admin/AdminDashboard"),
+  { loading: () => <div className="min-h-screen flex items-center justify-center">⏳ Loading dashboard…</div> },
+);
+const ResetConfirmDialog = dynamic(
+  () => import("@/components/admin/ResetConfirmDialog"),
+);
 
 /* ─── Admin Page ────────────────────────────────────────────── */
 export default function AdminPage() {

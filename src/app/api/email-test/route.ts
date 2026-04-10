@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { requireAuth } from "@/lib/api-helpers";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 
 /**
  * GET /api/email-test
@@ -13,13 +14,11 @@ import { requireAuth } from "@/lib/api-helpers";
  * - Sends a test email to NOTIFICATION_EMAIL.
  * - Reports success or failure with actionable diagnostics.
  *
- * ⚠️  Rate-limited: at most 3 test emails per 10 minutes per server instance.
+ * Rate-limited: at most 3 test emails per 10 minutes (persistent via Blob).
  */
 
 const TEST_RATE_LIMIT_MAX = 3;
 const TEST_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-let testCount = 0;
-let testWindowStart = 0;
 
 export async function GET() {
   const auth = await requireAuth();
@@ -63,13 +62,13 @@ export async function GET() {
     });
   }
 
-  /* ── 2. Rate limit ─────────────────────────────────────────── */
-  const now = Date.now();
-  if (now - testWindowStart > TEST_RATE_LIMIT_WINDOW_MS) {
-    testCount = 0;
-    testWindowStart = now;
-  }
-  if (testCount >= TEST_RATE_LIMIT_MAX) {
+  /* ── 2. Rate limit (persistent via Blob) ─────────────────── */
+  const rl = await enforceRateLimit(
+    "email-test-global",
+    TEST_RATE_LIMIT_MAX,
+    TEST_RATE_LIMIT_WINDOW_MS,
+  );
+  if (!rl.ok) {
     results["send_test_email"] = {
       ok: false,
       detail: `Rate limited — max ${TEST_RATE_LIMIT_MAX} test emails per 10 minutes. Try again later.`,
@@ -80,7 +79,6 @@ export async function GET() {
       results,
     });
   }
-  testCount++;
 
   /* ── 3. Send a test email ──────────────────────────────────── */
   try {
@@ -129,9 +127,10 @@ export async function GET() {
     });
 
     if (error) {
+      console.error("[email-test] Resend API error:", JSON.stringify(error));
       results["send_test_email"] = {
         ok: false,
-        detail: `Resend API returned error: ${JSON.stringify(error)}`,
+        detail: `Resend API returned error — check API key and sender configuration`,
       };
 
       // Provide actionable guidance

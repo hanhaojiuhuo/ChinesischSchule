@@ -20,7 +20,11 @@ type ContentOverrides = Partial<Record<Language, SiteContent>>;
  */
 function mergeWithDefaults(override: SiteContent, defaults: SiteContent): SiteContent {
   const merged = { ...defaults };
-  for (const key of Object.keys(override) as (keyof SiteContent)[]) {
+  const POISON_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+  for (const rawKey of Object.keys(override)) {
+    // Prevent prototype pollution via __proto__, constructor, or prototype keys
+    if (POISON_KEYS.has(rawKey)) continue;
+    const key = rawKey as keyof SiteContent;
     const overrideVal = override[key];
     const defaultVal = defaults[key];
     if (

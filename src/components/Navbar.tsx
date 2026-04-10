@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import SchoolLogo from "./SchoolLogo";
 import { useContent } from "@/contexts/ContentContext";
@@ -17,6 +17,18 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { isEnglishVisible } = useContent();
   const showEn = isEnglishVisible("nav");
+
+  // Close mobile menu on ESC key
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") setOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [open, handleKeyDown]);
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b-2 border-school-red shadow-sm" data-testid="navbar">

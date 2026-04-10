@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { readAdmins } from "@/lib/edge-config";
 import { verifyPassword } from "@/lib/password";
-import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
+import { resetRateLimit } from "@/lib/rate-limit";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIP } from "@/lib/request-utils";
 import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";
@@ -10,6 +11,7 @@ import { loginCodeEmail } from "@/lib/email-templates";
 import { maskEmail } from "@/lib/text-utils";
 import { setSessionCookie } from "@/lib/session";
 import { requireJson } from "@/lib/api-helpers";
+import { ErrorMessages } from "@/lib/error-messages";
 
 /** Max failed login attempts per account per day. */
 const MAX_ATTEMPTS_PER_ACCOUNT = 10;
@@ -49,30 +51,22 @@ export async function POST(request: Request) {
       }
 
       // Check IP rate limit
-      const ipCheck = await checkRateLimitPersistent(
+      const ipCheck = await enforceRateLimit(
         `login-ip:${ip}`,
         MAX_ATTEMPTS_PER_IP,
-        RATE_LIMIT_WINDOW_MS
+        RATE_LIMIT_WINDOW_MS,
+        { success: false, blocked: true, remainingAttempts: 0 },
       );
-      if (!ipCheck.allowed) {
-        return NextResponse.json(
-          { success: false, blocked: true, remainingAttempts: 0 },
-          { status: 429 }
-        );
-      }
+      if (!ipCheck.ok) return ipCheck.response;
 
       // Check per-account rate limit
-      const accountCheck = await checkRateLimitPersistent(
+      const accountCheck = await enforceRateLimit(
         `login-account:${username.trim()}`,
         MAX_ATTEMPTS_PER_ACCOUNT,
-        RATE_LIMIT_WINDOW_MS
+        RATE_LIMIT_WINDOW_MS,
+        { success: false, blocked: true, remainingAttempts: 0 },
       );
-      if (!accountCheck.allowed) {
-        return NextResponse.json(
-          { success: false, blocked: true, remainingAttempts: 0 },
-          { status: 429 }
-        );
-      }
+      if (!accountCheck.ok) return accountCheck.response;
 
       // Verify credentials
       const admins = await readAdmins();
@@ -106,6 +100,7 @@ export async function POST(request: Request) {
         });
 
         const response = NextResponse.json({ success: true, twoFactorRequired: false });
+        response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
         setSessionCookie(response, username.trim());
         return response;
       }
@@ -123,6 +118,7 @@ export async function POST(request: Request) {
         });
 
         const response = NextResponse.json({ success: true, twoFactorRequired: false });
+        response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
         setSessionCookie(response, username.trim());
         return response;
       }
@@ -175,30 +171,22 @@ export async function POST(request: Request) {
       }
 
       // Rate limit 2FA verification attempts per IP
-      const verifyIpCheck = await checkRateLimitPersistent(
+      const verifyIpCheck = await enforceRateLimit(
         `2fa-verify-ip:${ip}`,
         MAX_ATTEMPTS_PER_IP,
-        RATE_LIMIT_WINDOW_MS
+        RATE_LIMIT_WINDOW_MS,
+        { error: ErrorMessages.RATE_LIMITED_VERIFY },
       );
-      if (!verifyIpCheck.allowed) {
-        return NextResponse.json(
-          { error: "Too many verification attempts. Please try again later. / Zu viele Versuche. / 验证尝试过于频繁，请稍后重试。" },
-          { status: 429 }
-        );
-      }
+      if (!verifyIpCheck.ok) return verifyIpCheck.response;
 
       // Rate limit 2FA verification per account
-      const verifyAccountCheck = await checkRateLimitPersistent(
+      const verifyAccountCheck = await enforceRateLimit(
         `2fa-verify-account:${username.trim()}`,
         MAX_ATTEMPTS_PER_ACCOUNT,
-        RATE_LIMIT_WINDOW_MS
+        RATE_LIMIT_WINDOW_MS,
+        { error: ErrorMessages.RATE_LIMITED_VERIFY },
       );
-      if (!verifyAccountCheck.allowed) {
-        return NextResponse.json(
-          { error: "Too many verification attempts. Please try again later. / Zu viele Versuche. / 验证尝试过于频繁，请稍后重试。" },
-          { status: 429 }
-        );
-      }
+      if (!verifyAccountCheck.ok) return verifyAccountCheck.response;
 
       const otpVerifySecret = getOtpSecret();
       if (!otpVerifySecret) {
@@ -217,7 +205,7 @@ export async function POST(request: Request) {
           ip,
         });
         return NextResponse.json(
-          { error: "Invalid or expired code / Ungültiger oder abgelaufener Code / 验证码无效或已过期" },
+          { error: ErrorMessages.INVALID_OR_EXPIRED_CODE },
           { status: 400 }
         );
       }
@@ -232,15 +220,16 @@ export async function POST(request: Request) {
       });
 
       const response = NextResponse.json({ success: true });
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
       setSessionCookie(response, username.trim());
       return response;
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    return NextResponse.json({ error: ErrorMessages.INVALID_ACTION }, { status: 400 });
   } catch (err) {
     console.error("[login-2fa] Error:", err);
     return NextResponse.json(
-      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { error: ErrorMessages.INTERNAL_SERVER_ERROR },
       { status: 500 }
     );
   }

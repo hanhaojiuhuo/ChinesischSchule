@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:unit": "npx tsx --test tests/unit/lib-utils.test.ts",
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "@vercel/blob": "^2.3.1",

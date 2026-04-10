@@ -2,11 +2,20 @@ import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { logAuditEvent } from "@/lib/audit-log";
 import { requireAuth } from "@/lib/api-helpers";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
+
+/** Max uploads per admin per hour. */
+const UPLOAD_RATE_LIMIT_MAX = 30;
+const UPLOAD_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 export async function POST(request: Request) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const sessionUser = auth.user;
+
+  // Rate limit uploads per admin
+  const rl = await enforceRateLimit(`upload:${sessionUser}`, UPLOAD_RATE_LIMIT_MAX, UPLOAD_RATE_LIMIT_WINDOW_MS);
+  if (!rl.ok) return rl.response;
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
@@ -35,7 +44,12 @@ export async function POST(request: Request) {
     "image/x-adobe-dng",    // Adobe DNG
   ];
   const ALLOWED_EXTENSIONS = /\.(jpe?g|png|gif|tiff?|raw|cr2|nef|arw|dng)$/i;
-  if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.test(file.name)) {
+  // Validate file type — both MIME type and extension must match to prevent spoofing.
+  // A file with an unknown/empty MIME type is still accepted if its extension matches
+  // (common for RAW camera formats), but known-bad MIME types are always rejected.
+  const knownBadType = file.type && !ALLOWED_TYPES.includes(file.type);
+  const badExtension = !ALLOWED_EXTENSIONS.test(file.name);
+  if (knownBadType || badExtension) {
     return NextResponse.json(
       { error: "Only JPEG, PNG, GIF, TIFF, and RAW images are allowed." },
       { status: 400 }

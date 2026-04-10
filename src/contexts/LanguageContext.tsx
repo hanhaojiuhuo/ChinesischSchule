@@ -5,6 +5,7 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
 } from "react";
 import type { Language } from "@/i18n/translations";
 
@@ -40,6 +41,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       // localStorage not available
     }
   }, []);
+
+  // Keep <html lang="…"> in sync with the user's chosen language
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage }}>

@@ -1,8 +1,24 @@
 /**
  * Audit logging for admin actions.
  *
- * Logs are stored in Vercel Blob as JSON files.
+ * Logs are stored in Vercel Blob as JSON files with date-based partitioning.
  * Falls back to console.log when Blob is not configured.
+ *
+ * ## Retention & Deletion Policy
+ *
+ * Audit logs may contain personal data (admin usernames, IP addresses) and
+ * are subject to GDPR data minimisation requirements.
+ *
+ * - **Retention period**: 90 days (recommended).  Logs older than this should
+ *   be deleted periodically via the Vercel Blob dashboard or an automated
+ *   cleanup job.
+ * - **Data stored**: timestamp, action type, actor (admin username), optional
+ *   target, optional details, and client IP address.
+ * - **Access**: Stored with `access: "private"` so only server-side code with
+ *   a valid `BLOB_READ_WRITE_TOKEN` can read them.
+ * - **Deletion requests**: Under GDPR Art. 17, data subjects may request
+ *   erasure of their personal data.  Use the Vercel Blob dashboard or API to
+ *   delete specific log entries when a valid erasure request is received.
  */
 
 import { put, list } from "@vercel/blob";
@@ -37,7 +53,7 @@ export async function logAuditEvent(entry: Omit<AuditLogEntry, "timestamp">): Pr
     // Use date-based partitioning: yixin-audit-logs/2026/04/09/timestamp-random.json
     const d = new Date();
     const datePath = `${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${String(d.getUTCDate()).padStart(2, "0")}`;
-    const filename = `${d.getTime()}-${Math.random().toString(36).slice(2, 8)}.json`;
+    const filename = `${d.getTime()}-${crypto.randomUUID().slice(0, 8)}.json`;
 
     await put(
       `${BLOB_PREFIX}${datePath}/${filename}`,

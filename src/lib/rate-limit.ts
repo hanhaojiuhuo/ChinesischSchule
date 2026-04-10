@@ -58,7 +58,8 @@ async function readEntry(key: string): Promise<RateLimitEntry | null> {
         return (await res.json()) as RateLimitEntry;
       }
     }
-  } catch {
+  } catch (err) {
+    console.warn("[rate-limit] Blob read failed, using in-memory fallback:", err);
     // Fall back to memory
     return memoryStore.get(key) ?? null;
   }
@@ -85,7 +86,8 @@ async function writeEntry(key: string, entry: RateLimitEntry): Promise<void> {
         token,
       }
     );
-  } catch {
+  } catch (err) {
+    console.warn("[rate-limit] Blob write failed:", err);
     // Blob write failed — in-memory still updated
   }
 }
@@ -140,8 +142,8 @@ export async function resetRateLimit(key: string): Promise<void> {
           token,
         }
       );
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn("[rate-limit] Reset write failed:", err);
     }
   }
 }

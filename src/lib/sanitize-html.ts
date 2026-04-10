@@ -9,7 +9,7 @@ const PURIFY_CONFIG = {
     "b", "strong", "i", "em", "u", "br", "div", "p", "span", "a", "font",
   ] as string[],
   ALLOWED_ATTR: [
-    "href", "target", "rel", "style", "color", "size", "class",
+    "href", "target", "rel", "color", "size", "class",
   ] as string[],
   ALLOW_DATA_ATTR: false,
 };

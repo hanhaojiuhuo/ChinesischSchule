@@ -39,6 +39,37 @@ export async function POST(request: Request) {
 
   try {
 
+    // Validate that the body is a non-empty array of valid admin objects
+    if (!Array.isArray(admins) || admins.length === 0) {
+      return NextResponse.json(
+        { error: "Admin list must be a non-empty array" },
+        { status: 400 }
+      );
+    }
+    for (const admin of admins) {
+      if (
+        !admin ||
+        typeof admin !== "object" ||
+        typeof admin.username !== "string" ||
+        !admin.username.trim() ||
+        typeof admin.password !== "string" ||
+        !admin.password
+      ) {
+        return NextResponse.json(
+          { error: "Each admin must have a non-empty username and password" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Prevent the current user from removing themselves (potential lockout)
+    if (!admins.some((a) => a.username === sessionUser)) {
+      return NextResponse.json(
+        { error: "Cannot remove your own account from the admin list" },
+        { status: 400 }
+      );
+    }
+
     // Auto-hash any plaintext passwords before persisting
     const hashedAdmins = await Promise.all(
       admins.map(async (admin) => {

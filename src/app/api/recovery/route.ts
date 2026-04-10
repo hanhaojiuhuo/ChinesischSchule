@@ -6,8 +6,9 @@ import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";
 import { recoveryCodeEmail } from "@/lib/email-templates";
 import { setSessionCookie } from "@/lib/session";
 import { requireJson } from "@/lib/api-helpers";
-import { checkRateLimitPersistent } from "@/lib/rate-limit";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 import { getClientIP } from "@/lib/request-utils";
+import { ErrorMessages } from "@/lib/error-messages";
 
 const CODE_SLOT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -45,6 +46,15 @@ export async function POST(request: Request) {
       );
     }
 
+    /* ── Startup warning for RECOVERY_MODE ─────────────────── */
+    if (process.env.NODE_ENV === "production") {
+      console.warn(
+        "[SECURITY] ⚠️  RECOVERY_MODE is enabled in production. " +
+        "Disable it immediately after creating a new admin account " +
+        "by removing the RECOVERY_MODE environment variable and redeploying."
+      );
+    }
+
     const parsed = await requireJson<Record<string, string>>(request);
     if (!parsed.ok) return parsed.response;
     const body = parsed.body;
@@ -61,17 +71,13 @@ export async function POST(request: Request) {
     /* ── Step 1: Send recovery verification code ──────────── */
     if (action === "request") {
       // Rate limit code requests per IP
-      const rl = await checkRateLimitPersistent(
+      const rl = await enforceRateLimit(
         `recovery-request-ip:${ip}`,
         RECOVERY_REQUEST_MAX,
-        RECOVERY_REQUEST_WINDOW_MS
+        RECOVERY_REQUEST_WINDOW_MS,
+        { error: ErrorMessages.RATE_LIMITED },
       );
-      if (!rl.allowed) {
-        return NextResponse.json(
-          { error: "Too many recovery requests. Please try again later. / Zu viele Anfragen. / 请求过于频繁，请稍后重试。" },
-          { status: 429 }
-        );
-      }
+      if (!rl.ok) return rl.response;
 
       const apiKey = process.env.RESEND_API_KEY;
       const notificationEmail = process.env.NOTIFICATION_EMAIL;
@@ -126,17 +132,13 @@ export async function POST(request: Request) {
       }
 
       // Rate limit verify attempts per IP
-      const rl = await checkRateLimitPersistent(
+      const rl = await enforceRateLimit(
         `recovery-verify-ip:${ip}`,
         RECOVERY_VERIFY_MAX,
-        RECOVERY_VERIFY_WINDOW_MS
+        RECOVERY_VERIFY_WINDOW_MS,
+        { error: ErrorMessages.RATE_LIMITED_VERIFY },
       );
-      if (!rl.allowed) {
-        return NextResponse.json(
-          { error: "Too many verification attempts. Please try again later. / Zu viele Versuche. / 验证尝试过于频繁，请稍后重试。" },
-          { status: 429 }
-        );
-      }
+      if (!rl.ok) return rl.response;
 
       const otpVerifySecret = getOtpSecret();
       if (!otpVerifySecret) {
@@ -176,7 +178,7 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("[recovery] Error:", err);
     return NextResponse.json(
-      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { error: ErrorMessages.INTERNAL_SERVER_ERROR },
       { status: 500 }
     );
   }

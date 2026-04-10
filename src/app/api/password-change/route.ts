@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { readAdmins } from "@/lib/edge-config";
-import { checkRateLimitPersistent } from "@/lib/rate-limit";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";
 import { passwordChangeCodeEmail } from "@/lib/email-templates";
 import { maskEmail } from "@/lib/text-utils";
 import { requireJson } from "@/lib/api-helpers";
+import { ErrorMessages } from "@/lib/error-messages";
 
 /** Time-slot duration for HMAC-based code validity (10 minutes). */
 const CODE_SLOT_MS = 10 * 60 * 1000;
@@ -52,17 +53,8 @@ export async function POST(request: Request) {
       const trimmedUsername = username.trim();
 
       // Rate limit by username — persistent across server restarts
-      const rl = await checkRateLimitPersistent(`pw-change:${trimmedUsername}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
-      if (!rl.allowed) {
-        const retryMinutes = Math.ceil(rl.retryAfterMs / 60000);
-        return NextResponse.json(
-          {
-            error: `Zu viele Versuche. Bitte versuchen Sie es in ${retryMinutes} Minute(n) erneut. / Too many attempts. Please try again in ${retryMinutes} minute(s). / 尝试次数过多，请在 ${retryMinutes} 分钟后重试。`,
-            rateLimited: true,
-          },
-          { status: 429 }
-        );
-      }
+      const rl = await enforceRateLimit(`pw-change:${trimmedUsername}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+      if (!rl.ok) return rl.response;
 
       const admins = await readAdmins();
       const admin = admins.find((a) => a.username === trimmedUsername);
@@ -122,6 +114,10 @@ export async function POST(request: Request) {
         );
       }
 
+      // Rate limit verify attempts to prevent OTP brute-force
+      const verifyRl = await enforceRateLimit(`pw-change-verify:${username.trim()}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+      if (!verifyRl.ok) return verifyRl.response;
+
       const otpVerifySecret = getOtpSecret();
       if (!otpVerifySecret) {
         return NextResponse.json(
@@ -144,11 +140,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    return NextResponse.json({ error: ErrorMessages.INVALID_ACTION }, { status: 400 });
   } catch (err) {
     console.error("[password-change] Error:", err);
     return NextResponse.json(
-      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { error: ErrorMessages.INTERNAL_SERVER_ERROR },
       { status: 500 }
     );
   }
