@@ -17,6 +17,18 @@ export const DEFAULT_ADMINS: AdminUser[] = [];
 
 export const EDGE_CONFIG_KEY = "yixin-admins";
 
+/* ── Production startup warnings ─────────────────────────────────── */
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.RECOVERY_MODE === "true"
+) {
+  console.warn(
+    "⚠️  [security] RECOVERY_MODE is enabled in production! " +
+    "This bypasses normal authentication. Disable it after recovering " +
+    "admin access by removing or setting RECOVERY_MODE=false and redeploying."
+  );
+}
+
 /* ── helpers ─────────────────────────────────────────────────────── */
 
 /**
