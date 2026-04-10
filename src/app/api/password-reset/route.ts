@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config";
 import type { AdminUser } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
-import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
+import { resetRateLimit } from "@/lib/rate-limit";
 import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 import { logAuditEvent } from "@/lib/audit-log";
 import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";

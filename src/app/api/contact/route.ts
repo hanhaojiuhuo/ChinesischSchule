@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { checkRateLimitPersistent } from "@/lib/rate-limit";
 import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 import { getClientIP } from "@/lib/request-utils";
 import { contactNotificationEmail, contactConfirmationEmail } from "@/lib/email-templates";
