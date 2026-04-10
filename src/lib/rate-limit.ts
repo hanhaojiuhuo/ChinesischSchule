@@ -111,16 +111,19 @@ export async function checkRateLimitPersistent(
   const blobEntry = await readEntry(key);
   const memEntry = memoryStore.get(key) ?? null;
 
+  /** Check whether a rate-limit entry's window has expired. */
+  const isExpired = (e: RateLimitEntry) => now - e.windowStart > windowMs;
+
   // Merge: use the higher count between memory and blob for consistency
   let entry: RateLimitEntry | null = null;
   if (blobEntry && memEntry) {
-    const blobExpired = now - blobEntry.windowStart > windowMs;
-    const memExpired = now - memEntry.windowStart > windowMs;
-    if (blobExpired && memExpired) {
+    const blobExp = isExpired(blobEntry);
+    const memExp = isExpired(memEntry);
+    if (blobExp && memExp) {
       entry = null; // Both expired
-    } else if (blobExpired) {
+    } else if (blobExp) {
       entry = memEntry; // Blob expired, memory is current
-    } else if (memExpired) {
+    } else if (memExp) {
       entry = blobEntry; // Memory expired, blob is current
     } else {
       // Both within window — use higher count for safety
@@ -130,7 +133,7 @@ export async function checkRateLimitPersistent(
     entry = blobEntry ?? memEntry;
   }
 
-  if (!entry || now - entry.windowStart > windowMs) {
+  if (!entry || isExpired(entry)) {
     // First attempt or window expired – start new window
     await writeEntry(key, { count: 1, windowStart: now });
     return { allowed: true, remaining: maxAttempts - 1, retryAfterMs: 0 };

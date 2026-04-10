@@ -91,7 +91,6 @@ export async function POST(request: Request) {
       // Credentials valid — now check if admin has email for 2FA
       if (!admin.email) {
         // No email configured — skip 2FA and login directly
-        console.warn("[login-2fa] Admin logged in WITHOUT 2FA (no email configured). Configure an email address to enable 2FA.");
         await resetRateLimit(`login-account:${username.trim()}`);
         await logAuditEvent({
           action: "LOGIN",
@@ -104,7 +103,6 @@ export async function POST(request: Request) {
           success: true,
           twoFactorRequired: false,
           twoFactorSkipped: true,
-          warning: "2FA is disabled because no email is configured for this account. / 2FA ist deaktiviert, da keine E-Mail konfiguriert ist. / 此账户未配置邮箱，2FA已跳过。",
         });
         response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
         setSessionCookie(response, username.trim());
@@ -115,7 +113,6 @@ export async function POST(request: Request) {
       const apiKey = process.env.RESEND_API_KEY;
       if (!apiKey) {
         // Email service not configured — skip 2FA
-        console.warn("[login-2fa] Admin logged in WITHOUT 2FA (RESEND_API_KEY not configured). Set RESEND_API_KEY to enable 2FA.");
         await resetRateLimit(`login-account:${username.trim()}`);
         await logAuditEvent({
           action: "LOGIN",
@@ -128,7 +125,6 @@ export async function POST(request: Request) {
           success: true,
           twoFactorRequired: false,
           twoFactorSkipped: true,
-          warning: "2FA is disabled because email service is not configured. / 2FA ist deaktiviert, da der E-Mail-Dienst nicht konfiguriert ist. / 邮件服务未配置，2FA已跳过。",
         });
         response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
         setSessionCookie(response, username.trim());
