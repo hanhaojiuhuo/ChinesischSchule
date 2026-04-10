@@ -127,6 +127,7 @@ export async function GET() {
     });
 
     if (error) {
+      console.error("[email-test] Resend API error:", JSON.stringify(error));
       results["send_test_email"] = {
         ok: false,
         detail: `Resend API returned error — check API key and sender configuration`,

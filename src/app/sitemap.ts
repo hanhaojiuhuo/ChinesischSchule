@@ -38,7 +38,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const newsItems = defaultTranslations.de.news.items;
   const newsPages: MetadataRoute.Sitemap = newsItems.map((item, idx) => ({
     url: `${siteUrl}/news/${idx}`,
-    lastModified: item.date || LAST_CONTENT_UPDATE,
+    // item.date is "YYYY-MM"; append "-01" for a valid ISO date
+    lastModified: item.date ? `${item.date}-01` : LAST_CONTENT_UPDATE,
     changeFrequency: "weekly" as const,
     priority: 0.6,
   }));
