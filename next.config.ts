@@ -24,6 +24,10 @@ const nextConfig: NextConfig = {
             value: "camera=(), microphone=(), geolocation=()",
           },
           {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
@@ -32,9 +36,11 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' https:",
+              "object-src 'none'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
+              "upgrade-insecure-requests",
             ].join("; "),
           },
         ],

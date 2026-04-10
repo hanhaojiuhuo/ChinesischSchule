@@ -129,7 +129,8 @@ export async function GET() {
           (syncConnectionString ? " via env var connection string" : " via auto-discovered connection string"),
       };
     } catch (err) {
-      results["edge_config_sdk_read"] = { ok: false, detail: String(err) };
+      console.error("[vercel-test] Edge Config SDK read failed:", err);
+      results["edge_config_sdk_read"] = { ok: false, detail: "Edge Config SDK read failed — check server logs for details" };
     }
   } else {
     results["edge_config_sdk_read"] = {
@@ -199,7 +200,7 @@ export async function GET() {
         token: process.env.BLOB_READ_WRITE_TOKEN,
       });
       if (blobs.length > 0) {
-        const res = await fetch(blobs[0].url, { cache: "no-store" });
+        const res = await fetch(blobs[0].downloadUrl ?? blobs[0].url, { cache: "no-store" });
         if (res.ok) {
           const content = await res.json();
           const keys = Object.keys(content);
@@ -223,7 +224,8 @@ export async function GET() {
         };
       }
     } catch (err) {
-      results["read_content_overrides"] = { ok: false, detail: String(err) };
+      console.error("[vercel-test] Content overrides read failed:", err);
+      results["read_content_overrides"] = { ok: false, detail: "Content overrides read failed — check server logs" };
     }
   } else {
     results["read_content_overrides"] = {
@@ -244,7 +246,8 @@ export async function GET() {
         detail: `Blob store accessible (${blobs.length > 0 ? "has files" : "empty"})`,
       };
     } catch (err) {
-      results["blob_connectivity"] = { ok: false, detail: `Blob list failed: ${String(err)}` };
+      results["blob_connectivity"] = { ok: false, detail: "Blob list failed — check server logs" };
+      console.error("[vercel-test] Blob connectivity check failed:", err);
     }
   } else {
     results["blob_connectivity"] = {
@@ -260,14 +263,14 @@ export async function GET() {
     try {
       // Write
       const blob = await put(TEST_BLOB_PATH, JSON.stringify(testPayload), {
-        access: "public",
+        access: "private",
         contentType: "application/json",
         addRandomSuffix: false,
         token: process.env.BLOB_READ_WRITE_TOKEN,
       });
 
       // Read back
-      const readRes = await fetch(blob.url, { cache: "no-store" });
+      const readRes = await fetch(blob.downloadUrl ?? blob.url, { cache: "no-store" });
       if (!readRes.ok) {
         results["blob_data_transfer"] = {
           ok: false,
@@ -291,9 +294,10 @@ export async function GET() {
         // best-effort cleanup
       }
     } catch (err) {
+      console.error("[vercel-test] Blob data transfer test failed:", err);
       results["blob_data_transfer"] = {
         ok: false,
-        detail: `Blob write/read round-trip failed: ${String(err)}`,
+        detail: "Blob write/read round-trip failed — check server logs",
       };
     }
   } else {

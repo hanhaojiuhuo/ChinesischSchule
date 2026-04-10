@@ -19,18 +19,20 @@ export async function hashPassword(plaintext: string): Promise<string> {
 
 /**
  * Compare a plaintext password against a bcrypt hash.
- * Also supports legacy plaintext comparison for migration:
- * if the stored value is NOT a bcrypt hash, it falls back to direct comparison.
+ *
+ * Only bcrypt-hashed passwords are accepted.  Legacy plaintext passwords
+ * must be migrated (re-hashed) before they can be used for login.
  */
 export async function verifyPassword(
   plaintext: string,
   stored: string
 ): Promise<boolean> {
-  if (isBcryptHash(stored)) {
-    return bcrypt.compare(plaintext, stored);
+  if (!isBcryptHash(stored)) {
+    // Reject plaintext-stored passwords — they must be migrated first
+    // (use the admin panel or RECOVERY_MODE to set a new password).
+    return false;
   }
-  // Legacy plaintext comparison (for migration period)
-  return plaintext === stored;
+  return bcrypt.compare(plaintext, stored);
 }
 
 /**

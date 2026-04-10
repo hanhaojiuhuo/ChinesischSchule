@@ -13,8 +13,14 @@ import { requireAuthAndJson } from "@/lib/api-helpers";
 export type { AdminUser };
 
 export async function GET() {
-  const admins = await readAdmins();
   const sessionUser = await getSessionUser();
+
+  // Require authentication — don't expose admin usernames to the public
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const admins = await readAdmins();
 
   // Always redact password hashes — they should never leave the server
   const sanitised = admins.map(({ username, email }) => ({
@@ -22,15 +28,6 @@ export async function GET() {
     email: email ?? undefined,
     password: "********",
   }));
-
-  // Unauthenticated callers only get usernames (no emails)
-  if (!sessionUser) {
-    const publicList = sanitised.map(({ username }) => ({
-      username,
-      password: "********",
-    }));
-    return NextResponse.json(publicList);
-  }
 
   return NextResponse.json(sanitised);
 }

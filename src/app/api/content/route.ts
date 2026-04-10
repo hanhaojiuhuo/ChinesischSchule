@@ -20,7 +20,7 @@ export async function GET() {
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
     if (blobs.length > 0) {
-      const res = await fetch(blobs[0].url, { cache: "no-store" });
+      const res = await fetch(blobs[0].downloadUrl ?? blobs[0].url, { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         return NextResponse.json(data, {
