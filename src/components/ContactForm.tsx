@@ -134,12 +134,12 @@ export default function ContactForm() {
 
       {/* Status messages */}
       {status === "success" && (
-        <p className="text-sm text-green-600 font-semibold text-center">
+        <p className="text-sm text-green-600 font-semibold text-center" role="status" aria-live="polite">
           ✓ 留言已发送！ / Nachricht gesendet! / Message sent!
         </p>
       )}
       {status === "error" && (
-        <p className="text-sm text-red-600 text-center">{errorMsg}</p>
+        <p className="text-sm text-red-600 text-center" role="alert" aria-live="assertive">{errorMsg}</p>
       )}
 
       {/* Submit button */}
