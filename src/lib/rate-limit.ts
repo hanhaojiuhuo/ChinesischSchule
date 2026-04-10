@@ -114,12 +114,13 @@ export async function checkRateLimitPersistent(
   // Merge: use the higher count between memory and blob for consistency
   let entry: RateLimitEntry | null = null;
   if (blobEntry && memEntry) {
-    // Both exist — pick the one with the more recent window, or the higher count
-    if (now - blobEntry.windowStart > windowMs && now - memEntry.windowStart > windowMs) {
+    const blobExpired = now - blobEntry.windowStart > windowMs;
+    const memExpired = now - memEntry.windowStart > windowMs;
+    if (blobExpired && memExpired) {
       entry = null; // Both expired
-    } else if (now - blobEntry.windowStart > windowMs) {
+    } else if (blobExpired) {
       entry = memEntry; // Blob expired, memory is current
-    } else if (now - memEntry.windowStart > windowMs) {
+    } else if (memExpired) {
       entry = blobEntry; // Memory expired, blob is current
     } else {
       // Both within window — use higher count for safety

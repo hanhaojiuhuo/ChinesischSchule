@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       // Credentials valid — now check if admin has email for 2FA
       if (!admin.email) {
         // No email configured — skip 2FA and login directly
-        console.warn(`[login-2fa] Admin "${username.trim()}" logged in WITHOUT 2FA (no email configured). Configure an email address to enable 2FA.`);
+        console.warn("[login-2fa] Admin logged in WITHOUT 2FA (no email configured). Configure an email address to enable 2FA.");
         await resetRateLimit(`login-account:${username.trim()}`);
         await logAuditEvent({
           action: "LOGIN",
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       const apiKey = process.env.RESEND_API_KEY;
       if (!apiKey) {
         // Email service not configured — skip 2FA
-        console.warn(`[login-2fa] Admin "${username.trim()}" logged in WITHOUT 2FA (RESEND_API_KEY not configured). Set RESEND_API_KEY to enable 2FA.`);
+        console.warn("[login-2fa] Admin logged in WITHOUT 2FA (RESEND_API_KEY not configured). Set RESEND_API_KEY to enable 2FA.");
         await resetRateLimit(`login-account:${username.trim()}`);
         await logAuditEvent({
           action: "LOGIN",
