@@ -31,7 +31,7 @@ export async function getServerContent(lang: Language): Promise<SiteContent> {
       return defaultTranslations[lang];
     }
 
-    const res = await fetch(blobs[0].url, { cache: "no-store" });
+    const res = await fetch(blobs[0].downloadUrl ?? blobs[0].url, { cache: "no-store" });
     if (!res.ok) {
       return defaultTranslations[lang];
     }

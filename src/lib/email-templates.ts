@@ -92,8 +92,8 @@ export function adminPasswordResetEmail(
     <p><strong>DE:</strong> Ihr Verifizierungscode lautet:<br><strong>EN:</strong> Your verification code is:<br><strong>ZH:</strong> 您的验证码为：</p>
     ${codeBlock(code)}
     <p><strong>DE:</strong> Klicken Sie auf den folgenden Link, um Ihr Passwort zu ändern:<br><strong>EN:</strong> Click the link below to change your password:<br><strong>ZH:</strong> 请点击以下链接修改密码：</p>
-    <p style="text-align:center;margin:16px 0"><a href="${resetLink}" style="display:inline-block;background:${BRAND_COLOR};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px">Passwort ändern / Change Password / 修改密码</a></p>
-    <p style="color:#666;font-size:12px;word-break:break-all">${resetLink}</p>
+    <p style="text-align:center;margin:16px 0"><a href="${escapeHtml(resetLink)}" style="display:inline-block;background:${BRAND_COLOR};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px">Passwort ändern / Change Password / 修改密码</a></p>
+    <p style="color:#666;font-size:12px;word-break:break-all">${escapeHtml(resetLink)}</p>
     ${validityHint(30)}
     ${disclaimer(
       "Falls Sie diese Anfrage nicht gestellt haben, kontaktieren Sie bitte sofort einen Administrator.",
