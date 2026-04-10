@@ -4,6 +4,7 @@ import { readAdmins, writeAdmins, getLastPersistError } from "@/lib/edge-config"
 import type { AdminUser } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
 import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 import { logAuditEvent } from "@/lib/audit-log";
 import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";
 import {
@@ -12,6 +13,7 @@ import {
   passwordChangedConfirmEmail,
 } from "@/lib/email-templates";
 import { requireJson } from "@/lib/api-helpers";
+import { ErrorMessages } from "@/lib/error-messages";
 
 /** Time-slot duration for HMAC-based code validity (15 minutes). */
 const CODE_SLOT_MS = 15 * 60 * 1000;
@@ -82,8 +84,8 @@ export async function POST(request: Request) {
       const mismatchKey = `forgot:${trimmedUsername}`;
 
       // Check mismatch block (3 wrong attempts → blocked) — persistent
-      const mm = await checkRateLimitPersistent(mismatchKey, MISMATCH_MAX, MISMATCH_WINDOW_MS);
-      if (!mm.allowed) {
+      const mm = await enforceRateLimit(mismatchKey, MISMATCH_MAX, MISMATCH_WINDOW_MS);
+      if (!mm.ok) {
         return NextResponse.json(
           {
             error: "Too many incorrect attempts. Please wait 24 hours before trying again. / Zu viele Fehlversuche. Bitte warten Sie 24 Stunden. / 错误尝试次数过多，请等待24小时后再试。",
@@ -94,25 +96,14 @@ export async function POST(request: Request) {
       }
 
       // Rate limit by email — persistent across server restarts
-      const rl = await checkRateLimitPersistent(`pw-reset:${normalizedEmail}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
-      if (!rl.allowed) {
-        const retryMinutes = Math.ceil(rl.retryAfterMs / 60000);
-        return NextResponse.json(
-          {
-            error: `Too many attempts. Please try again in ${retryMinutes} minute(s). / Zu viele Versuche. Bitte versuchen Sie es in ${retryMinutes} Minute(n) erneut. / 尝试次数过多，请在 ${retryMinutes} 分钟后重试。`,
-            rateLimited: true,
-            retryAfterMs: rl.retryAfterMs,
-          },
-          { status: 429 }
-        );
-      }
+      const rl = await enforceRateLimit(`pw-reset:${normalizedEmail}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+      if (!rl.ok) return rl.response;
 
       const admins = await readAdmins();
 
       // First check if username exists
       const adminByUsername = admins.find((a) => a.username === trimmedUsername);
       if (!adminByUsername) {
-        // Decrement the mismatch counter (already incremented inside checkMismatchLimit)
         return NextResponse.json(
           {
             error: "Username not found. Please check and try again. / Benutzername nicht gefunden. Bitte überprüfen und erneut versuchen. / 用户名未找到，请检查后重试。",
@@ -307,11 +298,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    return NextResponse.json({ error: ErrorMessages.INVALID_ACTION }, { status: 400 });
   } catch (err) {
     console.error("[password-reset] Error:", err);
     return NextResponse.json(
-      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { error: ErrorMessages.INTERNAL_SERVER_ERROR },
       { status: 500 }
     );
   }

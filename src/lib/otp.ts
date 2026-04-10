@@ -8,7 +8,25 @@ import { createHmac, timingSafeEqual } from "crypto";
  * set in production to avoid coupling email credentials with OTP security.
  */
 export function getOtpSecret(): string | undefined {
-  return process.env.OTP_SECRET ?? process.env.RESEND_API_KEY;
+  const dedicated = process.env.OTP_SECRET;
+  if (dedicated) return dedicated;
+
+  // Warn once about fallback
+  if (
+    process.env.RESEND_API_KEY &&
+    !process.env.OTP_SECRET &&
+    typeof globalThis !== "undefined" &&
+    !(globalThis as Record<string, unknown>).__otpFallbackWarned
+  ) {
+    console.warn(
+      "[otp] ⚠️  OTP_SECRET is not set — falling back to RESEND_API_KEY. " +
+      "Set a dedicated OTP_SECRET in production so email credential rotation " +
+      "doesn't invalidate outstanding OTP codes."
+    );
+    (globalThis as Record<string, unknown>).__otpFallbackWarned = true;
+  }
+
+  return process.env.RESEND_API_KEY;
 }
 
 /**

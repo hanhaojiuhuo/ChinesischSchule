@@ -1,8 +1,24 @@
 /**
  * Audit logging for admin actions.
  *
- * Logs are stored in Vercel Blob as JSON files.
+ * Logs are stored in Vercel Blob as JSON files with date-based partitioning.
  * Falls back to console.log when Blob is not configured.
+ *
+ * ## Retention & Deletion Policy
+ *
+ * Audit logs may contain personal data (admin usernames, IP addresses) and
+ * are subject to GDPR data minimisation requirements.
+ *
+ * - **Retention period**: 90 days (recommended).  Logs older than this should
+ *   be deleted periodically via the Vercel Blob dashboard or an automated
+ *   cleanup job.
+ * - **Data stored**: timestamp, action type, actor (admin username), optional
+ *   target, optional details, and client IP address.
+ * - **Access**: Stored with `access: "private"` so only server-side code with
+ *   a valid `BLOB_READ_WRITE_TOKEN` can read them.
+ * - **Deletion requests**: Under GDPR Art. 17, data subjects may request
+ *   erasure of their personal data.  Use the Vercel Blob dashboard or API to
+ *   delete specific log entries when a valid erasure request is received.
  */
 
 import { put, list } from "@vercel/blob";

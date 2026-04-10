@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { readAdmins } from "@/lib/edge-config";
 import { verifyPassword } from "@/lib/password";
-import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
+import { resetRateLimit } from "@/lib/rate-limit";
+import { enforceRateLimit } from "@/lib/rate-limit-helpers";
 import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIP } from "@/lib/request-utils";
 import { setSessionCookie } from "@/lib/session";
 import { requireJson } from "@/lib/api-helpers";
+import { ErrorMessages } from "@/lib/error-messages";
 
 /* ── Rate-limit configuration ───────────────────────────────────── */
 
@@ -40,30 +42,22 @@ export async function POST(request: Request) {
     const ip = getClientIP(request);
 
     // Check IP rate limit first (broader limit) — persistent across restarts
-    const ipCheck = await checkRateLimitPersistent(
+    const ipCheck = await enforceRateLimit(
       `login-ip:${ip}`,
       MAX_ATTEMPTS_PER_IP,
-      RATE_LIMIT_WINDOW_MS
+      RATE_LIMIT_WINDOW_MS,
+      { success: false, blocked: true, remainingAttempts: 0 },
     );
-    if (!ipCheck.allowed) {
-      return NextResponse.json(
-        { success: false, blocked: true, remainingAttempts: 0 },
-        { status: 429 }
-      );
-    }
+    if (!ipCheck.ok) return ipCheck.response;
 
     // Check per-account rate limit — persistent across restarts
-    const accountCheck = await checkRateLimitPersistent(
+    const accountCheck = await enforceRateLimit(
       `login-account:${username}`,
       MAX_ATTEMPTS_PER_ACCOUNT,
-      RATE_LIMIT_WINDOW_MS
+      RATE_LIMIT_WINDOW_MS,
+      { success: false, blocked: true, remainingAttempts: 0 },
     );
-    if (!accountCheck.allowed) {
-      return NextResponse.json(
-        { success: false, blocked: true, remainingAttempts: 0 },
-        { status: 429 }
-      );
-    }
+    if (!accountCheck.ok) return accountCheck.response;
 
     // Verify credentials server-side (supports bcrypt and legacy plaintext)
     const admins = await readAdmins();
@@ -99,7 +93,7 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("[login] Error:", err);
     return NextResponse.json(
-      { error: "Internal server error / Interner Serverfehler / 服务器内部错误" },
+      { error: ErrorMessages.INTERNAL_SERVER_ERROR },
       { status: 500 }
     );
   }
