@@ -136,8 +136,10 @@ export default function Home() {
           showEn={showEn}
           updDe={draft.updDe}
           updZh={draft.updZh}
+          updEn={draft.updEn}
           updDeAddrLine={draft.updDeAddrLine}
           updZhAddrLine={draft.updZhAddrLine}
+          updEnAddrLine={draft.updEnAddrLine}
         />
       </main>
 
