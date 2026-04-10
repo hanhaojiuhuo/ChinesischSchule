@@ -39,8 +39,9 @@ const nextConfig: NextConfig = {
              * nonces into every response, which Next.js does not natively
              * support in the App Router without significant complexity.
              *
-             * 'unsafe-eval' is required by Next.js development mode and some
-             * React runtime patterns (e.g. dynamic style computation).
+             * 'unsafe-eval' is only included in development mode for Next.js
+             * hot module replacement and React runtime patterns.  It is
+             * excluded from production builds.
              *
              * These directives weaken CSP protection against inline script
              * injection but are mitigated by other security layers:
@@ -53,7 +54,9 @@ const nextConfig: NextConfig = {
              */
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              process.env.NODE_ENV === "production"
+                ? "script-src 'self' 'unsafe-inline'"
+                : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",

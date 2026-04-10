@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
   try {
     await put(BLOB_PATHNAME, JSON.stringify(content), {
-      access: "public",
+      access: "private",
       contentType: "application/json",
       addRandomSuffix: false,
       token: process.env.BLOB_READ_WRITE_TOKEN,

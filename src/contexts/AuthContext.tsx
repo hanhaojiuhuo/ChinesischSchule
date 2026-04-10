@@ -32,6 +32,7 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 const SESSION_KEY = "yixin-admin-session";
+const SESSION_USER_KEY = "yixin-session-user";
 const RECOVERY_SESSION_KEY = "yixin-recovery-session";
 const LOGIN_FAILURES_KEY = "yixin-login-failures";
 const LOCAL_ADMINS_KEY = "yixin-admins";
@@ -173,7 +174,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             setIsAdmin(true);
             setCurrentUser(data.username);
             try {
-              localStorage.setItem(SESSION_KEY, data.username);
+              localStorage.setItem(SESSION_KEY, "1");
+            } catch { /* ignore */ }
+            try {
+              sessionStorage.setItem(SESSION_USER_KEY, data.username);
             } catch { /* ignore */ }
             // Check if this was a recovery session
             const wasRecovery = localStorage.getItem(RECOVERY_SESSION_KEY) === "1";
@@ -184,11 +188,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Cookie invalid or expired — clean up
             try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
             try { localStorage.removeItem(RECOVERY_SESSION_KEY); } catch { /* ignore */ }
+            try { sessionStorage.removeItem(SESSION_USER_KEY); } catch { /* ignore */ }
           }
         } else {
           // No valid session — clean up
           try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
           try { localStorage.removeItem(RECOVERY_SESSION_KEY); } catch { /* ignore */ }
+          try { sessionStorage.removeItem(SESSION_USER_KEY); } catch { /* ignore */ }
         }
       } catch {
         // ignore
@@ -208,7 +214,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsAdmin(false);
         setCurrentUser(null);
         setIsRecoverySession(false);
-        // Clear the session deadline so the auto-logout timer resets.
+        // Clear the session data in this tab.
+        try { sessionStorage.removeItem(SESSION_USER_KEY); } catch { /* ignore */ }
         try {
           sessionStorage.removeItem("yixin-session-deadline");
         } catch { /* ignore */ }
@@ -259,7 +266,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setIsAdmin(true);
           setCurrentUser(username);
           try {
-            localStorage.setItem(SESSION_KEY, username);
+            localStorage.setItem(SESSION_KEY, "1");
+          } catch {
+            // ignore
+          }
+          try {
+            sessionStorage.setItem(SESSION_USER_KEY, username);
           } catch {
             // ignore
           }
@@ -302,7 +314,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setIsAdmin(true);
           setCurrentUser(username);
           try {
-            localStorage.setItem(SESSION_KEY, username);
+            localStorage.setItem(SESSION_KEY, "1");
+          } catch {
+            // ignore
+          }
+          try {
+            sessionStorage.setItem(SESSION_USER_KEY, username);
           } catch {
             // ignore
           }
@@ -348,7 +365,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setIsAdmin(true);
           setCurrentUser(username);
           try {
-            localStorage.setItem(SESSION_KEY, username);
+            localStorage.setItem(SESSION_KEY, "1");
+          } catch {
+            // ignore
+          }
+          try {
+            sessionStorage.setItem(SESSION_USER_KEY, username);
           } catch {
             // ignore
           }
@@ -376,6 +398,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // ignore
     }
     try { localStorage.removeItem(RECOVERY_SESSION_KEY); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(SESSION_USER_KEY); } catch { /* ignore */ }
     // Clear server-side session cookie
     try {
       await fetch("/api/auth", { method: "DELETE" });
