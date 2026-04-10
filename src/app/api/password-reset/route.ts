@@ -101,23 +101,17 @@ export async function POST(request: Request) {
 
       const admins = await readAdmins();
 
-      // First check if username exists
+      // Look up admin by username AND email — use a single generic error
+      // to prevent username/email enumeration.
       const adminByUsername = admins.find((a) => a.username === trimmedUsername);
-      if (!adminByUsername) {
+      if (
+        !adminByUsername ||
+        !adminByUsername.email ||
+        adminByUsername.email.toLowerCase() !== normalizedEmail
+      ) {
         return NextResponse.json(
           {
-            error: "Username not found. Please check and try again. / Benutzername nicht gefunden. Bitte überprüfen und erneut versuchen. / 用户名未找到，请检查后重试。",
-            mismatchRemaining: mm.remaining,
-          },
-          { status: 404 }
-        );
-      }
-
-      // Check if email matches the username
-      if (!adminByUsername.email || adminByUsername.email.toLowerCase() !== normalizedEmail) {
-        return NextResponse.json(
-          {
-            error: "Email does not match this username. Please check and try again. / E-Mail stimmt nicht mit diesem Benutzernamen überein. / 邮箱与该用户名不匹配，请检查后重试。",
+            error: "Invalid username or email. Please check and try again. / Ungültiger Benutzername oder E-Mail. Bitte überprüfen und erneut versuchen. / 用户名或邮箱无效，请检查后重试。",
             mismatchRemaining: mm.remaining,
           },
           { status: 400 }

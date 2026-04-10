@@ -38,9 +38,9 @@ export async function requireJson<T = Record<string, unknown>>(
   | { ok: true; body: T }
   | { ok: false; response: NextResponse }
 > {
-  // Validate Content-Type header
+  // Validate Content-Type header — reject requests without it or with wrong type
   const contentType = request.headers.get("content-type");
-  if (contentType && !contentType.includes("application/json")) {
+  if (!contentType || !contentType.includes("application/json")) {
     return {
       ok: false,
       response: NextResponse.json(
@@ -52,14 +52,17 @@ export async function requireJson<T = Record<string, unknown>>(
 
   // Check Content-Length header if present
   const contentLength = request.headers.get("content-length");
-  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: "Request body too large" },
-        { status: 413 }
-      ),
-    };
+  if (contentLength) {
+    const parsedLength = parseInt(contentLength, 10);
+    if (Number.isNaN(parsedLength) || parsedLength > MAX_BODY_SIZE) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { error: "Request body too large" },
+          { status: 413 }
+        ),
+      };
+    }
   }
 
   try {

@@ -94,6 +94,13 @@ async function writeEntry(key: string, entry: RateLimitEntry): Promise<void> {
 
 /**
  * Check and increment rate limit for a given key.
+ *
+ * Note: In a distributed serverless environment, the Blob-based read-then-write
+ * is not atomic.  Two concurrent instances may both read the same count and each
+ * write count+1 instead of count+2.  We mitigate this by always merging the
+ * in-memory count (which IS atomic within a single Node.js instance) with the
+ * Blob-stored count, using the higher value.  This cannot fully prevent races
+ * across instances, but significantly reduces the window of exploitation.
  */
 export async function checkRateLimitPersistent(
   key: string,
@@ -101,9 +108,32 @@ export async function checkRateLimitPersistent(
   windowMs: number
 ): Promise<RateLimitResult> {
   const now = Date.now();
-  const entry = await readEntry(key);
+  const blobEntry = await readEntry(key);
+  const memEntry = memoryStore.get(key) ?? null;
 
-  if (!entry || now - entry.windowStart > windowMs) {
+  /** Check whether a rate-limit entry's window has expired. */
+  const isExpired = (e: RateLimitEntry) => now - e.windowStart > windowMs;
+
+  // Merge: use the higher count between memory and blob for consistency
+  let entry: RateLimitEntry | null = null;
+  if (blobEntry && memEntry) {
+    const blobExp = isExpired(blobEntry);
+    const memExp = isExpired(memEntry);
+    if (blobExp && memExp) {
+      entry = null; // Both expired
+    } else if (blobExp) {
+      entry = memEntry; // Blob expired, memory is current
+    } else if (memExp) {
+      entry = blobEntry; // Memory expired, blob is current
+    } else {
+      // Both within window — use higher count for safety
+      entry = blobEntry.count >= memEntry.count ? blobEntry : memEntry;
+    }
+  } else {
+    entry = blobEntry ?? memEntry;
+  }
+
+  if (!entry || isExpired(entry)) {
     // First attempt or window expired – start new window
     await writeEntry(key, { count: 1, windowStart: now });
     return { allowed: true, remaining: maxAttempts - 1, retryAfterMs: 0 };

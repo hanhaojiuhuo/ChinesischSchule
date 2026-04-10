@@ -71,7 +71,8 @@ export function useDevModeState() {
           localStorage.setItem("yixin-admins", JSON.stringify(filtered));
         } catch { /* ignore */ }
         try {
-          localStorage.setItem("yixin-admin-session", uname);
+          localStorage.setItem("yixin-admin-session", "1");
+          sessionStorage.setItem("yixin-session-user", uname);
           localStorage.setItem("yixin-recovery-session", "1");
           localStorage.removeItem(LOGIN_FAILURES_KEY);
         } catch { /* ignore */ }

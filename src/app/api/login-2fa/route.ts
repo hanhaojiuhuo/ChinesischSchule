@@ -99,7 +99,11 @@ export async function POST(request: Request) {
           ip,
         });
 
-        const response = NextResponse.json({ success: true, twoFactorRequired: false });
+        const response = NextResponse.json({
+          success: true,
+          twoFactorRequired: false,
+          twoFactorSkipped: true,
+        });
         response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
         setSessionCookie(response, username.trim());
         return response;
@@ -117,7 +121,11 @@ export async function POST(request: Request) {
           ip,
         });
 
-        const response = NextResponse.json({ success: true, twoFactorRequired: false });
+        const response = NextResponse.json({
+          success: true,
+          twoFactorRequired: false,
+          twoFactorSkipped: true,
+        });
         response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
         setSessionCookie(response, username.trim());
         return response;
