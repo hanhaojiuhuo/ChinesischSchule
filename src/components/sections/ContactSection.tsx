@@ -13,8 +13,10 @@ interface ContactSectionProps {
   showEn: (section: string) => boolean;
   updDe: <K extends keyof SiteContent>(section: K, patch: Partial<SiteContent[K]> & object) => void;
   updZh: <K extends keyof SiteContent>(section: K, patch: Partial<SiteContent[K]> & object) => void;
+  updEn: <K extends keyof SiteContent>(section: K, patch: Partial<SiteContent[K]> & object) => void;
   updDeAddrLine: (idx: number, val: string) => void;
   updZhAddrLine: (idx: number, val: string) => void;
+  updEnAddrLine: (idx: number, val: string) => void;
 }
 
 export default function ContactSection({
@@ -25,8 +27,10 @@ export default function ContactSection({
   showEn,
   updDe,
   updZh,
+  updEn,
   updDeAddrLine,
   updZhAddrLine,
+  updEnAddrLine,
 }: ContactSectionProps) {
   return (
         <section id="contact" data-testid="section-contact" className="py-16 px-4 bg-white">
@@ -50,6 +54,13 @@ export default function ContactSection({
                     className="text-lg font-normal text-gray-400"
                     placeholder="ZH 标题…"
                   />
+                  <span className="text-lg font-normal text-gray-400">·</span>
+                  <EditField
+                    value={en.contact.sectionTitle}
+                    onChange={(v) => updEn("contact", { sectionTitle: v })}
+                    className="text-lg font-normal text-gray-400"
+                    placeholder="EN title…"
+                  />
                 </>
               ) : (
                 <>
@@ -70,11 +81,15 @@ export default function ContactSection({
                         <div className="space-y-1">
                           <EditField value={de.contact.addressTitle} onChange={(v) => updDe("contact", { addressTitle: v })} className="font-semibold text-school-dark text-sm w-full" placeholder="DE Address title…" />
                           <EditField value={zh.contact.addressTitle} onChange={(v) => updZh("contact", { addressTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 地址标题…" />
+                          <EditField value={en.contact.addressTitle} onChange={(v) => updEn("contact", { addressTitle: v })} className="text-xs text-gray-400 w-full" placeholder="EN Address title…" />
                           {de.contact.addressLines.map((l, i) => (
                             <EditField key={`de-addr-${i}`} value={l} onChange={(v) => updDeAddrLine(i, v)} className="text-sm text-gray-600 w-full" placeholder={`DE address line ${i + 1}…`} />
                           ))}
                           {zh.contact.addressLines.map((l, i) => (
                             <EditField key={`zh-addr-${i}`} value={l} onChange={(v) => updZhAddrLine(i, v)} className="font-cn text-xs text-gray-400 w-full" placeholder={`ZH 地址行 ${i + 1}…`} />
+                          ))}
+                          {en.contact.addressLines.map((l, i) => (
+                            <EditField key={`en-addr-${i}`} value={l} onChange={(v) => updEnAddrLine(i, v)} className="text-xs text-gray-400 w-full" placeholder={`EN address line ${i + 1}…`} />
                           ))}
                         </div>
                       ) : (
@@ -99,7 +114,8 @@ export default function ContactSection({
                         <div className="space-y-1">
                           <EditField value={de.contact.emailTitle} onChange={(v) => updDe("contact", { emailTitle: v })} className="font-semibold text-school-dark text-sm w-full" placeholder="DE Email title…" />
                           <EditField value={zh.contact.emailTitle} onChange={(v) => updZh("contact", { emailTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 邮箱标题…" />
-                          <EditField value={de.contact.email} onChange={(v) => { updDe("contact", { email: v }); updZh("contact", { email: v }); }} className="text-sm text-gray-600 w-full" placeholder="email@example.com" />
+                          <EditField value={en.contact.emailTitle} onChange={(v) => updEn("contact", { emailTitle: v })} className="text-xs text-gray-400 w-full" placeholder="EN Email title…" />
+                          <EditField value={de.contact.email} onChange={(v) => { updDe("contact", { email: v }); updZh("contact", { email: v }); updEn("contact", { email: v }); }} className="text-sm text-gray-600 w-full" placeholder="email@example.com" />
                         </div>
                       ) : (
                         <>
@@ -122,7 +138,8 @@ export default function ContactSection({
                           <div className="space-y-1">
                             <EditField value={de.contact.phoneTitle} onChange={(v) => updDe("contact", { phoneTitle: v })} className="font-semibold text-school-dark text-sm w-full" placeholder="DE Phone title…" />
                             <EditField value={zh.contact.phoneTitle} onChange={(v) => updZh("contact", { phoneTitle: v })} className="font-cn text-xs text-gray-400 w-full" placeholder="ZH 电话标题…" />
-                            <EditField value={de.contact.phone} onChange={(v) => { updDe("contact", { phone: v }); updZh("contact", { phone: v }); }} className="text-sm text-gray-600 w-full" placeholder="+49 123 456789" />
+                            <EditField value={en.contact.phoneTitle} onChange={(v) => updEn("contact", { phoneTitle: v })} className="text-xs text-gray-400 w-full" placeholder="EN Phone title…" />
+                            <EditField value={de.contact.phone} onChange={(v) => { updDe("contact", { phone: v }); updZh("contact", { phone: v }); updEn("contact", { phone: v }); }} className="text-sm text-gray-600 w-full" placeholder="+49 123 456789" />
                           </div>
                         ) : (
                           <>

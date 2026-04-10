@@ -10,7 +10,7 @@ import { useContentDraft } from "@/hooks/useContentDraft";
 import { useToolbarPosition } from "@/hooks/useToolbarPosition";
 import SessionTimeoutWarning from "@/components/SessionTimeoutWarning";
 import AdminToolbar from "@/components/admin/AdminToolbar";
-import { EditArea } from "@/components/admin/EditHelpers";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 import { ExpandButton, ExpandModal } from "@/components/admin/AdminHelpers";
 
 interface EditablePageLayoutProps {
@@ -46,8 +46,8 @@ export default function EditablePageLayout({ section, label }: EditablePageLayou
 
   const showEn = (s: string) => draft.isEnglishVisible(s);
 
-  // Expand modal state (DE/ZH only — English content is read-only)
-  const [expandedField, setExpandedField] = useState<{ lang: "de" | "zh"; field: "pageTitle" | "content" } | null>(null);
+  // Expand modal state (DE/ZH/EN)
+  const [expandedField, setExpandedField] = useState<{ lang: "de" | "zh" | "en"; field: "pageTitle" | "content" } | null>(null);
 
   return (
     <>
@@ -65,13 +65,17 @@ export default function EditablePageLayout({ section, label }: EditablePageLayou
           value={
             expandedField.lang === "de"
               ? draft.de[section][expandedField.field]
-              : draft.zh[section][expandedField.field]
+              : expandedField.lang === "zh"
+              ? draft.zh[section][expandedField.field]
+              : draft.en[section][expandedField.field]
           }
           onChange={(v) => {
             if (expandedField.lang === "de") draft.updDe(section, { [expandedField.field]: v });
-            else draft.updZh(section, { [expandedField.field]: v });
+            else if (expandedField.lang === "zh") draft.updZh(section, { [expandedField.field]: v });
+            else draft.updEn(section, { [expandedField.field]: v });
           }}
           onClose={() => setExpandedField(null)}
+          richText={expandedField.field === "content"}
         />
       )}
 
@@ -111,6 +115,17 @@ export default function EditablePageLayout({ section, label }: EditablePageLayou
                 </>
               )}
             </p>
+            {isAdmin && (
+              <p className="text-lg text-gray-400 mt-1">
+                <input
+                  type="text"
+                  value={draft.en[section].pageTitle}
+                  onChange={(e) => draft.updEn(section, { pageTitle: e.target.value })}
+                  className="w-full text-center bg-amber-50/30 border-b-2 border-dashed border-amber-400 focus:outline-none focus:border-amber-500 focus:bg-amber-50/60 transition-colors text-lg text-gray-400"
+                  placeholder="EN title…"
+                />
+              </p>
+            )}
           </div>
 
           <div className={`bg-white rounded-xl shadow-sm border p-8 space-y-10 text-sm text-gray-700 leading-relaxed ${isAdmin ? "border-amber-400 ring-2 ring-amber-400 ring-offset-2" : "border-school-border"}`}>
@@ -132,10 +147,11 @@ export default function EditablePageLayout({ section, label }: EditablePageLayou
                     <span className="text-xs font-semibold text-gray-500">DE Content</span>
                     <ExpandButton onClick={() => setExpandedField({ lang: "de", field: "content" })} />
                   </div>
-                  <EditArea
+                  <RichTextEditor
                     value={draft.de[section].content}
                     onChange={(v) => draft.updDe(section, { content: v })}
-                    className="min-h-[200px]"
+                    placeholder="DE content…"
+                    minHeight="200px"
                   />
                 </div>
               ) : (
@@ -154,10 +170,12 @@ export default function EditablePageLayout({ section, label }: EditablePageLayou
                     <span className="text-xs font-semibold text-gray-500">ZH Content</span>
                     <ExpandButton onClick={() => setExpandedField({ lang: "zh", field: "content" })} />
                   </div>
-                  <EditArea
+                  <RichTextEditor
                     value={draft.zh[section].content}
                     onChange={(v) => draft.updZh(section, { content: v })}
-                    className="font-cn min-h-[200px]"
+                    placeholder="ZH 内容…"
+                    editorClassName="font-cn"
+                    minHeight="200px"
                   />
                 </div>
               ) : (
@@ -168,12 +186,27 @@ export default function EditablePageLayout({ section, label }: EditablePageLayou
             </section>
 
             {/* EN content */}
-            {showEn(section) && (
+            {(isAdmin || showEn(section)) && (
               <section className="border-t border-gray-100 pt-8">
                 <h2 className="text-base font-bold text-school-dark mb-3 pb-1 border-b border-gray-100">
                   {draft.en[section].pageTitle}
                 </h2>
-                <div className="whitespace-pre-line">{draft.en[section].content}</div>
+                {isAdmin ? (
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <span className="text-xs font-semibold text-gray-500">EN Content</span>
+                      <ExpandButton onClick={() => setExpandedField({ lang: "en", field: "content" })} />
+                    </div>
+                    <RichTextEditor
+                      value={draft.en[section].content}
+                      onChange={(v) => draft.updEn(section, { content: v })}
+                      placeholder="EN content…"
+                      minHeight="200px"
+                    />
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-line">{draft.en[section].content}</div>
+                )}
               </section>
             )}
           </div>

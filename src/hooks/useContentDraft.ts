@@ -66,6 +66,14 @@ export function useContentDraft() {
     []
   );
 
+  const updEn = useCallback(
+    <K extends keyof SiteContent>(section: K, patch: Partial<SiteContent[K]> & object) => {
+      setDraftEn((d) => ({ ...d, [section]: { ...(d[section] as object), ...(patch as object) } }));
+      setIsDirty(true);
+    },
+    []
+  );
+
   /* ── Course management ───────────────────────────────────── */
   const addCourse = useCallback(() => {
     const blank: CourseItem = { level: "", levelLabel: "", ages: "", time: "", desc: "" };
@@ -241,6 +249,17 @@ export function useContentDraft() {
     setIsDirty(true);
   }, []);
 
+  const updEnAddrLine = useCallback((idx: number, val: string) => {
+    setDraftEn((d) => ({
+      ...d,
+      contact: {
+        ...d.contact,
+        addressLines: d.contact.addressLines.map((l, i) => (i === idx ? val : l)),
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
   /* ── Save / Discard / Undo / Redo ──────────────────────── */
   const handleSave = useCallback(async () => {
     history.pushSnapshot({ de: draftDe, zh: draftZh, en: draftEn });
@@ -307,6 +326,7 @@ export function useContentDraft() {
 
     updDe,
     updZh,
+    updEn,
 
     addCourse,
     removeCourse,
@@ -328,6 +348,7 @@ export function useContentDraft() {
 
     updDeAddrLine,
     updZhAddrLine,
+    updEnAddrLine,
 
     handleSave,
     handleDiscard,
