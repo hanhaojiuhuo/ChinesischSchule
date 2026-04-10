@@ -51,7 +51,9 @@ async function readEntry(key: string): Promise<RateLimitEntry | null> {
       token,
     });
     if (blobs.length > 0) {
-      const res = await fetch(blobs[0].url, { cache: "no-store" });
+      // Use downloadUrl for private blobs (falls back to url for public blobs)
+      const fetchUrl = blobs[0].downloadUrl ?? blobs[0].url;
+      const res = await fetch(fetchUrl, { cache: "no-store" });
       if (res.ok) {
         return (await res.json()) as RateLimitEntry;
       }
@@ -77,7 +79,7 @@ async function writeEntry(key: string, entry: RateLimitEntry): Promise<void> {
       `${BLOB_PREFIX}${sanitiseKey(key)}.json`,
       JSON.stringify(entry),
       {
-        access: "public",
+        access: "private",
         contentType: "application/json",
         addRandomSuffix: false,
         token,
@@ -132,7 +134,7 @@ export async function resetRateLimit(key: string): Promise<void> {
         `${BLOB_PREFIX}${sanitiseKey(key)}.json`,
         JSON.stringify({ count: 0, windowStart: 0 }),
         {
-          access: "public",
+          access: "private",
           contentType: "application/json",
           addRandomSuffix: false,
           token,

@@ -14,20 +14,25 @@ export type { AdminUser };
 
 export async function GET() {
   const admins = await readAdmins();
-
-  // Only authenticated admins can see the full admin list (including passwords).
-  // Unauthenticated callers receive a sanitised list with passwords redacted.
   const sessionUser = await getSessionUser();
+
+  // Always redact password hashes — they should never leave the server
+  const sanitised = admins.map(({ username, email }) => ({
+    username,
+    email: email ?? undefined,
+    password: "********",
+  }));
+
+  // Unauthenticated callers only get usernames (no emails)
   if (!sessionUser) {
-    const sanitised = admins.map(({ username, email }) => ({
+    const publicList = sanitised.map(({ username }) => ({
       username,
-      email: email ?? undefined,
       password: "********",
     }));
-    return NextResponse.json(sanitised);
+    return NextResponse.json(publicList);
   }
 
-  return NextResponse.json(admins);
+  return NextResponse.json(sanitised);
 }
 
 export async function POST(request: Request) {

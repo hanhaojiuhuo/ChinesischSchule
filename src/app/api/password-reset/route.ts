@@ -5,7 +5,7 @@ import type { AdminUser } from "@/lib/edge-config";
 import { hashPassword } from "@/lib/password";
 import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit-log";
-import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
+import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";
 import {
   passwordResetCodeEmail,
   adminPasswordResetEmail,
@@ -137,7 +137,15 @@ export async function POST(request: Request) {
       await resetRateLimit(mismatchKey);
       const admin = adminByUsername;
 
-      const code = generateHmacCode("password-reset", admin.username, apiKey, CODE_SLOT_MS);
+      const otpSecret = getOtpSecret();
+      if (!otpSecret) {
+        return NextResponse.json(
+          { error: "OTP service not configured" },
+          { status: 503 }
+        );
+      }
+
+      const code = generateHmacCode("password-reset", admin.username, otpSecret, CODE_SLOT_MS);
       const fromEmail =
         process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
@@ -183,10 +191,10 @@ export async function POST(request: Request) {
         );
       }
 
-      const apiKey = process.env.RESEND_API_KEY;
-      if (!apiKey) {
+      const otpVerifySecret = getOtpSecret();
+      if (!otpVerifySecret) {
         return NextResponse.json(
-          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { error: "OTP service not configured" },
           { status: 503 }
         );
       }
@@ -201,7 +209,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const valid = verifyHmacCode("password-reset", admin.username, apiKey, code.trim(), CODE_SLOT_MS);
+      const valid = verifyHmacCode("password-reset", admin.username, otpVerifySecret, code.trim(), CODE_SLOT_MS);
       if (!valid) {
         return NextResponse.json(
           { error: "Invalid or expired code" },
@@ -230,9 +238,10 @@ export async function POST(request: Request) {
       }
 
       const apiKey = process.env.RESEND_API_KEY;
-      if (!apiKey) {
+      const otpResetSecret = getOtpSecret();
+      if (!otpResetSecret) {
         return NextResponse.json(
-          { error: "Email service not configured (RESEND_API_KEY missing)" },
+          { error: "OTP service not configured" },
           { status: 503 }
         );
       }
@@ -248,7 +257,7 @@ export async function POST(request: Request) {
       }
 
       // Re-verify the code before applying the change
-      if (!verifyHmacCode("password-reset", admin.username, apiKey, code.trim(), CODE_SLOT_MS)) {
+      if (!verifyHmacCode("password-reset", admin.username, otpResetSecret, code.trim(), CODE_SLOT_MS)) {
         return NextResponse.json(
           { error: "Invalid or expired code" },
           { status: 400 }

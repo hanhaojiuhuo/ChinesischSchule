@@ -43,7 +43,7 @@ export async function logAuditEvent(entry: Omit<AuditLogEntry, "timestamp">): Pr
       `${BLOB_PREFIX}${datePath}/${filename}`,
       JSON.stringify(fullEntry),
       {
-        access: "public",
+        access: "private",
         contentType: "application/json",
         addRandomSuffix: false,
         token,
@@ -75,7 +75,9 @@ export async function readRecentAuditLogs(limit = 50): Promise<AuditLogEntry[]> 
     const entries: AuditLogEntry[] = [];
     for (const blob of sorted.slice(0, limit)) {
       try {
-        const res = await fetch(blob.url, { cache: "no-store" });
+        // Use downloadUrl for private blobs (falls back to url for public blobs)
+        const fetchUrl = blob.downloadUrl ?? blob.url;
+        const res = await fetch(fetchUrl, { cache: "no-store" });
         if (res.ok) {
           entries.push(await res.json());
         }

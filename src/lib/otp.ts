@@ -1,4 +1,15 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
+
+/**
+ * Return the secret used for HMAC-based OTP codes.
+ *
+ * Prefers a dedicated OTP_SECRET env var. Falls back to RESEND_API_KEY
+ * so existing deployments continue to work, but OTP_SECRET should be
+ * set in production to avoid coupling email credentials with OTP security.
+ */
+export function getOtpSecret(): string | undefined {
+  return process.env.OTP_SECRET ?? process.env.RESEND_API_KEY;
+}
 
 /**
  * Generate an 8-character uppercase hex code tied to a username, domain, and
@@ -33,10 +44,16 @@ export function verifyHmacCode(
   slotMs: number,
 ): boolean {
   const slot = Math.floor(Date.now() / slotMs);
+  const normalizedCode = code.toUpperCase();
   for (const s of [slot, slot - 1]) {
     const mac = createHmac("sha256", secret);
     mac.update(`${domain}:${username}:${s}`);
-    if (mac.digest("hex").slice(0, 8).toUpperCase() === code.toUpperCase()) {
+    const expected = mac.digest("hex").slice(0, 8).toUpperCase();
+    // Constant-time comparison to prevent timing attacks
+    if (
+      normalizedCode.length === expected.length &&
+      timingSafeEqual(Buffer.from(normalizedCode, "ascii"), Buffer.from(expected, "ascii"))
+    ) {
       return true;
     }
   }

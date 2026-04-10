@@ -5,7 +5,7 @@ import { verifyPassword } from "@/lib/password";
 import { checkRateLimitPersistent, resetRateLimit } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIP } from "@/lib/request-utils";
-import { generateHmacCode, verifyHmacCode } from "@/lib/otp";
+import { generateHmacCode, verifyHmacCode, getOtpSecret } from "@/lib/otp";
 import { loginCodeEmail } from "@/lib/email-templates";
 import { maskEmail } from "@/lib/text-utils";
 import { setSessionCookie } from "@/lib/session";
@@ -128,7 +128,14 @@ export async function POST(request: Request) {
       }
 
       const CODE_SLOT_MS = 5 * 60 * 1000;
-      const code = generateHmacCode("login-2fa", admin.username, apiKey, CODE_SLOT_MS);
+      const otpSecret = getOtpSecret();
+      if (!otpSecret) {
+        return NextResponse.json(
+          { error: "OTP service not configured" },
+          { status: 503 }
+        );
+      }
+      const code = generateHmacCode("login-2fa", admin.username, otpSecret, CODE_SLOT_MS);
       const fromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
       const resend = new Resend(apiKey);
 
@@ -141,18 +148,10 @@ export async function POST(request: Request) {
 
       if (error) {
         console.error("[login-2fa] Failed to send 2FA code:", error);
-        // Fall back to login without 2FA
-        await resetRateLimit(`login-account:${username.trim()}`);
-        await logAuditEvent({
-          action: "LOGIN",
-          actor: username.trim(),
-          details: "Login without 2FA (email send failed)",
-          ip,
-        });
-
-        const response = NextResponse.json({ success: true, twoFactorRequired: false });
-        setSessionCookie(response, username.trim());
-        return response;
+        return NextResponse.json(
+          { error: "Failed to send verification email. Please try again later. / E-Mail konnte nicht gesendet werden. / 验证邮件发送失败，请稍后重试。" },
+          { status: 500 }
+        );
       }
 
       // Mask email for client display
@@ -175,15 +174,41 @@ export async function POST(request: Request) {
         );
       }
 
-      const apiKey = process.env.RESEND_API_KEY;
-      if (!apiKey) {
+      // Rate limit 2FA verification attempts per IP
+      const verifyIpCheck = await checkRateLimitPersistent(
+        `2fa-verify-ip:${ip}`,
+        MAX_ATTEMPTS_PER_IP,
+        RATE_LIMIT_WINDOW_MS
+      );
+      if (!verifyIpCheck.allowed) {
         return NextResponse.json(
-          { error: "Email service not configured" },
+          { error: "Too many verification attempts. Please try again later. / Zu viele Versuche. / 验证尝试过于频繁，请稍后重试。" },
+          { status: 429 }
+        );
+      }
+
+      // Rate limit 2FA verification per account
+      const verifyAccountCheck = await checkRateLimitPersistent(
+        `2fa-verify-account:${username.trim()}`,
+        MAX_ATTEMPTS_PER_ACCOUNT,
+        RATE_LIMIT_WINDOW_MS
+      );
+      if (!verifyAccountCheck.allowed) {
+        return NextResponse.json(
+          { error: "Too many verification attempts. Please try again later. / Zu viele Versuche. / 验证尝试过于频繁，请稍后重试。" },
+          { status: 429 }
+        );
+      }
+
+      const otpVerifySecret = getOtpSecret();
+      if (!otpVerifySecret) {
+        return NextResponse.json(
+          { error: "OTP service not configured" },
           { status: 503 }
         );
       }
 
-      const valid = verifyHmacCode("login-2fa", username.trim(), apiKey, code.trim(), 5 * 60 * 1000);
+      const valid = verifyHmacCode("login-2fa", username.trim(), otpVerifySecret, code.trim(), 5 * 60 * 1000);
       if (!valid) {
         await logAuditEvent({
           action: "LOGIN_2FA_FAILED",

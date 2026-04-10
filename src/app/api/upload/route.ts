@@ -22,23 +22,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No file provided." }, { status: 400 });
   }
 
-  // Validate file type – only JPEG/JPG, PNG, GIF, TIFF, SVG, RAW
+  // Validate file type – only JPEG/JPG, PNG, GIF, TIFF, RAW (no SVG — stored XSS risk)
   const ALLOWED_TYPES = [
     "image/jpeg",
     "image/png",
     "image/gif",
     "image/tiff",
-    "image/svg+xml",
     "image/x-dcraw",        // RAW (generic)
     "image/x-canon-cr2",    // Canon RAW
     "image/x-nikon-nef",    // Nikon RAW
     "image/x-sony-arw",     // Sony RAW
     "image/x-adobe-dng",    // Adobe DNG
   ];
-  const ALLOWED_EXTENSIONS = /\.(jpe?g|png|gif|tiff?|svg|raw|cr2|nef|arw|dng)$/i;
+  const ALLOWED_EXTENSIONS = /\.(jpe?g|png|gif|tiff?|raw|cr2|nef|arw|dng)$/i;
   if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.test(file.name)) {
     return NextResponse.json(
-      { error: "Only JPEG, PNG, GIF, TIFF, SVG, and RAW images are allowed." },
+      { error: "Only JPEG, PNG, GIF, TIFF, and RAW images are allowed." },
       { status: 400 }
     );
   }
@@ -50,7 +49,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    const blob = await put(`news/${Date.now()}-${file.name}`, file, {
+    // Sanitize filename: strip path components and dangerous characters,
+    // but preserve the file extension
+    const rawName = file.name;
+    const lastDot = rawName.lastIndexOf(".");
+    const ext = lastDot >= 0 ? rawName.slice(lastDot) : "";
+    const base = lastDot >= 0 ? rawName.slice(0, lastDot) : rawName;
+    const sanitizedBase = base
+      .replace(/[/\\]/g, "_")                    // strip path separators
+      .replace(/[^a-zA-Z0-9._-]/g, "_")          // only safe chars
+      .replace(/\.{2,}/g, ".")                    // no double dots
+      .slice(0, 80);                              // cap base length
+    const sanitizedExt = ext
+      .replace(/[^a-zA-Z0-9.]/g, "")             // only safe chars in ext
+      .slice(0, 20);                              // cap ext length
+    const sanitizedName = `${sanitizedBase}${sanitizedExt}` || "upload";
+
+    const blob = await put(`news/${Date.now()}-${sanitizedName}`, file, {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });

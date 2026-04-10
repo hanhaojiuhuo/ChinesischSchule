@@ -1167,17 +1167,18 @@ test.describe("12. API Endpoint Validation", () => {
     expect([400, 403]).toContain(response.status());
   });
 
-  test("email test endpoint reports configuration status", async ({ request }) => {
+  test("email test endpoint requires authentication", async ({ request }) => {
     const response = await request.get("/api/email-test");
-    expect([200, 503]).toContain(response.status());
+    // Unauthenticated request should return 401
+    expect(response.status()).toBe(401);
   });
 
-  test("notify-admin endpoint validates input", async ({ request }) => {
+  test("notify-admin endpoint requires authentication", async ({ request }) => {
     const response = await request.post("/api/notify-admin", {
       data: {},
     });
-    // Should require input or email config
-    expect([400, 503]).toContain(response.status());
+    // Unauthenticated request should return 401
+    expect(response.status()).toBe(401);
   });
 
   test("sitemap route returns valid response", async ({ request }) => {

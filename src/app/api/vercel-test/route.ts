@@ -14,6 +14,7 @@ import {
   getTeamIdParam,
   EDGE_CONFIG_KEY,
 } from "@/lib/edge-config";
+import { requireAuth } from "@/lib/api-helpers";
 
 /**
  * GET /api/vercel-test
@@ -27,9 +28,13 @@ import {
  *  5. Tests Vercel Blob connectivity (list).
  *  6. Tests Vercel Blob write/read/delete round-trip (data transfer).
  *
+ * ⚠️  Requires admin authentication.
+ *
  * Returns a JSON report with pass/fail status for each check.
  */
 export async function GET() {
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
   const results: Record<string, { ok: boolean; detail: string }> = {};
 
   /* ── 1. Environment variables ────────────────────────────────── */
