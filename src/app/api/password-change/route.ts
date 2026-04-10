@@ -114,6 +114,10 @@ export async function POST(request: Request) {
         );
       }
 
+      // Rate limit verify attempts to prevent OTP brute-force
+      const verifyRl = await enforceRateLimit(`pw-change-verify:${username.trim()}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+      if (!verifyRl.ok) return verifyRl.response;
+
       const otpVerifySecret = getOtpSecret();
       if (!otpVerifySecret) {
         return NextResponse.json(

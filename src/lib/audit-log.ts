@@ -53,7 +53,7 @@ export async function logAuditEvent(entry: Omit<AuditLogEntry, "timestamp">): Pr
     // Use date-based partitioning: yixin-audit-logs/2026/04/09/timestamp-random.json
     const d = new Date();
     const datePath = `${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${String(d.getUTCDate()).padStart(2, "0")}`;
-    const filename = `${d.getTime()}-${Math.random().toString(36).slice(2, 8)}.json`;
+    const filename = `${d.getTime()}-${crypto.randomUUID().slice(0, 8)}.json`;
 
     await put(
       `${BLOB_PREFIX}${datePath}/${filename}`,

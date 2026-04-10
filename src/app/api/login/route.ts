@@ -74,6 +74,7 @@ export async function POST(request: Request) {
       });
 
       const response = NextResponse.json({ success: true });
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
       setSessionCookie(response, username);
       return response;
     }

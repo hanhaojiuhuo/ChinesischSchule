@@ -38,6 +38,18 @@ export async function requireJson<T = Record<string, unknown>>(
   | { ok: true; body: T }
   | { ok: false; response: NextResponse }
 > {
+  // Validate Content-Type header
+  const contentType = request.headers.get("content-type");
+  if (contentType && !contentType.includes("application/json")) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "Content-Type must be application/json" },
+        { status: 415 }
+      ),
+    };
+  }
+
   // Check Content-Length header if present
   const contentLength = request.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {

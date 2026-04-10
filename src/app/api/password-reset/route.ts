@@ -182,6 +182,11 @@ export async function POST(request: Request) {
         );
       }
 
+      // Rate limit verify attempts to prevent OTP brute-force
+      const verifyKey = `pw-reset-verify:${(username || email || "").trim()}`;
+      const verifyRl = await enforceRateLimit(verifyKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+      if (!verifyRl.ok) return verifyRl.response;
+
       const otpVerifySecret = getOtpSecret();
       if (!otpVerifySecret) {
         return NextResponse.json(
@@ -220,6 +225,11 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+
+      // Rate limit reset attempts to prevent OTP brute-force
+      const resetKey = `pw-reset-action:${(username || email || "").trim()}`;
+      const resetRl = await enforceRateLimit(resetKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+      if (!resetRl.ok) return resetRl.response;
 
       if (newPassword.length < 8) {
         return NextResponse.json(
